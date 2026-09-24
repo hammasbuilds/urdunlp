@@ -205,8 +205,14 @@ class TestTransliteration:
         assert forms == {"نہیں"}
 
     def test_unknown_words_fall_back_to_rules(self):
-        result = transliterate_with_confidence("Hammas")
+        """A string no Urdu word could have produced is guessed by rule, and says so.
+
+        This test used `Hammas`, which the vocabulary stage added in 0.2 now finds
+        (حماس). A made-up word is the stable way to reach the last stage.
+        """
+        result = transliterate_with_confidence("Xqzvt")
         assert result.sources[0][1] == "rules"
+        assert result.rule_share == 1.0
         assert result.text
 
     def test_coverage_is_reported_honestly(self):
@@ -309,16 +315,22 @@ class TestWrongDirection:
 class TestDocumentedExamples:
     """The README's examples must be what the code returns.
 
-    This one was wrong: the README showed `Ali` resolving to علی, which is what a
-    reader expects and not what the rules produce. ع cannot be written in Roman and
-    no lexicon covers proper nouns, so the honest output is الی - and `sources`
-    saying `rules` is the whole point of the design.
+    In 0.1 the README showed `Ali` resolving to علی, which is what a reader expects
+    and not what the rules produced: ع cannot be written in Roman, so the rules gave
+    الی. The README was corrected to الی. In 0.2 the vocabulary stage finds علی,
+    because علی is a real word and الی is a far rarer one - so the README changes
+    again, and both behaviours are pinned here.
     """
 
     def test_the_readme_transliteration_example(self):
         result = transliterate_with_confidence("mera naam Ali hai")
-        assert result.text == "میرا نام الی ہے"
+        assert result.text == "میرا نام علی ہے"
         assert result.lexicon_coverage == 0.5
+        assert dict(result.sources)["Ali"] == "vocabulary"
+
+    def test_without_the_vocabulary_the_rules_still_give_the_honest_guess(self):
+        result = transliterate_with_confidence("mera naam Ali hai", use_vocabulary=False)
+        assert result.text == "میرا نام الی ہے"
         assert dict(result.sources)["Ali"] == "rules"
 
 
@@ -327,43 +339,52 @@ class TestRoundTrip:
         urdu = transliterate_to_urdu("main theek hoon")
         assert normalize(urdu) == urdu
 
-    def test_dropping_short_vowels_round_trips_better(self):
-        """Measured on 457,428 corpus tokens: 61.2% without, 44.7% with.
+    # Words with no ambiguous consonant, so the vowel setting is the only variable.
+    # Picked by checking, not by assumption: the first draft of these tests used صرف,
+    # which failed BOTH ways under the rules because ص and س both romanise to `s`.
+    VOWEL_ONLY = ("کتاب", "پاکستان", "مشکل", "تقریبا", "امریکی")
+    COLLAPSES = {
+        "صرف": "س",  # ص and س both romanise to `s`
+        "حسن": "ہ",  # ح, ہ and ھ all romanise to `h`
+        "بیماریاں": "ن",  # ں (nasalisation) is written as a plain `n`
+    }
+
+    def test_under_the_rules_dropping_short_vowels_round_trips_better(self):
+        """0.1, measured on 457,428 corpus tokens: 61.2% without, 44.7% with.
 
         Every inserted short vowel returns as an alef, so the readable Roman form is
-        the one that cannot be converted back. Both settings are correct for
-        different jobs, and docs/CORPUS.md has the numbers.
+        the one the rules cannot convert back. Still true of the rules stage alone.
         """
-        # Words with no ambiguous consonant, so the vowel setting is the only
-        # variable. Picked by checking, not by assumption: the first draft of this
-        # test used صرف, which fails BOTH ways because ص and س both romanise to `s`.
-        # That is the collapse tested below, not the vowel problem.
-        for word in ("کتاب", "پاکستان", "مشکل", "تقریبا", "امریکی"):
-            with_vowels = transliterate_to_urdu(transliterate_to_roman(word))
-            without = transliterate_to_urdu(transliterate_to_roman(word, insert_short_vowels=False))
-            assert without == word, f"{word} should survive without inserted vowels"
-            assert with_vowels != word, f"{word} unexpectedly survived WITH them"
+        for word in self.VOWEL_ONLY:
+            roman = transliterate_to_roman(word)
+            bare = transliterate_to_roman(word, insert_short_vowels=False)
+            assert transliterate_to_urdu(bare, use_vocabulary=False) == word
+            assert transliterate_to_urdu(roman, use_vocabulary=False) != word
 
-    def test_letters_sharing_a_roman_form_cannot_round_trip_either_way(self):
-        """A loss no setting recovers, and the reason 100% is not the target.
-
-        Urdu distinguishes letters that Roman spells identically, so the mapping back
-        can only pick one. These are properties of the two writing systems, not gaps
-        in the implementation.
-        """
-        collapses = {
-            "صرف": "س",  # ص and س both romanise to `s`
-            "حسن": "ہ",  # ح, ہ and ھ all romanise to `h`
-            "بیماریاں": "ن",  # ں (nasalisation) is written as a plain `n`
-        }
-        for word, expected_substitute in collapses.items():
+    def test_under_the_rules_letters_sharing_a_roman_form_cannot_round_trip(self):
+        """Urdu distinguishes letters that Roman spells identically, so a mapping
+        back letter by letter can only pick one - ص and س are both `s`."""
+        for word, expected_substitute in self.COLLAPSES.items():
             for insert in (True, False):
-                back = transliterate_to_urdu(
-                    transliterate_to_roman(word, insert_short_vowels=insert)
-                )
-                assert back != word
-            bare = transliterate_to_urdu(transliterate_to_roman(word, insert_short_vowels=False))
-            assert expected_substitute in bare
+                roman = transliterate_to_roman(word, insert_short_vowels=insert)
+                assert transliterate_to_urdu(roman, use_vocabulary=False) != word
+            bare = transliterate_to_roman(word, insert_short_vowels=False)
+            assert expected_substitute in transliterate_to_urdu(bare, use_vocabulary=False)
+
+    @pytest.mark.parametrize("insert", [True, False])
+    def test_the_vocabulary_recovers_both_losses(self, insert):
+        """What the rules cannot undo, the vocabulary can: `srf` is not a word, and
+        صرف is the real word whose romanisation it is most likely to be. The same
+        goes for inserted vowels - `katab` finds کتاب, not کاتاب.
+
+        docs/CORPUS.md used to call these losses "properties of the two writing
+        systems, not of the implementation". For words in the vocabulary, that was
+        half wrong: the information is gone from the Roman string, but not from
+        the language.
+        """
+        for word in (*self.VOWEL_ONLY, *self.COLLAPSES):
+            roman = transliterate_to_roman(word, insert_short_vowels=insert)
+            assert transliterate_to_urdu(roman) == word
 
     def test_a_word_with_no_ambiguity_round_trips_under_both_settings(self):
         """The control. Without it the two tests above could be describing a

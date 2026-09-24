@@ -2,8 +2,8 @@
 
     python scripts/measure_corpus.py <corpus>  [--limit N]  [--json out.json]
 
-`<corpus>` is a directory of `.txt` files, a single `.txt` file (one document per
-line), or a `.parquet` file with a text column. The published numbers in
+`<corpus>` is a directory of `.txt` files, a single `.txt` or `.txt.gz` file (one
+document per line), or a `.parquet` file with a text column. The published numbers in
 docs/CORPUS.md come from XL-Sum Urdu: 84,581 BBC Urdu news articles.
 
 Why this exists: the README made four claims about real Urdu text - that Arabic
@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import gzip
 import json
 import sys
 import time
@@ -82,7 +83,12 @@ def read_documents(path: Path, limit: int):
                         if seen >= limit:
                             return
         else:
-            for line in source.read_text(encoding="utf-8").splitlines():
+            if source.suffix == ".gz":
+                with gzip.open(source, "rt", encoding="utf-8") as handle:
+                    lines = handle.read().splitlines()
+            else:
+                lines = source.read_text(encoding="utf-8").splitlines()
+            for line in lines:
                 if line.strip():
                     yield line
                     seen += 1
@@ -100,7 +106,7 @@ def measure(corpus: Path, limit: int, every: int = 97) -> dict:
     stop_hits = 0
     stop_seen: set[str] = set()
 
-    seen = rt_tried = rt_vowels = rt_novowels = 0
+    seen = rt_tried = rt_vowels = rt_novowels = rt_vocab_vowels = rt_vocab_novowels = 0
     rt_types: set[str] = set()
     examples: list[dict] = []
     started = time.time()
@@ -148,10 +154,15 @@ def measure(corpus: Path, limit: int, every: int = 97) -> dict:
                 rt_types.add(token)
                 roman = transliterate_to_roman(token)
                 bare = transliterate_to_roman(token, insert_short_vowels=False)
-                back = transliterate_to_urdu(roman)
-                back_bare = transliterate_to_urdu(bare)
+                # The 0.1 pipeline - lexicon, then rules - is what the published
+                # 44.7% / 61.2% measured, so it is kept as its own column. The
+                # vocabulary stage added in 0.2 is measured beside it.
+                back = transliterate_to_urdu(roman, use_vocabulary=False)
+                back_bare = transliterate_to_urdu(bare, use_vocabulary=False)
                 rt_vowels += back == token
                 rt_novowels += back_bare == token
+                rt_vocab_vowels += transliterate_to_urdu(roman) == token
+                rt_vocab_novowels += transliterate_to_urdu(bare) == token
                 if back != token and len(examples) < 40:
                     examples.append(
                         {
@@ -203,6 +214,12 @@ def measure(corpus: Path, limit: int, every: int = 97) -> dict:
         "roundtrip_distinct_types": len(rt_types),
         "roundtrip_rate_with_short_vowels": round(rt_vowels / rt_tried, 6) if rt_tried else 0,
         "roundtrip_rate_without_short_vowels": round(rt_novowels / rt_tried, 6) if rt_tried else 0,
+        "roundtrip_rate_with_short_vowels_vocabulary": (
+            round(rt_vocab_vowels / rt_tried, 6) if rt_tried else 0
+        ),
+        "roundtrip_rate_without_short_vowels_vocabulary": (
+            round(rt_vocab_novowels / rt_tried, 6) if rt_tried else 0
+        ),
         "roundtrip_failure_examples": examples,
         "seconds": round(time.time() - started, 1),
     }

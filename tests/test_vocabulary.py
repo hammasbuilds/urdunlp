@@ -1,0 +1,95 @@
+"""The vocabulary stage: recovering letters Roman cannot write, from words that exist."""
+
+from __future__ import annotations
+
+import pytest
+
+from urdunlp import (
+    group_roman_variants,
+    roman_key,
+    transliterate_to_urdu,
+    transliterate_with_confidence,
+)
+from urdunlp._channel import roman_keys, urdu_key
+
+
+@pytest.mark.parametrize(
+    ("roman", "urdu"),
+    [
+        ("baad", "بعد"),  # ع is unwritable in Roman
+        ("taur", "طور"),  # ط and ت are both `t`
+        ("haasil", "حاصل"),  # ح and ص
+        ("mohammad", "محمد"),  # doubled m, unwritten vowels
+        ("kuch", "کچھ"),  # aspiration nobody typed
+        ("station", "اسٹیشن"),  # English -tion, and the initial alef Urdu adds
+    ],
+)
+def test_words_the_rules_could_never_spell(roman, urdu):
+    result = transliterate_with_confidence(roman)
+    assert result.text == urdu
+    assert result.sources[0][1] == "vocabulary"
+
+
+def test_the_rules_alone_get_them_wrong():
+    """The control: without the vocabulary these all fail, which is the point."""
+    assert transliterate_to_urdu("baad", use_vocabulary=False) != "بعد"
+    assert transliterate_to_urdu("taur", use_vocabulary=False) != "طور"
+
+
+def test_the_curated_lexicon_still_comes_first():
+    result = transliterate_with_confidence("main theek hoon")
+    assert [s for _, s in result.sources] == ["lexicon"] * 3
+
+
+def test_candidate_keys_line_up_across_scripts():
+    """The retrieval key must be the same for a word and its romanisations."""
+    assert urdu_key("بعد") in roman_keys("baad")
+    assert urdu_key("اسٹیشن") in roman_keys("station")
+    assert urdu_key("نہیں") in roman_keys("nahin")  # final ں is not a consonant
+
+
+def test_rule_share_counts_only_the_guesses():
+    result = transliterate_with_confidence("mera naam Xqzvt hai")
+    assert result.rule_share == 0.25
+
+
+class TestRomanKey:
+    def test_spelling_variants_share_a_key(self):
+        assert roman_key("nahi") == roman_key("nahin") == roman_key("nhi") == "نہیں"
+
+    def test_variants_the_curated_lexicon_does_not_list(self):
+        """`naheen` and `nahin` are in the lexicon; `nahee` is not. The vocabulary
+        search has to find it."""
+        assert roman_key("nahee") == "نہیں"
+
+    def test_different_words_keep_different_keys(self):
+        assert roman_key("kitab") != roman_key("kutta")
+
+    def test_grouping(self):
+        groups = group_roman_variants(["nahi", "acha", "nhi", "accha", "nahi"])
+        assert groups == {"نہیں": ["nahi", "nhi"], "اچھا": ["acha", "accha"]}
+
+    def test_key_is_case_insensitive(self):
+        assert roman_key("Nahi") == roman_key("nahi")
+
+
+class TestKeepEnglish:
+    def test_off_by_default_because_urdu_writes_loanwords_in_urdu(self):
+        assert transliterate_to_urdu("station") == "اسٹیشن"
+
+    def test_on_it_leaves_english_in_latin_script(self):
+        result = transliterate_with_confidence("kal meeting cancel ho gayi", keep_english=True)
+        assert result.text == "کل meeting cancel ہو گئی"
+        assert dict(result.sources)["meeting"] == "english"
+
+    def test_a_url_does_not_shift_the_tags_onto_the_wrong_words(self):
+        """The first version tagged the raw text, where `http://x.co` is three
+        Latin words; the transliterator treats it as one identifier. Every tag after
+        the URL landed three words late - here, on `ho` and `gayi`."""
+        result = transliterate_with_confidence(
+            "dekho http://x.co kal meeting cancel ho gayi", keep_english=True
+        )
+        kinds = dict(result.sources)
+        assert kinds["http://x.co"] == "identifier"
+        assert kinds["meeting"] == kinds["cancel"] == "english"
+        assert kinds["ho"] == kinds["gayi"] == "lexicon"

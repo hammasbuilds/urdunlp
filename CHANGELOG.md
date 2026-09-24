@@ -5,7 +5,68 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] — 2026-09-24
+## [0.2.0] — unreleased
+
+The first version with an accuracy figure for transliteration. Every number below was
+measured on data held out from what it was built from; `docs/CORPUS.md` has each one
+with its method, and the scripts that reproduce them are listed there.
+
+### Added
+
+- **A vocabulary stage in Roman → Urdu transliteration**, between the curated lexicon
+  and the rules: a noisy-channel search over 42,498 Urdu words for the one most likely
+  to have been typed as the Roman string. Letter emissions were trained with EM on
+  106,260 attested romanisations from Google's Dakshina lexicon. On 52,087 words of
+  held-out hand-romanised sentences, word accuracy goes from **43.1% to 87.0%**. It
+  finds the letters Roman cannot write: `baad` → بعد, `taur` → طور, `Ali` → علی.
+  `use_vocabulary=False` restores the 0.1 pipeline. New source label `vocabulary`,
+  new property `rule_share`.
+- `roman_key()` / `group_roman_variants()` — group Roman spellings by the Urdu word they
+  stand for: `nahi`, `nhi`, `naheen`, `nahee` → نہیں. B-cubed F1 **0.829** on the
+  held-out lexicon, against 0.375 for exact matching and 0.497 for a consonant skeleton.
+- `identify_language()` — which of eleven Perso-Arabic-script languages a text is in:
+  Urdu, Punjabi (Shahmukhi), Saraiki, Sindhi, Pashto, Kashmiri, Persian, Arabic,
+  Central Kurdish, Uyghur, South Azerbaijani. **99.1%** on held-out Wikipedia
+  paragraphs, 94.3% on 20 characters, 84.2% on 10. Reports the distinctive letters it
+  saw as evidence.
+- `tag_roman_tokens()` and `keep_english=True` — label each word of Roman Urdu as `ur`
+  or `en`, smoothed over the sentence. English recall 0.873 on synthetic code-mixed
+  sentences, 1.6% of English words mislabelled `ur`.
+- `parse_number()`, `find_numbers()`, `number_to_words()`, `format_number()` — Urdu and
+  Roman Urdu number words, including ڈیڑھ, ڈھائی, سوا, ساڑھے and پونے, lakh and crore
+  scales, and 3-then-2 digit grouping (`12,34,567`). Round-trips every integer below
+  200,000 and 20,000 random ones up to 10¹³.
+- `stem()` / `stem_tokens()` — a rule-based suffix stripper. It helps, a little:
+  +0.008 recall@10 on title retrieval (p = 0.019), +0.005 on lead-sentence retrieval
+  (not significant). Both are reported.
+- Scripts that fetch the evaluation data and reproduce every number:
+  `fetch_dakshina.py` (walks a 2 GB remote tar by byte range and takes the 34 MB it needs),
+  `fetch_wikipedia_samples.py`, `extract_english.py`, `count_vocabulary.py`,
+  `build_translit_model.py`, `build_langid_models.py`, `measure_translit.py`,
+  `measure_langid.py`, `measure_stemmer.py`.
+
+### Changed
+
+- `transliterate_to_urdu("mera naam Ali hai")` now returns میرا نام **علی** ہے. The
+  README example and its test are updated; the 0.1 behaviour is pinned under
+  `use_vocabulary=False`.
+- Round-tripping Urdu → Roman → Urdu on held-out sentences: **42.0% → 90.5%** with the
+  default short-vowel setting, 61.8% → 92.4% without it. The losses docs/CORPUS.md
+  called "properties of the two writing systems" are mostly recoverable for words that
+  exist - صرف comes back from `srf`.
+- `measure_corpus.py` reads `.txt.gz` and reports both pipelines' round-trip rates.
+
+### Fixed
+
+- `parse_number` rejected every hundred that was not round (پانچ سو تیس), and read
+  ایک ہزار کروڑ as 10,010,000,000. Both caught while writing the tests, before release.
+
+### Data
+
+The bundled models (1 MB) are derived from Dakshina (CC BY-SA 4.0), Wikipedia
+(CC BY-SA 4.0) and HotpotQA (CC BY-SA 4.0). The code remains MIT.
+
+## [0.1.0] — 2026-09-24 (never published to PyPI)
 
 First release.
 
@@ -39,4 +100,5 @@ First release.
   first, so CI was green while every clone was broken.
 - The README documented `pip install urdu-nlp-toolkit`, which returned 404.
 
+[0.2.0]: https://github.com/hammasbuilds/urdunlp/releases/tag/v0.2.0
 [0.1.0]: https://github.com/hammasbuilds/urdunlp/releases/tag/v0.1.0

@@ -18,6 +18,11 @@ build/
 data/raw/*
 data/processed/*
 !data/**/.gitkeep
+# Everything the measurement scripts fetch or write: Dakshina, the Wikipedia
+# samples, the English sentences, vocabulary counts and reports. ~35 MB, CC BY-SA,
+# and reproducible with the fetch scripts. Anchored to the root so that the
+# package's own src/urdunlp/data/ - the bundled models - is NOT ignored.
+/data/
 
 models/
 .cache/

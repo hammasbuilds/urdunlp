@@ -5,12 +5,12 @@
 # `urdu-nlp` already exists on PyPI with nearly the same pitch. The GitHub repo
 # keeps its name; only the distribution name changes.
 name = "urdunlp"
-version = "0.1.0"
-description = "Urdu and Roman Urdu text processing: normalisation, tokenisation, transliteration, stopwords. Pure Python, no dependencies."
+version = "0.2.0"
+description = "Urdu and Roman Urdu text processing: normalisation, transliteration scored against human romanisations, language identification, numbers, stemming. Pure Python, no dependencies."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-keywords = ["urdu", "roman-urdu", "nlp", "transliteration", "normalization", "pakistan"]
+keywords = ["urdu", "roman-urdu", "nlp", "transliteration", "normalization", "language-identification", "code-mixing", "stemmer", "pakistan"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -54,7 +54,10 @@ packages = ["src/urdunlp"]
 # build backend drops. Without it in the wheel, mypy and pyright ignore every
 # annotation in this package and callers get `Any` back from a fully typed
 # library - PEP 561 requires the marker to be shipped, not just the hints.
-artifacts = ["src/urdunlp/py.typed"]
+# The three .json.gz files are the bundled models (1 MB together); listed for the
+# same reason - a wheel that imports and then fails on first use is worse than
+# one that fails to build.
+artifacts = ["src/urdunlp/py.typed", "src/urdunlp/data/*.json.gz"]
 
 [tool.hatch.build.targets.sdist]
 # The sdist should carry everything needed to rebuild and verify, which means the
@@ -67,6 +70,7 @@ include = [
     "conftest.py",
     "demo.py",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "pyproject.toml",
 ]

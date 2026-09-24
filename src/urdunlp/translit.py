@@ -13,17 +13,26 @@ and the same Roman string can map to different Urdu words:
     khana  ->  کھانا (food / to eat)   or   خانہ (compartment, in compounds)
     sher   ->  شیر (lion)              or   شعر (couplet)
 
-So this module does **not** pretend to be a solved problem. It works in two stages
+So this module does **not** pretend to be a solved problem. It works in three stages
 and reports which one produced each answer:
 
   1. **Lexicon.** A curated map of high-frequency words, covering the closed-class
      vocabulary - pronouns, postpositions, auxiliaries, common verbs - which is where
      most tokens in real text actually are.
-  2. **Rules.** Longest-match grapheme substitution for everything else.
+  2. **Vocabulary.** A noisy-channel search over 42,498 real Urdu words: the Urdu word
+     most likely to have been typed as this Roman string, weighing how a romaniser
+     spells each letter against how common the word is. This is where `baad` finds
+     بعد, `taur` finds طور and `ali` finds علی - letters Roman cannot write, recovered
+     because the word that contains them exists and the rule-built one does not.
+     See `_channel.py`.
+  3. **Rules.** Longest-match grapheme substitution for whatever is left - mostly
+     names and rare loanwords the vocabulary has never seen.
 
-The lexicon exists because rules cannot disambiguate `khana`, and closed-class words
-are both the most frequent and the most irregular. The rules exist because no lexicon
-will ever cover proper nouns.
+Scored against 52,087 words of hand-romanised Urdu Wikipedia sentences held out
+from everything the model was built from (Dakshina's test split), the first two
+stages alone - lexicon, then rules - get 43.1% of words exactly right. With the
+vocabulary stage between them, 87.0%. The numbers, and how they were measured,
+are in docs/CORPUS.md.
 
 `transliterate_to_urdu` returns the text; `transliterate_with_confidence` returns the
 same thing plus which stage handled each token, so a caller can decide whether to
@@ -35,6 +44,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from . import _channel
 from .normalize import normalize
 
 # --- Stage 1: lexicon -------------------------------------------------------------
@@ -454,7 +464,9 @@ _IS_URDU_SCRIPT = re.compile(r"[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]")
 @dataclass
 class Transliteration:
     text: str
-    # Per token: "lexicon" (trusted), "rules" (best effort), "passthrough"
+    # Per token: "lexicon" (trusted), "vocabulary" (a real Urdu word, chosen by the
+    # noisy channel), "rules" (best effort), "english" (kept in Latin script because
+    # `keep_english` was set and the token was tagged English), "passthrough"
     # (punctuation and digits), "identifier" (a URL, email, @mention or #hashtag,
     # emitted verbatim) or "already-urdu" (the token was not Roman at all).
     sources: list[tuple[str, str]]
@@ -472,6 +484,19 @@ class Transliteration:
         if not words:
             return 0.0
         return round(sum(1 for s in words if s == "lexicon") / len(words), 4)
+
+    @property
+    def rule_share(self) -> float:
+        """Share of Roman words that neither the lexicon nor the vocabulary resolved.
+
+        These are the guesses. On held-out hand-romanised Wikipedia sentences 0.5%
+        of words end up here, and 2.9% of those come out right, so a high value
+        means the text is full of names or words this library has never seen.
+        """
+        words = [s for t, s in self.sources if t.isalpha() and s != "already-urdu"]
+        if not words:
+            return 0.0
+        return round(sum(1 for s in words if s == "rules") / len(words), 4)
 
     @property
     def already_urdu_share(self) -> float:
@@ -502,25 +527,35 @@ def _apply_rules(token: str) -> str:
     return "".join(out)
 
 
-def transliterate_with_confidence(text: str) -> Transliteration:
-    """Roman Urdu to Urdu script, reporting how each token was resolved."""
-    pieces: list[str] = []
-    sources: list[tuple[str, str]] = []
+def transliterate_with_confidence(
+    text: str, *, use_vocabulary: bool = True, keep_english: bool = False
+) -> Transliteration:
+    """Roman Urdu to Urdu script, reporting how each token was resolved.
 
+    `use_vocabulary=False` skips the noisy-channel stage and gives the 0.1 behaviour:
+    lexicon, then rules. It is faster and far less accurate.
+
+    `keep_english=True` leaves tokens that `tag_roman_tokens` labels English in Latin
+    script instead of transliterating them, and reports them as `english`. Off by
+    default: Urdu writes English loanwords in Urdu script (کالج, اسٹیشن), and the
+    vocabulary stage usually finds that spelling.
+    """
+    # First decide what every token is, then transliterate. Two passes, because
+    # `keep_english` has to tag the Roman words *as this function sees them*: tagging
+    # the raw text instead counted the letters inside a URL as words, so one URL
+    # shifted every later English tag onto the wrong word.
+    plan: list[tuple[str, str]] = []
     # re.split with a capturing group alternates: text, identifier, text, ...
     for index, segment in enumerate(_PASSTHROUGH.split(text)):
         if not segment:
             continue
         if index % 2:  # an odd index is a captured identifier - emit it verbatim
-            pieces.append(segment)
-            sources.append((segment, "identifier"))
+            plan.append((segment, "identifier"))
             continue
         for token in _ROMAN_TOKEN.findall(segment):
             if not token.isalpha():
-                pieces.append(token)
-                sources.append((token, "passthrough"))
-                continue
-            if _IS_URDU_SCRIPT.search(token):
+                plan.append((token, "passthrough"))
+            elif _IS_URDU_SCRIPT.search(token):
                 # Already in Urdu script: this direction has nothing to do.
                 #
                 # Without this the token fell through to _apply_rules, which matches
@@ -529,16 +564,41 @@ def transliterate_with_confidence(text: str) -> Transliteration:
                 # Urdu to the Roman->Urdu direction by mistake then produced a result
                 # that looked transliterated, with `lexicon_coverage` reading 0.0,
                 # which says "guessed badly" rather than "wrong direction".
-                pieces.append(token)
-                sources.append((token, "already-urdu"))
-                continue
-            lowered = token.lower()
-            if lowered in LEXICON:
-                pieces.append(LEXICON[lowered])
-                sources.append((token, "lexicon"))
+                plan.append((token, "already-urdu"))
             else:
-                pieces.append(_apply_rules(token))
-                sources.append((token, "rules"))
+                plan.append((token, "roman"))
+
+    english: set[int] = set()
+    if keep_english:
+        from .langid import _tagger
+
+        roman_positions = [i for i, (_, kind) in enumerate(plan) if kind == "roman"]
+        tags = _tagger().tag([plan[i][0] for i in roman_positions])
+        english = {i for i, tag in zip(roman_positions, tags, strict=True) if tag == "en"}
+
+    pieces: list[str] = []
+    sources: list[tuple[str, str]] = []
+    for position, (token, kind) in enumerate(plan):
+        if kind != "roman":
+            pieces.append(token)
+            sources.append((token, kind))
+            continue
+        if position in english:
+            pieces.append(token)
+            sources.append((token, "english"))
+            continue
+        lowered = token.lower()
+        if lowered in LEXICON:
+            pieces.append(LEXICON[lowered])
+            sources.append((token, "lexicon"))
+            continue
+        found = _channel.resolve(lowered) if use_vocabulary else None
+        if found:
+            pieces.append(found)
+            sources.append((token, "vocabulary"))
+        else:
+            pieces.append(_apply_rules(token))
+            sources.append((token, "rules"))
 
     # Join with spaces, but keep *punctuation* attached to the word before it.
     # Digits are their own words and must not be glued on: "main 25 saal" would
@@ -551,14 +611,18 @@ def transliterate_with_confidence(text: str) -> Transliteration:
     return Transliteration(text=out.strip(), sources=sources)
 
 
-def transliterate_to_urdu(text: str) -> str:
+def transliterate_to_urdu(
+    text: str, *, use_vocabulary: bool = True, keep_english: bool = False
+) -> str:
     """Roman Urdu to Urdu script.
 
     URLs, emails, @mentions and #hashtags are passed through unchanged. Ordinary
-    English words are not: `lahore` gives لاہور, because Roman Urdu is written in
-    English letters and the two cannot be told apart by spelling.
+    English words are transliterated the way Urdu writes them - `station` gives
+    اسٹیشن - unless `keep_english` is set. See `transliterate_with_confidence`.
     """
-    return transliterate_with_confidence(text).text
+    return transliterate_with_confidence(
+        text, use_vocabulary=use_vocabulary, keep_english=keep_english
+    ).text
 
 
 _ROMAN_VOWELS = set("aeiou")
