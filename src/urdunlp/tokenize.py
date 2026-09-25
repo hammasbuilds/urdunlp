@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import re
 
-from .normalize import normalize
+from .normalize import _require_str, normalize
 
 # Urdu sentence terminators, plus their Latin equivalents for mixed text.
 SENTENCE_END = "۔؟!?."
@@ -80,6 +80,7 @@ COMMON_MERGES = {
 
 def sentences(text: str) -> list[str]:
     """Split into sentences on Urdu and Latin terminators."""
+    _require_str(text, "sentences")
     text = normalize(text)
     if not text:
         return []
@@ -92,6 +93,7 @@ def words(text: str, *, keep_punctuation: bool = False) -> list[str]:
     ZWNJ is kept inside tokens, because in Urdu it marks a real internal boundary in
     compounds rather than separating two words.
     """
+    _require_str(text, "words")
     text = normalize(text)
     if not text:
         return []
@@ -117,6 +119,7 @@ def fix_spacing(text: str) -> str:
     runs of spaces all collapsed to one space - which is a surprising thing for a
     function that claims to insert a space to do.
     """
+    _require_str(text, "fix_spacing")
     return _WORD.sub(lambda m: COMMON_MERGES.get(m.group(0), m.group(0)), text)
 
 
@@ -126,6 +129,7 @@ def character_ngrams(text: str, n: int = 3, *, pad: bool = True) -> list[str]:
     Urdu is morphologically rich and has no reliable stemmer, so character n-grams
     are often the strongest cheap feature available for classification and retrieval.
     """
+    _require_str(text, "character_ngrams")
     if n < 1:
         raise ValueError("n must be >= 1")
     token = f"<{text}>" if pad else text

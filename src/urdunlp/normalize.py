@@ -100,6 +100,40 @@ _DIGIT_TRANSLATION = str.maketrans({**ARABIC_INDIC_DIGITS, **URDU_DIGITS})
 _PUNCT_TRANSLATION = str.maketrans(URDU_PUNCTUATION)
 
 
+def _require_str(value: object, function: str) -> None:
+    """Raise the same TypeError from every public function given a non-string.
+
+    Before this, the toolkit answered a wrong type five different ways: normalize(None)
+    silently returned '', words(None) returned [], roman_key(None) raised
+    AttributeError from deep inside, is_urdu(['kal']) returned False, and the rest
+    raised whatever the first string operation happened to. A None read from a
+    missing DataFrame cell - or a NaN, which is a float - should fail at the call,
+    with a message that names the call.
+    """
+    if not isinstance(value, str):
+        raise TypeError(f"{function}() expects a str, got {type(value).__name__}")
+
+
+def _require_words(value: object, function: str) -> None:
+    """Reject a single string where a list of words is expected.
+
+    A string is iterable, so stem_tokens("کتابوں سے") would quietly stem each
+    *character* and return a list of letters - no error, just wrong output. Each
+    item is checked by the per-word function the list is handed to.
+    """
+    if isinstance(value, str):
+        raise TypeError(
+            f"{function}() expects a list of words, got a str - split it first, "
+            "for example with words(text)"
+        )
+    try:
+        iter(value)  # type: ignore[call-overload]
+    except TypeError:
+        raise TypeError(
+            f"{function}() expects a list of words, got {type(value).__name__}"
+        ) from None
+
+
 def resolve_arabic_heh(text: str) -> str:
     """Replace stray ARABIC HEH with the Urdu letter it stands for.
 
@@ -109,6 +143,7 @@ def resolve_arabic_heh(text: str) -> str:
     differ only in this letter - and no amount of context-free rewriting separates
     them.
     """
+    _require_str(text, "resolve_arabic_heh")
     text = _HEH_AFTER_ASPIRABLE.sub(r"\1" + DOACHASHMEE_HE, text)
     return text.replace(ARABIC_HEH, HEH_GOAL)
 
@@ -132,6 +167,7 @@ def normalize(
     >>> normalize("كتاب") == "کتاب"
     True
     """
+    _require_str(text, "normalize")
     if not text:
         return ""
 
@@ -188,6 +224,7 @@ def is_urdu(text: str, *, threshold: float = 0.5) -> bool:
     Measured over letters only. Counting all characters would make any Urdu sentence
     containing a number or a Latin brand name look less Urdu than it is.
     """
+    _require_str(text, "is_urdu")
     letters = [c for c in text if c.isalpha()]
     if not letters:
         return False
@@ -197,6 +234,7 @@ def is_urdu(text: str, *, threshold: float = 0.5) -> bool:
 
 def remove_urls_and_mentions(text: str) -> str:
     """Strip URLs, @mentions and #hashtags. Common first step on scraped Urdu text."""
+    _require_str(text, "remove_urls_and_mentions")
     text = re.sub(r"https?://\S+|www\.\S+", " ", text)
     text = re.sub(r"[@#]\w+", " ", text)
     return _SPACES.sub(" ", text).strip()

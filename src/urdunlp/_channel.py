@@ -44,6 +44,7 @@ import itertools
 import json
 import math
 from importlib import resources
+from typing import Any
 
 from .normalize import normalize
 
@@ -149,7 +150,7 @@ def _context(word: str, i: int) -> tuple[str, str, str]:
 class Channel:
     """Emission tables, vocabulary and the candidate index, loaded once."""
 
-    def __init__(self, data: dict) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.emit: dict[tuple[str, str, str], dict[str, float]] = {
             tuple(k.split("|")): v for k, v in data["emit"].items()
         }
@@ -263,7 +264,7 @@ class Channel:
         p_word = self.unigram.get(word, self.unigram_floor)
         v = self.ids.get(previous)
         row = self.context.get(v) if v is not None else None
-        if not row:
+        if v is None or not row:
             return math.log(p_word)
         total, types = row
         w = self.ids.get(word)
@@ -281,8 +282,11 @@ class Channel:
         """
         from .translit import _apply_rules  # deferred: translit imports this module
 
-        # last Urdu word on the path -> (score, [(urdu, source), ...])
-        states: dict[str, tuple[float, list[tuple[str, str]]]] = {"<s>": (0.0, [])}
+        # One layer per word: last Urdu word on the path -> (score, previous key,
+        # choice). Back-pointers, not paths: carrying the whole path in every state
+        # copied it at every step, and 50,000 words without a full stop took 36 s.
+        layers: list[dict[str, tuple[float, str, tuple[str, str]]]] = []
+        states: dict[str, float] = {"<s>": 0.0}
         for roman in romans:
             options = [(w, e, "vocabulary") for w, e in self.candidates(roman)]
             if roman in lexicon:
@@ -293,27 +297,36 @@ class Channel:
                 ]
             if not options:
                 options = [(normalize(_apply_rules(roman)), 0.0, "rules")]
-            new: dict[str, tuple[float, list[tuple[str, str]]]] = {}
+            layer: dict[str, tuple[float, str, tuple[str, str]]] = {}
             for urdu, emission, source in options:
                 parts = urdu.split() or [urdu]
-                best_score, best_path = -math.inf, []
-                for previous, (score, path) in states.items():
+                best_score, best_previous = -math.inf, "<s>"
+                for previous, score in states.items():
                     total, last = score + emission, previous
                     for part in parts:
                         total += self.lm_weight * self.log_bigram(part, last)
                         last = part
                     if total > best_score:
-                        best_score, best_path = total, path
+                        best_score, best_previous = total, previous
                 key = parts[-1]
-                if key not in new or best_score > new[key][0]:
-                    new[key] = (best_score, [*best_path, (urdu, source)])
-            states = new
-        return max(states.values(), key=lambda state: state[0])[1]
+                if key not in layer or best_score > layer[key][0]:
+                    layer[key] = (best_score, best_previous, (urdu, source))
+            layers.append(layer)
+            states = {key: entry[0] for key, entry in layer.items()}
+        if not layers:
+            return []
+        key = max(states, key=states.__getitem__)
+        path: list[tuple[str, str]] = []
+        for layer in reversed(layers):
+            _, key_before, choice = layer[key]
+            path.append(choice)
+            key = key_before
+        return path[::-1]
 
 
 @functools.lru_cache(maxsize=1)
 def channel() -> Channel:
-    blob = resources.files("urdunlp").joinpath("data", "translit.json.gz").read_bytes()
+    blob = resources.files("urdunlp").joinpath("data").joinpath("translit.json.gz").read_bytes()
     return Channel(json.loads(gzip.decompress(blob)))
 
 

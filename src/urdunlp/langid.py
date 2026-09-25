@@ -28,8 +28,12 @@ import json
 import math
 import re
 import unicodedata
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from importlib import resources
+from typing import Any
+
+from .normalize import _require_str
 
 LANGUAGES: dict[str, str] = {
     "ur": "Urdu",
@@ -49,12 +53,13 @@ _ARABIC_RUNS = re.compile("[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿‌]+")
 _ROMAN_WORD = re.compile(r"[A-Za-z]+")
 
 
-def _load(name: str) -> dict:
-    blob = resources.files("urdunlp").joinpath("data", name).read_bytes()
-    return json.loads(gzip.decompress(blob))
+def _load(name: str) -> dict[str, Any]:
+    blob = resources.files("urdunlp").joinpath("data").joinpath(name).read_bytes()
+    data: dict[str, Any] = json.loads(gzip.decompress(blob))
+    return data
 
 
-def _grams(text: str, n_max: int):
+def _grams(text: str, n_max: int) -> Iterator[str]:
     padded = f" {text} "
     for n in range(1, n_max + 1):
         for i in range(len(padded) - n + 1):
@@ -64,7 +69,7 @@ def _grams(text: str, n_max: int):
 
 
 class _ScriptModel:
-    def __init__(self, data: dict) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.n_max: int = data["n_max"]
         self.alpha: float = data["alpha"]
         self.vocabulary_size: int = data["vocabulary_size"]
@@ -127,6 +132,7 @@ def identify_language(text: str) -> LanguageGuess:
     letters and much of their vocabulary. On held-out Wikipedia paragraphs it is
     right 99% of the time; on ten characters, 85%.
     """
+    _require_str(text, "identify_language")
     runs = " ".join(_ARABIC_RUNS.findall(unicodedata.normalize("NFC", text)))
     if not runs.strip():
         return LanguageGuess(None, None, 0.0, [])
@@ -156,7 +162,7 @@ def identify_language(text: str) -> LanguageGuess:
 class _WordModel:
     """P(word | language): a unigram table interpolated with a character model."""
 
-    def __init__(self, data: dict) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.unigram: dict[str, float] = data["unigram"]
         total = sum(self.unigram.values())
         self.unigram = {w: c / total for w, c in self.unigram.items()}
@@ -189,7 +195,7 @@ class _WordModel:
 
 
 class _Tagger:
-    def __init__(self, data: dict) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.urdu = _WordModel(data["ur"])
         self.english = _WordModel(data["en"])
         self.stay = math.log(data["stay"])
@@ -239,5 +245,6 @@ def tag_roman_tokens(text: str) -> list[tuple[str, str]]:
     Names are the weak spot: a name spelled the English way (`Robert`, `Illinois`) is
     labelled `en`, and a name spelled the Urdu way (`Muttahida`) sometimes is too.
     """
+    _require_str(text, "tag_roman_tokens")
     words = _ROMAN_WORD.findall(text)
     return list(zip(words, _tagger().tag(words), strict=True))

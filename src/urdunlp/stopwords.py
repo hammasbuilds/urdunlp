@@ -10,7 +10,7 @@ A stopword list that silently deletes negation is a bug that looks like a featur
 
 from __future__ import annotations
 
-from .normalize import normalize
+from .normalize import _require_str, _require_words, normalize
 
 # Deliberately conservative: content words are never included, because a stopword
 # list is far more damaging when it is too aggressive than when it is too small.
@@ -35,6 +35,7 @@ STOPWORDS = frozenset(normalize(w) for w in _BASE.split() if w.strip())
 
 
 def is_stopword(word: str, *, include_negation: bool = False) -> bool:
+    _require_str(word, "is_stopword")
     word = normalize(word)
     if word in NEGATION:
         return include_negation
@@ -47,4 +48,5 @@ def remove_stopwords(tokens: list[str], *, include_negation: bool = False) -> li
     `include_negation=True` removes negation too. Do that only for topic modelling
     or retrieval - never for sentiment, where it inverts the label.
     """
+    _require_words(tokens, "remove_stopwords")
     return [t for t in tokens if not is_stopword(t, include_negation=include_negation)]

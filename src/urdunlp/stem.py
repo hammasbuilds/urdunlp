@@ -30,7 +30,7 @@ the large win it is in English folklore, and docs/CORPUS.md says why.
 
 from __future__ import annotations
 
-from .normalize import normalize
+from .normalize import _require_str, _require_words, normalize
 
 # Longest first, so یاں is tried before اں and ں.
 LIGHT_SUFFIXES: tuple[str, ...] = (
@@ -97,6 +97,7 @@ def stem(word: str, *, light: bool = False, min_stem: int = 3) -> str:
     >>> stem("لڑکیاں")
     'لڑک'
     """
+    _require_str(word, "stem")
     word = normalize(word)
     if word in _PROTECTED:
         return word
@@ -108,4 +109,5 @@ def stem(word: str, *, light: bool = False, min_stem: int = 3) -> str:
 
 def stem_tokens(tokens: list[str], *, light: bool = False, min_stem: int = 3) -> list[str]:
     """`stem` over a token list."""
+    _require_words(tokens, "stem_tokens")
     return [stem(t, light=light, min_stem=min_stem) for t in tokens]

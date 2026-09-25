@@ -45,7 +45,7 @@ import re
 from dataclasses import dataclass
 
 from . import _channel
-from .normalize import normalize
+from .normalize import _require_str, normalize
 
 # --- Stage 1: lexicon -------------------------------------------------------------
 # High-frequency Roman Urdu, mapped to correct Urdu script. Deliberately weighted
@@ -433,27 +433,61 @@ URDU_TO_ROMAN: dict[str, str] = {
     "أ": "a",
 }
 
-_ROMAN_TOKEN = re.compile(r"[A-Za-z]+|\d+|[^\sA-Za-z\d]+")
 _SORTED_RULES = sorted(RULES, key=lambda r: -len(r[0]))
 
-# Spans that are identifiers rather than words, and must survive untouched.
+# One pass over the input, keeping *everything* - whitespace included - so the
+# output can be rebuilt with the input's own spacing. The first version joined the
+# converted tokens with single spaces, which split `2.5` into `2. 5`, `3:30` into
+# `3: 30` and `0300-1234567` into `0300- 1234567`, glued `hai :)` into `ہے:)` and
+# threw away every line break.
 #
-# Without this, the tokeniser splits `http://x.co` into `http`, `://`, `x`, `co`,
-# transliterates the three alphabetic pieces, and returns `ہتتپ:// کس. کو` - a URL
-# that no longer resolves. The same applies to @mentions, #hashtags and emails.
-#
-# This deliberately does NOT skip ordinary English words. `lahore` -> لاہور is the
-# function working correctly, and a Roman Urdu sentence is full of words that are
-# also English. Only spans whose *syntax* marks them as identifiers are protected.
-_PASSTHROUGH = re.compile(
-    r"""(
-        https?://\S+                      # http(s) URL
-      | www\.\S+                          # bare www URL
-      | \b[\w.+-]+@[\w-]+\.[\w.-]+\b      # email
-      | [@#]\w+                           # mention or hashtag
-    )""",
-    re.VERBOSE,
+# Identifiers come first because they must survive untouched: split into `http`,
+# `://`, `x`, `co`, a URL is transliterated into `ہتتپ:// کس. کو`, which no longer
+# resolves. Ordinary English words are NOT identifiers - `lahore` -> لاہور is the
+# function working. Only spans whose *syntax* marks them as identifiers, numbers or
+# codes are protected.
+_TOKEN = re.compile(
+    r"""
+      (?P<space>\s+)
+    | (?P<identifier>
+          https?://\S+                       # http(s) URL
+        | www\.\S+                           # bare www URL
+        | [\w.+-]+@[\w-]+\.[\w.-]*\w         # email
+        | [@#]\w+                            # mention or hashtag
+      )
+    | (?P<dotted>(?:[A-Z]\.)+[A-Z]\b\.?)    # U.S.A, U.N. - an acronym, spelled
+    | (?P<mixed>[A-Za-z0-9]*(?:[A-Za-z][0-9]|[0-9][A-Za-z])[A-Za-z0-9]*)  # 5th, mp3, A1
+    | (?P<number>\d+(?:[.,:/-]\d+)*%?)      # 2.5  12,34,567  3:30  25-12-2024  10%
+    | (?P<word>[A-Za-z]+(?![^\W\d_]))        # plain Latin, not the start of café
+    | (?P<letters>[^\W\d_]+)                 # letters in any other script, or café whole
+    | (?P<other>.)                           # one punctuation mark or symbol
+    """,
+    re.VERBOSE | re.DOTALL,
 )
+
+# Urdu reads most acronyms letter by letter: Dakshina's annotators wrote TV as ٹی وی
+# 25 times out of 25, BBC as بی بی سی, FBI as ایف بی آئی. The ones pronounced as
+# words - FIFA فیفا, FATA فاٹا, UNESCO یونیسکو - have at least two vowels, which is the
+# rule used: an all-capital word of 2-6 letters with at most one vowel is spelled.
+LETTER_NAMES: dict[str, str] = {
+    "A": "اے", "B": "بی", "C": "سی", "D": "ڈی", "E": "ای", "F": "ایف", "G": "جی",
+    "H": "ایچ", "I": "آئی", "J": "جے", "K": "کے", "L": "ایل", "M": "ایم", "N": "این",
+    "O": "او", "P": "پی", "Q": "کیو", "R": "آر", "S": "ایس", "T": "ٹی", "U": "یو",
+    "V": "وی", "W": "ڈبلیو", "X": "ایکس", "Y": "وائی", "Z": "زیڈ",
+}  # fmt: skip
+
+
+def _ends_context(token: str, kind: str) -> bool:
+    """Whether a non-word token ends the sentence a Roman word is decoded in."""
+    if kind == "space":
+        return "\n" in token
+    if kind == "passthrough":
+        return any(c in _SENTENCE_END for c in token)
+    return True
+
+
+def _is_acronym(word: str) -> bool:
+    return 2 <= len(word) <= 6 and word.isupper() and sum(c in "AEIOU" for c in word) <= 1
 
 
 # Any character in the Arabic/Urdu blocks. Used to spot text that is already in
@@ -468,10 +502,12 @@ _SENTENCE_END = frozenset(".?!۔؟")
 class Transliteration:
     text: str
     # Per token: "lexicon" (trusted), "vocabulary" (a real Urdu word, chosen by the
-    # noisy channel), "rules" (best effort), "english" (kept in Latin script because
-    # `keep_english` was set and the token was tagged English), "passthrough"
-    # (punctuation and digits), "identifier" (a URL, email, @mention or #hashtag,
-    # emitted verbatim) or "already-urdu" (the token was not Roman at all).
+    # noisy channel), "rules" (best effort), "acronym" (spelled by letter names),
+    # "english" (kept in Latin script because `keep_english` was set and the token
+    # was tagged English), "passthrough" (numbers, punctuation, codes like `5th`,
+    # other scripts - emitted unchanged), "identifier" (a URL, email, @mention or
+    # #hashtag, emitted verbatim) or "already-urdu" (the token was not Roman at all).
+    # Whitespace is kept in the output and not listed here.
     sources: list[tuple[str, str]]
 
     @property
@@ -557,29 +593,32 @@ def transliterate_with_confidence(
     # `keep_english` has to tag the Roman words *as this function sees them*: tagging
     # the raw text instead counted the letters inside a URL as words, so one URL
     # shifted every later English tag onto the wrong word.
+    _require_str(text, "transliterate_with_confidence")
     plan: list[tuple[str, str]] = []
-    # re.split with a capturing group alternates: text, identifier, text, ...
-    for index, segment in enumerate(_PASSTHROUGH.split(text)):
-        if not segment:
-            continue
-        if index % 2:  # an odd index is a captured identifier - emit it verbatim
-            plan.append((segment, "identifier"))
-            continue
-        for token in _ROMAN_TOKEN.findall(segment):
-            if not token.isalpha():
-                plan.append((token, "passthrough"))
-            elif _IS_URDU_SCRIPT.search(token):
-                # Already in Urdu script: this direction has nothing to do.
-                #
-                # Without this the token fell through to _apply_rules, which matches
-                # only Latin graphemes and so returned it unchanged - correct output
-                # labelled `rules`, as though the rule engine had resolved it. Feeding
-                # Urdu to the Roman->Urdu direction by mistake then produced a result
-                # that looked transliterated, with `lexicon_coverage` reading 0.0,
-                # which says "guessed badly" rather than "wrong direction".
-                plan.append((token, "already-urdu"))
-            else:
-                plan.append((token, "roman"))
+    for match in _TOKEN.finditer(text):
+        token, group = match.group(), match.lastgroup
+        if group == "space":
+            plan.append((token, "space"))
+        elif group == "identifier":
+            plan.append((token, "identifier"))
+        elif group == "word":
+            plan.append((token, "acronym" if _is_acronym(token) else "roman"))
+        elif group == "dotted":
+            plan.append((token, "acronym"))
+        elif group == "letters" and _IS_URDU_SCRIPT.search(token):
+            # Already in Urdu script: this direction has nothing to do.
+            #
+            # Without this the token fell through to _apply_rules, which matches
+            # only Latin graphemes and so returned it unchanged - correct output
+            # labelled `rules`, as though the rule engine had resolved it. Feeding
+            # Urdu to the Roman->Urdu direction by mistake then produced a result
+            # that looked transliterated, with `lexicon_coverage` reading 0.0,
+            # which says "guessed badly" rather than "wrong direction".
+            plan.append((token, "already-urdu"))
+        else:
+            # Numbers, codes like 5th, punctuation, and letters of any script this
+            # function does not convert (é, Devanagari): emitted unchanged.
+            plan.append((token, "passthrough"))
 
     english: set[int] = set()
     if keep_english:
@@ -591,8 +630,9 @@ def transliterate_with_confidence(
 
     # With context, each run of Roman words is decoded as a sequence, so a word can
     # be chosen for the word before it: کہ after کہا, کے before بعد. A run ends at
-    # anything that is not a Roman word to transliterate, except commas and digits,
-    # which do not end a thought. Sentence-final punctuation always ends one.
+    # anything that is not a Roman word to transliterate, except spaces, commas and
+    # numbers, which do not end a thought. Sentence-final punctuation and line breaks
+    # always end one.
     decided: dict[int, tuple[str, str]] = {}
     if use_vocabulary and use_context:
         run: list[int] = []
@@ -613,7 +653,7 @@ def transliterate_with_confidence(
         for position, (token, kind) in enumerate(plan):
             if kind == "roman" and position not in english:
                 run.append(position)
-            elif kind == "passthrough" and not any(c in _SENTENCE_END for c in token):
+            elif not _ends_context(token, kind):
                 continue
             else:
                 flush()
@@ -622,6 +662,13 @@ def transliterate_with_confidence(
     pieces: list[str] = []
     sources: list[tuple[str, str]] = []
     for position, (token, kind) in enumerate(plan):
+        if kind == "space":
+            pieces.append(token)
+            continue
+        if kind == "acronym":
+            pieces.append(" ".join(LETTER_NAMES[c] for c in token if c in LETTER_NAMES))
+            sources.append((token, "acronym"))
+            continue
         if kind != "roman":
             pieces.append(token)
             sources.append((token, kind))
@@ -648,15 +695,9 @@ def transliterate_with_confidence(
             pieces.append(_apply_rules(token))
             sources.append((token, "rules"))
 
-    # Join with spaces, but keep *punctuation* attached to the word before it.
-    # Digits are their own words and must not be glued on: "main 25 saal" would
-    # otherwise render as "میں25 سال".
-    out = ""
-    for piece, (token, kind) in zip(pieces, sources, strict=True):
-        glue = kind == "passthrough" and out and not token[0].isalnum()
-        out += piece if glue else (" " if out else "") + piece
-
-    return Transliteration(text=out.strip(), sources=sources)
+    # The input's own whitespace is in `pieces`, so joining with nothing reproduces
+    # its spacing and line breaks exactly around the converted words.
+    return Transliteration(text="".join(pieces), sources=sources)
 
 
 def transliterate_to_urdu(
@@ -672,6 +713,7 @@ def transliterate_to_urdu(
     English words are transliterated the way Urdu writes them - `station` gives
     اسٹیشن - unless `keep_english` is set. See `transliterate_with_confidence`.
     """
+    _require_str(text, "transliterate_to_urdu")
     return transliterate_with_confidence(
         text, use_vocabulary=use_vocabulary, use_context=use_context, keep_english=keep_english
     ).text
@@ -695,6 +737,7 @@ def transliterate_to_roman(text: str, *, insert_short_vowels: bool = True) -> st
     `jamlah`. That is a heuristic, not a pronunciation model: it is right far more
     often than it is wrong, and it is off with one flag when you need the raw mapping.
     """
+    _require_str(text, "transliterate_to_roman")
     text = normalize(text)
     out: list[str] = []
 

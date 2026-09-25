@@ -26,11 +26,13 @@ or another number word is next to them. On its own, اسی is almost always a pr
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
+from decimal import Decimal
 from fractions import Fraction
 
-from .normalize import normalize
+from .normalize import _require_str, normalize
 
 # 0-99, one irregular word each. Where two spellings are both in common use, the
 # first is the one `number_to_words` writes and both are accepted by the parser.
@@ -229,10 +231,22 @@ ROMAN_NUMBER_WORDS: dict[str, str] = {
 }
 
 
+# A numeral (digits in any script, with Latin or Arabic grouping and decimal marks),
+# or a run of anything that is not space, digit or punctuation - a word.
+_TOKEN = re.compile(r"\d+(?:[.,٫٬]\d+)*|[^\s\d.,،٫٬؟۔!?:;\"'()\[\]]+")
+
+
+_MAX_PHRASE = 24
+
+
+def _canonical(token: str) -> str:
+    """A token as the evaluator reads it: normalised, digits made ASCII."""
+    return normalize(token, normalize_digits=True)
+
+
 def _tokens(text: str) -> list[str]:
-    text = normalize(text, normalize_digits=True)
-    tokens = re.findall(r"\d+(?:[.,]\d+)*|[^\s\d.,،]+", text)
-    return [_from_roman(t) if t.isascii() and t.isalpha() else t for t in tokens]
+    tokens = [_canonical(t) for t in _TOKEN.findall(text)]
+    return [_from_roman(t) if t.isascii() and t.isalpha() else t for t in tokens if t]
 
 
 def _from_roman(token: str) -> str:
@@ -306,6 +320,11 @@ def _evaluate(tokens: list[str]) -> Fraction:
         elif token in _SCALE_VALUE:
             open_hundred = False
             scale = _SCALE_VALUE[token]
+            if current is None and modifier is None and total and scale <= largest_scale:
+                # کروڑ ہزار: a bare ہزار straight after a finished group has nothing
+                # to count. It was read as an implied "one thousand" and added, so
+                # "12,34,567 کروڑ ہزار" came out as 12,345,670,001,000.
+                raise ValueError(f"{token!r} has no number before it")
             if scale > largest_scale and total:
                 # "ایک ہزار کروڑ": the scale applies to everything before it. The
                 # implied "one" of a bare scale word must not be added here - it
@@ -342,6 +361,7 @@ def parse_number(text: str) -> int | float:
     scripts, and mixtures of them. Returns an int whenever the value is whole.
     Raises ValueError for text that is not a single number phrase.
     """
+    _require_str(text, "parse_number")
     tokens = _tokens(text)
     if not tokens:
         raise ValueError("empty")
@@ -360,36 +380,43 @@ class NumberSpan:
 def find_numbers(text: str) -> list[NumberSpan]:
     """Every number phrase in running text, with its value and character span.
 
-    Spans are over the *normalised* text (see `normalize`), since that is what the
-    offsets can be stable against.
+    `start` and `end` index into the text you passed, and `text` is that exact
+    slice - diacritics, Arabic letters, Urdu digits and all. Each word is normalised
+    on its own to be read, so the offsets never drift.
 
+    A phrase ends at any punctuation: ایک لاکھ، دو ہزار is two numbers, not 102,000.
     A phrase that is a single ambiguous word - اسی, بہتر, سو, نو, ستر, چون, دو -
     is skipped: in running prose those are pronouns, adjectives and verbs far more
     often than numbers. Next to a unit or another number word they are read as
     numbers: دو لاکھ is 200,000. Roman Urdu amounts are found too (`15 lakh`,
     `dedh crore`), but a single Roman word never is.
     """
-    text = normalize(text, normalize_digits=True)
+    _require_str(text, "find_numbers")
     spans: list[NumberSpan] = []
-    matches = list(re.finditer(r"\d+(?:[.,]\d+)*|[^\s\d.,،؟۔!?:;\"'()\[\]]+", text))
+    matches = list(_TOKEN.finditer(text))
     # Latin words are read through the explicit Roman table only - not through
     # roman_key, which would find a nearest number word for almost anything.
-    canonical = [
-        ROMAN_NUMBER_WORDS.get(m.group().lower(), m.group())
-        if m.group().isascii() and m.group().isalpha()
-        else m.group()
-        for m in matches
-    ]
     roman = [m.group().isascii() and m.group().isalpha() for m in matches]
+    canonical = [
+        ROMAN_NUMBER_WORDS.get(m.group().lower(), m.group()) if is_roman else _canonical(m.group())
+        for m, is_roman in zip(matches, roman, strict=True)
+    ]
     i = 0
     while i < len(matches):
         if not _is_number_token(canonical[i]):
             i += 1
             continue
-        # Grow the longest run of number tokens that still evaluates.
+        # Grow the longest run of number tokens that still evaluates. Only
+        # whitespace may separate the words of one phrase; the first version
+        # joined across a comma and read اسی،lakh as eighty lakh.
         best = None
         j = i
-        while j < len(matches) and _is_number_token(canonical[j]):
+        # The longest real phrase - کھرب down to units - is about 13 words; a cap
+        # keeps a run of 5,000 number words from being re-evaluated at every
+        # length from every start, which took 60 s before it was bounded.
+        while j < min(len(matches), i + _MAX_PHRASE) and _is_number_token(canonical[j]):
+            if j > i and text[matches[j - 1].end() : matches[j].start()].strip():
+                break
             try:
                 value = _evaluate(canonical[i : j + 1])
                 best = (j, value)
@@ -426,15 +453,21 @@ def format_number(value: int | float, *, urdu_digits: bool = False) -> str:
     The last three digits form one group and every group above that has two, so
     a crore is 1,00,00,000. With `urdu_digits` the result is written in Extended
     Arabic-Indic digits and the Arabic separators ٬ and ٫.
+
+    A float keeps exactly the digits Python prints for it - 0.1 is '0.1', and
+    1e-05 is '0.00001'. The first version split `repr(value)` on the dot, which
+    raised IndexError for any float Python prints in exponent form.
     """
-    negative = value < 0
-    whole = int(abs(value))
-    fraction = ""
-    if isinstance(value, float) and not value.is_integer():
-        fraction = repr(abs(value)).split(".")[1]
-    digits = str(whole)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(f"format_number() expects an int or float, got {type(value).__name__}")
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError(f"format_number() cannot group {value!r}")
+    exact = format(Decimal(repr(value)), "f") if isinstance(value, float) else str(value)
+    negative = exact.startswith("-") and exact.strip("-0.") != ""
+    digits, _, fraction = exact.lstrip("-").partition(".")
+    fraction = fraction.rstrip("0")
     head, tail = digits[:-3], digits[-3:]
-    groups = []
+    groups: list[str] = []
     while len(head) > 2:
         groups.insert(0, head[-2:])
         head = head[:-2]
@@ -446,9 +479,7 @@ def format_number(value: int | float, *, urdu_digits: bool = False) -> str:
     if negative:
         out = "-" + out
     if urdu_digits:
-        out = out.translate(
-            str.maketrans({**{str(i): chr(0x06F0 + i) for i in range(10)}, ",": "٬", ".": "٫"})
-        )
+        out = out.translate(str.maketrans("0123456789,.", "۰۱۲۳۴۵۶۷۸۹٬٫"))
     return out
 
 

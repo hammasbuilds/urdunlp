@@ -77,7 +77,7 @@ jobs:
       # after upload without burning a version number.
       - run: twine check dist/*
 
-      - name: py.typed must be in the wheel
+      - name: py.typed and the models must be in the wheel
         run: |
           python - <<'EOF'
           import glob, zipfile, sys
@@ -86,6 +86,11 @@ jobs:
           if "urdunlp/py.typed" not in names:
               sys.exit("py.typed missing: type checkers will ignore every annotation")
           print("py.typed present")
+          # Without these the package imports and then fails on its first call.
+          for model in ("translit", "langid", "roman_tagger"):
+              if f"urdunlp/data/{model}.json.gz" not in names:
+                  sys.exit(f"{model}.json.gz missing from the wheel")
+          print("bundled models present")
           EOF
 
       - uses: actions/upload-artifact@v4

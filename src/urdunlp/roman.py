@@ -23,11 +23,10 @@ import functools
 from collections import defaultdict
 
 from . import _channel
-from .normalize import normalize
+from .normalize import _require_str, _require_words, normalize
 from .translit import LEXICON, _apply_rules
 
 
-@functools.lru_cache(maxsize=65536)
 def roman_key(word: str) -> str:
     """The Urdu word a Roman spelling most likely stands for, as a grouping key.
 
@@ -35,9 +34,25 @@ def roman_key(word: str) -> str:
     True
 
     One word in, one key out; call it per token. The key is normalised Urdu script,
-    so it can be compared directly with keys from Urdu-script text.
+    so it can be compared directly with keys from Urdu-script text - and a word
+    already in Urdu script is its own key, normalised.
     """
-    lowered = word.lower()
+    _require_str(word, "roman_key")
+    latin = "".join(c for c in word.lower() if "a" <= c <= "z")
+    if not latin:
+        # Nothing Roman to resolve: Urdu script, digits or punctuation is its own key.
+        return normalize(word)
+    # Punctuation and digits around the letters are not part of the spelling:
+    # `nahi!` and `nahi` are the same word.
+    return _roman_key(latin)
+
+
+@functools.lru_cache(maxsize=65536)
+def _roman_key(lowered: str) -> str:
+    if not lowered:
+        # The empty string has the empty consonant key, which is also the key of
+        # every consonant-free word - so it resolved to ء until this line.
+        return ""
     if lowered in LEXICON:
         return normalize(LEXICON[lowered])
     found = _channel.resolve(lowered)
@@ -54,6 +69,7 @@ def group_roman_variants(words: list[str]) -> dict[str, list[str]]:
 
     Each distinct spelling appears once, in the group of the word it stands for.
     """
+    _require_words(words, "group_roman_variants")
     groups: dict[str, list[str]] = defaultdict(list)
     seen: set[str] = set()
     for word in words:

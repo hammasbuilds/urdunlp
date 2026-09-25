@@ -231,7 +231,7 @@ From a clone, there is nothing to install at all:
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py
-pytest -q          # 184 tests, no install step needed
+pytest -q          # 320 tests, no install step needed
 ```
 
 ---
@@ -303,7 +303,7 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 pytest
 ```
 
-**184 tests.** Each encodes a real property of the language rather than a convenient
+**320 tests.** Each encodes a real property of the language rather than a convenient
 example, so a failure means the library is wrong about Urdu, not about a fixture. They use
 only what ships in the package; the evaluation data under `data/` is for the measurement
 scripts and is never read by a test.
@@ -366,7 +366,7 @@ Wikipedia and [HotpotQA](https://hotpotqa.github.io/), each CC BY-SA 4.0.
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 
-pytest -q               # 184 tests, no install step needed
+pytest -q               # 320 tests, no install step needed
 python demo.py          # see it work
 ```
 
@@ -551,3 +551,34 @@ single word down the word-by-word path, where there is no context to misuse; the
 trip is back to 90.8%. The sentence benchmark could not have caught this - it has no
 one-word sentences - which is why a feature is measured on more than the benchmark it
 was tuned on.
+
+**A hardening pass found eleven ways real input broke it.** A fuzzer threw 20,000
+adversarial inputs at all 23 public entry points - mixed scripts, emoji, zero-width
+marks, lone surrogates, control characters - and found no crash. Reading the outputs by
+hand found the bugs a crash count cannot:
+
+| found | was | now |
+|---|---|---|
+| `price 2.5 crore` | `2. 5` - tokens rejoined with single spaces | the input's own spacing, exactly |
+| `kal
+parso` | line break lost | kept, and it ends the sentence context |
+| `0300-1234567`, `25-12-2024`, `3:30`, `1,500` | split at every mark | one token, untouched |
+| `5th`, `mp3` | `5` + the Roman word `th` | passed through |
+| `BBC`, `TV`, `U.S.A` | sounded out as words | بی بی سی, ٹی وی, یو ایس اے - letter names, as Dakshina's annotators wrote TV 25 times of 25 |
+| `café` | `کفé` | passed through |
+| `find_numbers` offsets | indexed the *normalised* text | index the text you passed |
+| `ایک لاکھ، دو ہزار` | one number, 102,000 | two numbers - punctuation ends a phrase |
+| `۱۲٫۵` | 12 and 5 | 12.5 |
+| `کروڑ ہزار` | 10,001,000 | rejected |
+| `format_number(1e-05)` | `IndexError` | `0.00001` |
+
+Two more were about scale and one about types. Transliteration copied the whole path at
+every word: 50,000 words with no full stop took 36 s, and 200,000 now take 7 s.
+`find_numbers` re-read a run of number words from every start at every length: 5,000 of
+them took 60 s, now 0.4. And a wrong type got five different answers - `normalize(None)`
+returned `''`, `roman_key(None)` raised `AttributeError` from deep inside,
+`is_urdu(['kal'])` returned `False` - where every function now raises the same
+`TypeError` naming itself. `mypy --strict` found the last one: the model loader called
+`joinpath` with two arguments, which a zipped install on Python 3.10 does not accept.
+All of it is pinned in `tests/test_robustness.py`.
+

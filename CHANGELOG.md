@@ -62,6 +62,22 @@ with its method, and the scripts that reproduce them are listed there.
 
 - `parse_number` rejected every hundred that was not round (پانچ سو تیس), and read
   ایک ہزار کروڑ as 10,010,000,000. Both caught while writing the tests, before release.
+- Transliteration output keeps the input's spacing and line breaks exactly; numbers,
+  phone numbers, dates and times (`2.5`, `0300-1234567`, `25-12-2024`, `3:30`) and codes
+  like `5th` pass through whole; all-capital acronyms are spelled by letter name
+  (`BBC` → بی بی سی); words with accented letters (`café`) pass through.
+- `find_numbers` offsets index the caller's text, not the normalised text; punctuation
+  ends a number phrase; `٫` and `٬` are read as decimal and grouping marks; a bare scale
+  word after a finished group (`کروڑ ہزار`) is rejected.
+- `format_number` handled no float printed in exponent form (`1e-05` raised
+  `IndexError`), and accepted `True`, NaN and infinity.
+- Every public function raises the same `TypeError`, naming itself, for a non-string -
+  and the list-taking ones for a string.
+- Transliterating one long run of words and scanning a long run of number words were
+  both superlinear; both are linear now.
+- The model loader failed on a zipped install under Python 3.10.
+- CI now runs `mypy --strict`, the docstring examples, and the suite against the built
+  wheel installed outside `src/`.
 
 ### Data
 
