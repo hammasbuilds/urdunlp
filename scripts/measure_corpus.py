@@ -107,6 +107,7 @@ def measure(corpus: Path, limit: int, every: int = 97) -> dict:
     stop_seen: set[str] = set()
 
     seen = rt_tried = rt_vowels = rt_novowels = rt_vocab_vowels = rt_vocab_novowels = 0
+    rt_learned = 0
     rt_types: set[str] = set()
     examples: list[dict] = []
     started = time.time()
@@ -152,7 +153,7 @@ def measure(corpus: Path, limit: int, every: int = 97) -> dict:
             if seen % every == 0 and len(token) > 1 and token.isalpha():
                 rt_tried += 1
                 rt_types.add(token)
-                roman = transliterate_to_roman(token)
+                roman = transliterate_to_roman(token, method="rules")
                 bare = transliterate_to_roman(token, insert_short_vowels=False)
                 # The 0.1 pipeline - lexicon, then rules - is what the published
                 # 44.7% / 61.2% measured, so it is kept as its own column. The
@@ -163,6 +164,8 @@ def measure(corpus: Path, limit: int, every: int = 97) -> dict:
                 rt_novowels += back_bare == token
                 rt_vocab_vowels += transliterate_to_urdu(roman) == token
                 rt_vocab_novowels += transliterate_to_urdu(bare) == token
+                # 0.2 default: spell each word the way people spell it.
+                rt_learned += transliterate_to_urdu(transliterate_to_roman(token)) == token
                 if back != token and len(examples) < 40:
                     examples.append(
                         {
@@ -220,6 +223,7 @@ def measure(corpus: Path, limit: int, every: int = 97) -> dict:
         "roundtrip_rate_without_short_vowels_vocabulary": (
             round(rt_vocab_novowels / rt_tried, 6) if rt_tried else 0
         ),
+        "roundtrip_rate_learned_roman": round(rt_learned / rt_tried, 6) if rt_tried else 0,
         "roundtrip_failure_examples": examples,
         "seconds": round(time.time() - started, 1),
     }

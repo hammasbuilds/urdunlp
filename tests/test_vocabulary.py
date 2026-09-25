@@ -7,6 +7,7 @@ import pytest
 from urdunlp import (
     group_roman_variants,
     roman_key,
+    transliterate_to_roman,
     transliterate_to_urdu,
     transliterate_with_confidence,
 )
@@ -118,3 +119,37 @@ class TestKeepEnglish:
         assert kinds["http://x.co"] == "identifier"
         assert kinds["meeting"] == kinds["cancel"] == "english"
         assert kinds["ho"] == kinds["gayi"] == "lexicon"
+
+
+class TestLearnedRoman:
+    @pytest.mark.parametrize(
+        ("urdu", "roman"),
+        [
+            ("میں ٹھیک ہوں", "main theek hoon"),  # the rules gave `min thik hon`
+            ("میرا نام علی ہے", "mera naam ali hai"),
+            ("کتاب", "kitab"),  # the rules gave `katab`
+            ("پاکستان", "pakistan"),  # the rules gave `pakasatan`
+        ],
+    )
+    def test_words_come_out_the_way_people_write_them(self, urdu, roman):
+        assert transliterate_to_roman(urdu) == roman
+
+    def test_urdu_digits_are_kept(self):
+        """The 0.1 mapping kept only ASCII it did not recognise, so ۱۲۳ vanished."""
+        assert "123" in transliterate_to_roman("قیمت ۱۲۳ روپے")
+        assert "123" in transliterate_to_roman("قیمت ۱۲۳ روپے", method="rules")
+
+    def test_whitespace_is_kept_and_the_output_is_ascii(self):
+        out = transliterate_to_roman("یہ  کتاب\nمیری ہے 😀")
+        assert out.isascii()
+        assert "  " in out and "\n" in out
+
+    def test_learned_spellings_convert_back(self):
+        """Readable and reversible stopped being a trade-off: on held-out tokens the
+        learned spelling round-trips more often than the rules' literal mapping."""
+        for word in ("کتاب", "پاکستان", "مشکل", "صرف", "حسن", "بیماریاں"):
+            assert transliterate_to_urdu(transliterate_to_roman(word)) == word
+
+    def test_an_unknown_method_is_refused(self):
+        with pytest.raises(ValueError, match="method must be"):
+            transliterate_to_roman("کتاب", method="phonetic")

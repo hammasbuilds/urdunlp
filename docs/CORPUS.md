@@ -417,28 +417,35 @@ letters people think of as Urdu's own (ٹ ڈ ڑ ں ے) are shared with Punjabi, 
 Kashmiri. The distinctive letters `build_langid_models.py` found automatically belong to
 the *other* languages — Sindhi ڪ ٻ ڻ, Pashto ښ ځ ډ, Central Kurdish ڵ ێ, Uyghur ۇ ۋ.
 
-`identify_language` is a character 1-3-gram naive Bayes model, one table per language,
+`identify_language` is a character 1-5-gram naive Bayes model, one table per language,
 trained on 80% of each sample (split by paragraph hash, 80/15/5). Accuracy on the test
 paragraphs — 771 of them, 57-80 per language, so each per-language figure is ±3-5 points:
 
-| text | val (2,543) | **test (771)** |
-|---|---:|---:|
-| whole paragraph | 99.0% | **99.1%** |
-| 50 characters | 98.0% | **98.1%** |
-| 20 characters | 92.9% | **94.3%** |
-| 10 characters | 83.8% | **84.2%** |
+| text | 1-3-grams, test | val (2,543) | **1-5-grams, test (771)** |
+|---|---:|---:|---:|
+| whole paragraph | 99.1% | 99.1% | **99.5%** |
+| 50 characters | 98.1% | 98.6% | **99.1%** |
+| 20 characters | 94.3% | 94.9% | **95.5%** |
+| 10 characters | 84.2% | 87.5% | **88.3%** |
+
+The first version used 1-3-grams. Measured on validation windows: 4-grams added 1.7
+points at 20 characters and 5-grams 3.3, unpruned; 6-grams added 0.3 more for another
+4.5 MB. All 5-grams are 5.4 MB, so each language keeps its 20,000 most frequent (848 KB,
+94.9% on validation) - a top-K cut beat a minimum-count cut of the same size.
 
 The errors are almost all between the three closest languages. At 20 characters, Saraiki
-is right 73.7% of the time (mostly read as Punjabi) and **Urdu 85.1%** — mostly read as
-Punjabi too. Arabic, Central Kurdish and Uyghur are 100% at 20 characters: they have
-letters or spellings nobody else uses. At 10 characters Urdu drops to 70.1%, read as
-Persian as often as Punjabi.
+is right 77.2% of the time (mostly read as Punjabi), Punjabi 93.0% and Urdu 94.0%.
+Arabic, Central Kurdish, Sindhi and Uyghur are 100% at 20 characters: they have letters
+or spellings nobody else uses. At 10 characters Urdu is 86.6%, Punjabi 77.5%, Saraiki
+68.4%.
 
-**`margin` is a warning light, not a probability.** On 20-character test windows, the 29
-guesses with a margin under 0.1 were right 55% of the time — but most errors (31 of 44)
-came with a margin above it. Naive Bayes is confidently wrong when two languages share
-every word in a short window. An earlier docstring claimed almost every error had a margin
-below 0.05; the measurement said otherwise, and the docstring was changed.
+**`margin` is not confidence.** With 1-3-grams, the 29 test windows (of 771, at 20
+characters) with a margin under 0.1 were right 55% of the time, and most errors still had
+a margin above it. With 5-grams the scores spread further: 768 of 771 windows have a
+margin above 0.1, and so do 33 of the 35 errors. Naive Bayes is confidently wrong when two
+languages share every word in a short window. An earlier docstring claimed almost every
+error had a margin below 0.05; the measurement said otherwise, twice, and the docstring now
+says to read length, not margin.
 
 Accuracy per character count is the honest summary: give it a sentence and it is
 reliable; give it a word and it is guessing between neighbours.
@@ -474,6 +481,14 @@ initials**, and **8 are real errors** on Urdu words — `o` (و), `is` (اس), `
 (نے), `masjid`, `markazi`, `abdul`, `hindustani`. The function words among those are the
 ones context could not rescue; the content words are Urdu words spelled in a way the
 estimated Roman frequency table never saw.
+
+**Tried, and not kept.** The Roman Urdu frequency table covers only words Dakshina's
+annotators spelled. Adding a generated spelling for every other word in the 60,638-word
+vocabulary - 34,973 more spellings, weighted by frequency - moved the dev false-English
+rate from 3.63% to between 3.61% and 3.74%, and English recall by under half a point. The
+remaining false alarms are mostly English, as the hand count above shows, so there was
+little left for coverage to fix. It added 71 seconds to the build and nothing to the
+result, so it was not shipped.
 
 The code-mix set is synthetic by construction: real code-switching happens at grammatical
 boundaries, and a random splice does not. It measures whether an English span can be
@@ -512,12 +527,63 @@ score. What was checked instead:
   were not, and were removed.
 - **Round trip**: `parse_number(number_to_words(n)) == n` for every n below 200,000 and
   20,000 random n up to 10¹³.
+- **Ordinals** (`parse_ordinal`, and `ordinal=True` in `find_numbers`): every form
+  accepted was checked against the corpus counts first. The regular endings واں and ویں
+  are attested on every regular cardinal checked - 5, 7, 8, 10 to 20, 25, 30 and 50 -
+  and on ہزار and لاکھ (بیسویں 321
+  times, پانچویں 432); the ending -وی was left out because ہزاروی is mostly the surname
+  Hazarvi. پہلے is "before" far more often than "first" (11,584 occurrences), so on its
+  own it is not reported as an ordinal - nor are دوسرا/دوسری/دوسرے, which usually mean
+  "other".
 - Two bugs the round trip could not catch, because `number_to_words` never produces the
   forms that trigger them — both found by writing tests from how people write numbers:
   پانچ سو تیس (530) was rejected as "two numbers in a row", and ایک ہزار کروڑ (a thousand
   crore) was read as 10,010,000,000.
 
 ---
+
+## 14. Urdu → Roman, scored against people
+
+`transliterate_to_roman` had only ever been measured by round trip, which says whether the
+Roman can be read back, not whether a person would write it. Dakshina answers the second
+question: a spelling is right if an annotator wrote exactly it.
+
+| | dev | **test** |
+|---|---:|---:|
+| **lexicon words** (10,424 / 10,517) spelled as some annotator spelled them | | |
+| 0.1 rules, short vowels inserted | 33.1% | **33.4%** |
+| 0.1 rules, literal | 22.2% | 23.7% |
+| 0.2 learned | 53.9% | **54.1%** |
+| **sentence words** (51,764 / 52,087) spelled exactly as that annotator did | | |
+| 0.1 rules, short vowels inserted | 29.1% | **28.6%** |
+| 0.2 learned | 55.1% | **54.9%** |
+| **sentence words** spelled as any annotator spelled that word | | |
+| 0.1 rules, short vowels inserted | 41.5% | **41.4%** |
+| 0.2 learned | 77.2% | **77.9%** |
+
+The learned speller takes, in order: the curated lexicon's spelling (میں is `main`, not
+the rules' `min`); the commonest spelling annotators wrote, for the ~24,000 words of the
+training lexicon; and otherwise a spelling generated from the same letter emissions the
+Roman → Urdu direction uses - a beam over each letter's likeliest Roman strings, rescored
+by the full P(roman | urdu) and a Roman Urdu character model. The character model's weight
+was chosen on dev: 0 → 45.8% of dev lexicon words, 0.3 → 53.9%, 0.6 → 52.7%, 1.0 → 48.3%.
+Dev and test lexicon words are disjoint from training-lexicon words, so the lexicon rows
+measure the generator, not the lookup.
+
+**It also round-trips better.** Converting 15,098 held-out tokens to Roman and back:
+
+| Roman spelling used | back to Urdu |
+|---|---:|
+| 0.1 rules, short vowels inserted | 90.8% |
+| 0.1 rules, literal | 92.4% |
+| **0.2 learned** | **94.3%** |
+
+0.1 documented a trade-off: insert short vowels for a reader, leave them out for a
+machine. The learned spelling beats both at both, because it is the spelling the
+Roman → Urdu model was trained to read.
+
+Found on the way: the rules dropped every Urdu digit. They kept only ASCII they did not
+recognise, and ۱۲۳ is not ASCII.
 
 ## What this does not measure
 

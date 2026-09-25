@@ -17,6 +17,11 @@ lakh... ten lakh; the grouping is 3 digits then 2 at a time, so twelve lakh
 thirty-four thousand five hundred and sixty-seven is written 12,34,567.
 `format_number` does that grouping; `number_to_words` spells it out.
 
+**Ordinals are half irregular.** پہلا دوسرا تیسرا چوتھا چھٹا (1st-4th, 6th) and
+یکم (the first of a month) are their own words; every other ordinal is the cardinal
+plus واں or ویں. `parse_ordinal` reads them, and `find_numbers` flags them with
+`ordinal=True`.
+
 What is deliberately *not* done: several number words are also ordinary words.
 اسی is 80 and also "that same", بہتر is 72 and also "better", سو is 100 and also
 "so", نو is 9 and also "new". `parse_number` is given a phrase and trusts it;
@@ -173,6 +178,38 @@ _MODIFIERS: dict[str, Fraction] = {
 
 _WORD_VALUE: dict[str, int] = {w: n for n, forms in _UNITS.items() for w in forms}
 _SCALE_VALUE = dict(SCALES)
+
+# Ordinals. 1st-4th and 6th are their own words; every other ordinal is the cardinal
+# plus واں (masculine) or ویں (oblique/feminine) - پانچواں, دسویں, بیسویں, ہزارواں -
+# and 9th is نواں/نویں. Checked against the corpus: all of these are attested. The
+# ending -وی is not accepted: ہزاروی is mostly the surname Hazarvi.
+_ORDINAL_WORDS: dict[str, int] = {
+    **dict.fromkeys(("پہلا", "پہلی", "پہلے", "یکم"), 1),
+    **dict.fromkeys(("دوسرا", "دوسری", "دوسرے"), 2),
+    **dict.fromkeys(("تیسرا", "تیسری", "تیسرے"), 3),
+    **dict.fromkeys(("چوتھا", "چوتھی", "چوتھے"), 4),
+    **dict.fromkeys(("چھٹا", "چھٹی", "چھٹے"), 6),
+    **dict.fromkeys(("نواں", "نویں"), 9),
+}
+_ORDINAL_SUFFIXES = ("واں", "ویں")
+
+# Ordinal words that are far more often something else: پہلے is "before" (11,584
+# times in the corpus against a few hundred ordinal uses), دوسرے/دوسری "other".
+AMBIGUOUS_ORDINALS = frozenset({"پہلے", "دوسرے", "دوسری", "دوسرا"})
+
+
+def _ordinal_as_cardinal(token: str) -> str | None:
+    """The cardinal token an ordinal word stands for (پانچواں -> پانچ), or None."""
+    if token in _ORDINAL_WORDS:
+        return str(_ORDINAL_WORDS[token])
+    for suffix in _ORDINAL_SUFFIXES:
+        base = token[: -len(suffix)]
+        if token.endswith(suffix) and (
+            base in _WORD_VALUE or base == HUNDRED or base in _SCALE_VALUE
+        ):
+            return base
+    return None
+
 
 # Number words that are far more often something else. See the module docstring.
 AMBIGUOUS = frozenset({"اسی", "بہتر", "سو", "نو", "ستر", "چون", "دو"})
@@ -369,12 +406,47 @@ def parse_number(text: str) -> int | float:
     return int(value) if value.denominator == 1 else float(value)
 
 
+def parse_ordinal(text: str) -> int:
+    """The position an Urdu ordinal names.
+
+    >>> parse_ordinal("تیسرا")
+    3
+    >>> parse_ordinal("ایک سو پانچواں")
+    105
+
+    Accepts the irregular ordinals (پہلا دوسرا تیسرا چوتھا چھٹا, and یکم for the
+    first of a month), any cardinal plus واں or ویں, and a numeral followed by
+    either ending (5ویں). Only the last word may be ordinal. Raises ValueError for
+    anything else - including a plain cardinal, which is not an ordinal.
+    """
+    _require_str(text, "parse_ordinal")
+    tokens = _tokens(text)
+    if tokens and tokens[-1] in _ORDINAL_SUFFIXES and len(tokens) >= 2:
+        tokens = tokens[:-1]  # 5 ویں: the ending written apart from a numeral
+        cardinal = tokens[-1] if _numeral_value(tokens[-1]) is not None else None
+    else:
+        cardinal = _ordinal_as_cardinal(tokens[-1]) if tokens else None
+    if cardinal is None:
+        raise ValueError(f"not an ordinal: {text!r}")
+    value = _evaluate([*tokens[:-1], cardinal])
+    if value.denominator != 1:
+        raise ValueError(f"not a whole position: {text!r}")
+    return int(value)
+
+
 @dataclass(frozen=True)
 class NumberSpan:
+    """A number phrase found by `find_numbers`.
+
+    `ordinal` is True for a position rather than a quantity - تیسرا (third),
+    پانچویں (fifth) - in which case `value` is the position: 3, 5.
+    """
+
     text: str
     value: int | float
     start: int
     end: int
+    ordinal: bool = False
 
 
 def find_numbers(text: str) -> list[NumberSpan]:
@@ -401,9 +473,34 @@ def find_numbers(text: str) -> list[NumberSpan]:
         ROMAN_NUMBER_WORDS.get(m.group().lower(), m.group()) if is_roman else _canonical(m.group())
         for m, is_roman in zip(matches, roman, strict=True)
     ]
+
+    def joined(a: int, b: int) -> bool:
+        """Whether tokens a and b belong to one phrase - only whitespace between."""
+        return not text[matches[a].end() : matches[b].start()].strip()
+
+    def ordinal_at(k: int) -> str | None:
+        """What token k contributes as an ordinal: a cardinal word, "" for a bare
+        ویں/واں ending glued to the numeral before it (5ویں), or None."""
+        if k >= len(matches) or roman[k]:
+            return None
+        token = canonical[k]
+        if token in _ORDINAL_SUFFIXES:
+            glued = k > 0 and matches[k - 1].end() == matches[k].start()
+            return "" if glued and _numeral_value(canonical[k - 1]) is not None else None
+        return _ordinal_as_cardinal(token)
+
     i = 0
     while i < len(matches):
+        if not _is_number_token(canonical[i]) and ordinal_at(i) in (None, ""):
+            i += 1
+            continue
         if not _is_number_token(canonical[i]):
+            # An ordinal on its own: تیسرا, پانچویں. پہلے ("before") and دوسرے
+            # ("other") are ordinals far less often than they are anything else.
+            if canonical[i] not in AMBIGUOUS_ORDINALS:
+                value = _evaluate([ordinal_at(i) or ""])
+                start, end = matches[i].start(), matches[i].end()
+                spans.append(NumberSpan(text[start:end], int(value), start, end, ordinal=True))
             i += 1
             continue
         # Grow the longest run of number tokens that still evaluates. Only
@@ -427,6 +524,20 @@ def find_numbers(text: str) -> list[NumberSpan]:
             i += 1
             continue
         j, value = best
+        # A cardinal phrase followed by an ordinal is one ordinal: ایک سو پانچواں is
+        # the 105th, and 5ویں the 5th.
+        following = ordinal_at(j + 1)
+        if following is not None and joined(j, j + 1):
+            words = canonical[i : j + 1] + ([following] if following else [])
+            try:
+                position = _evaluate(words)
+            except ValueError:
+                position = None
+            if position is not None and position.denominator == 1:
+                start, end = matches[i].start(), matches[j + 1].end()
+                spans.append(NumberSpan(text[start:end], int(position), start, end, True))
+                i = j + 2
+                continue
         words = canonical[i : j + 1]
         # A lone ambiguous word is not a number: اسی is "that same", and in Roman
         # text so, no and do are English and Urdu words long before they are 100,

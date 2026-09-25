@@ -6,6 +6,7 @@ import random
 
 import pytest
 
+import urdunlp as U
 from urdunlp import find_numbers, format_number, number_to_words, parse_number
 from urdunlp.numbers import _UNITS
 
@@ -160,3 +161,42 @@ class TestFind:
     def test_spans_point_into_the_normalised_text(self):
         span = find_numbers("سال 1998 میں")[0]
         assert span.value == 1998 and "سال 1998 میں"[span.start : span.end] == "1998"
+
+
+class TestOrdinals:
+    @pytest.mark.parametrize(
+        ("text", "position"),
+        [
+            ("پہلا", 1),
+            ("یکم", 1),  # the first of a month
+            ("تیسرا", 3),
+            ("چھٹی", 6),  # irregular, like 1st-4th
+            ("پانچواں", 5),
+            ("پانچویں", 5),
+            ("نویں", 9),  # 9th drops the و: نو + یں
+            ("بیسویں", 20),
+            ("ہزارواں", 1000),
+            ("ایک سو پانچواں", 105),  # only the last word is ordinal
+            ("5ویں", 5),
+        ],
+    )
+    def test_positions(self, text, position):
+        assert U.parse_ordinal(text) == position
+
+    @pytest.mark.parametrize("text", ["دس", "بیسویں صدی", "کتاب", ""])
+    def test_what_is_not_an_ordinal_is_refused(self, text):
+        with pytest.raises(ValueError):
+            U.parse_ordinal(text)
+
+    def test_found_in_running_text_and_flagged(self):
+        spans = U.find_numbers("بیسویں صدی میں ایک سو پانچواں دن اور دو ہزار روپے")
+        assert [(s.text, s.value, s.ordinal) for s in spans] == [
+            ("بیسویں", 20, True),
+            ("ایک سو پانچواں", 105, True),
+            ("دو ہزار", 2000, False),
+        ]
+
+    @pytest.mark.parametrize("text", ["اس سے پہلے وہ آیا", "دوسرے لوگ آئے"])
+    def test_words_that_mostly_mean_something_else_are_left_alone(self, text):
+        """پہلے is "before" 11,584 times in the corpus; دوسرے is "other"."""
+        assert U.find_numbers(text) == []

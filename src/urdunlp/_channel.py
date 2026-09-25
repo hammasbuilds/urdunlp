@@ -323,6 +323,50 @@ class Channel:
             key = key_before
         return path[::-1]
 
+    @functools.lru_cache(maxsize=65536)  # noqa: B019 - one Channel per process
+    def romanize(self, urdu: str) -> str:
+        """The Roman spelling people most likely write for one Urdu word.
+
+        A word annotators spelled in the training lexicon gets their most common
+        spelling. Anything else is generated from the same letter emissions the
+        Roman -> Urdu direction uses: a beam over each letter's likeliest Roman
+        strings, rescored by the full P(roman | urdu) and, lightly, by a Roman Urdu
+        character model - so آرچر comes out `archer`-like rather than `aarachar`.
+        """
+        seen = self.attested.get(urdu)
+        if seen:
+            return max(seen.items(), key=lambda kv: kv[1])[0]
+        partial: list[tuple[str, float]] = [("", 0.0)]
+        for i in range(len(urdu)):
+            options = sorted(self.table(_context(urdu, i)).items(), key=lambda kv: -kv[1])
+            grown = [
+                (prefix + s, score + math.log(p))
+                for prefix, score in partial
+                for s, p in options[:_ROMAN_PER_LETTER]
+            ]
+            grown.sort(key=lambda item: -item[1])
+            partial = grown[:_ROMAN_BEAM]
+        from .langid import _tagger  # deferred: the Roman Urdu character model
+
+        roman_urdu = _tagger().urdu
+        best, best_score = "", -math.inf
+        for candidate in dict.fromkeys(c for c, _ in partial):
+            if not candidate.isalpha():
+                continue
+            score = self.log_emission(urdu, candidate)
+            score += _ROMAN_LM_WEIGHT * roman_urdu.char_log_prob(candidate)
+            if score > best_score:
+                best, best_score = candidate, score
+        return best
+
+
+# Urdu -> Roman generation, chosen on Dakshina's dev lexicon and dev sentences:
+# character-model weight 0 -> 45.8% of dev lexicon words spelled as a person spelled
+# them, 0.3 -> 53.9%, 0.6 -> 52.7%, 1.0 -> 48.3%.
+_ROMAN_BEAM = 40
+_ROMAN_PER_LETTER = 4
+_ROMAN_LM_WEIGHT = 0.3
+
 
 @functools.lru_cache(maxsize=1)
 def channel() -> Channel:

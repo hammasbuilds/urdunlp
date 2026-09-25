@@ -356,7 +356,7 @@ class TestRoundTrip:
         the one the rules cannot convert back. Still true of the rules stage alone.
         """
         for word in self.VOWEL_ONLY:
-            roman = transliterate_to_roman(word)
+            roman = transliterate_to_roman(word, method="rules")
             bare = transliterate_to_roman(word, insert_short_vowels=False)
             assert transliterate_to_urdu(bare, use_vocabulary=False) == word
             assert transliterate_to_urdu(roman, use_vocabulary=False) != word
@@ -366,7 +366,7 @@ class TestRoundTrip:
         back letter by letter can only pick one - ص and س are both `s`."""
         for word, expected_substitute in self.COLLAPSES.items():
             for insert in (True, False):
-                roman = transliterate_to_roman(word, insert_short_vowels=insert)
+                roman = transliterate_to_roman(word, method="rules", insert_short_vowels=insert)
                 assert transliterate_to_urdu(roman, use_vocabulary=False) != word
             bare = transliterate_to_roman(word, insert_short_vowels=False)
             assert expected_substitute in transliterate_to_urdu(bare, use_vocabulary=False)
@@ -383,7 +383,7 @@ class TestRoundTrip:
         the language.
         """
         for word in (*self.VOWEL_ONLY, *self.COLLAPSES):
-            roman = transliterate_to_roman(word, insert_short_vowels=insert)
+            roman = transliterate_to_roman(word, method="rules", insert_short_vowels=insert)
             assert transliterate_to_urdu(roman) == word
 
     def test_a_word_with_no_ambiguity_round_trips_under_both_settings(self):

@@ -5,7 +5,7 @@
     python scripts/extract_english.py <hotpot dir> # data/english/{train,val,test}.txt
     python scripts/build_langid_models.py
 
-**Script model** (`identify_language`): multinomial naive Bayes over character 1-3
+**Script model** (`identify_language`): multinomial naive Bayes over character 1-5
 grams, one table per language, from the *train* split of each language's Wikipedia
 sample. Splits are by a hash of the paragraph, 80/15/5 - under 10,000 paragraphs per
 language, so the house 80/15/5 policy applies. Each table is cut to its TOP_GRAMS
@@ -46,9 +46,9 @@ from urdunlp.translit import LEXICON  # noqa: E402
 DATA = ROOT / "data"
 OUT = ROOT / "src/urdunlp/data"
 
-N_MAX = 3
-ALPHA = 0.5
-TOP_GRAMS = 6000
+N_MAX = 5  # 3 -> 92.9% on 20-char val windows, 4 -> 94.6%, 5 -> 96.2% unpruned
+ALPHA = 0.1  # 0.5 -> 0.1 added ~0.3 points at every length
+TOP_GRAMS = 20000  # 5-grams unpruned are 5.4 MB; top 20k per language is 848 KB and 94.9%
 
 ORDER = 4
 UNIGRAM_WEIGHT = 0.5
@@ -127,7 +127,7 @@ def build_script_model() -> None:
             }
         )
 
-    for top in (None, 20000, TOP_GRAMS, 3000):
+    for top in (40000, TOP_GRAMS, 6000):
         model = model_for(top)
         right = total = 0
         for code, parts in splits.items():

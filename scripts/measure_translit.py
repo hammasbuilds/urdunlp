@@ -43,7 +43,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from urdunlp import normalize, roman_key, words  # noqa: E402
+from urdunlp import normalize, roman_key, transliterate_to_roman, words  # noqa: E402
 from urdunlp._channel import channel, roman_keys, urdu_key  # noqa: E402
 from urdunlp.translit import LEXICON, _apply_rules, transliterate_with_confidence  # noqa: E402
 
@@ -237,6 +237,48 @@ def main() -> int:
             f"  {name:<20} precision {row['precision']:.3f}  recall {row['recall']:.3f}  "
             f"F1 {row['f1']:.3f}"
         )
+
+    print("\nUrdu -> Roman: does the output match a spelling a person wrote?")
+    methods = {
+        "rules, short vowels (0.1 default)": lambda u: transliterate_to_roman(u, method="rules"),
+        "rules, literal": lambda u: transliterate_to_roman(u, insert_short_vowels=False),
+        "learned (0.2 default)": transliterate_to_roman,
+    }
+    for split in ("dev", "test"):
+        attested: dict[str, set[str]] = collections.defaultdict(set)
+        for urdu, roman, _ in lexicon(split):
+            attested[urdu].add(roman)
+        sentences, _, _ = sentence_words(split)
+        pairs = [pair for sentence in sentences for pair in sentence]
+        written: dict[str, set[str]] = collections.defaultdict(set)
+        for urdu, roman in pairs:
+            written[urdu].add(roman)
+        for name, fn in methods.items():
+            cache: dict[str, str] = {}
+
+            def spell(u: str, fn=fn, cache=cache) -> str:
+                if u not in cache:
+                    cache[u] = fn(u)
+                return cache[u]
+
+            row = {
+                "lexicon_words_matching_a_human_spelling": round(
+                    sum(spell(u) in rs for u, rs in attested.items()) / len(attested), 4
+                ),
+                "sentence_words_exactly_as_written": round(
+                    sum(spell(u) == r for u, r in pairs) / len(pairs), 4
+                ),
+                "sentence_words_matching_any_spelling_of_the_word": round(
+                    sum(spell(u) in written[u] for u, _ in pairs) / len(pairs), 4
+                ),
+            }
+            report.setdefault(f"to_roman_{split}", {})[name] = row
+            lexicon_rate, exact, any_spelling = row.values()
+            print(
+                f"  {split:<5} {name:<34} lexicon {lexicon_rate:.3f}   "
+                f"sentence exact {exact:.3f}   any spelling {any_spelling:.3f}",
+                flush=True,
+            )
 
     report["seconds"] = round(time.time() - started)
     if args.json:

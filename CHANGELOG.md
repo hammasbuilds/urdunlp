@@ -28,8 +28,9 @@ with its method, and the scripts that reproduce them are listed there.
   held-out lexicon, against 0.375 for exact matching and 0.497 for a consonant skeleton.
 - `identify_language()` — which of eleven Perso-Arabic-script languages a text is in:
   Urdu, Punjabi (Shahmukhi), Saraiki, Sindhi, Pashto, Kashmiri, Persian, Arabic,
-  Central Kurdish, Uyghur, South Azerbaijani. **99.1%** on held-out Wikipedia
-  paragraphs, 94.3% on 20 characters, 84.2% on 10. Reports the distinctive letters it
+  Central Kurdish, Uyghur, South Azerbaijani. **99.5%** on held-out Wikipedia
+  paragraphs, 95.5% on 20 characters, 88.3% on 10 (character 1-5-grams; 1-3-grams
+  scored 99.1 / 94.3 / 84.2). Reports the distinctive letters it
   saw as evidence.
 - `tag_roman_tokens()` and `keep_english=True` — label each word of Roman Urdu as `ur`
   or `en`, smoothed over the sentence. English recall 0.873 on synthetic code-mixed
@@ -38,6 +39,14 @@ with its method, and the scripts that reproduce them are listed there.
   Roman Urdu number words, including ڈیڑھ, ڈھائی, سوا, ساڑھے and پونے, lakh and crore
   scales, and 3-then-2 digit grouping (`12,34,567`). Round-trips every integer below
   200,000 and 20,000 random ones up to 10¹³.
+- **Urdu → Roman spelled the way people spell it** (`transliterate_to_roman`, now the
+  default; `method="rules"` keeps the 0.1 letter mapping). On held-out Dakshina test
+  words, a spelling some annotator wrote 33.4% → **54.1%** of the time; in running text,
+  exactly the annotator's spelling 28.6% → **54.9%**; and the round trip back to Urdu
+  90.8% → **94.3%** - readable and reversible stopped being a trade-off.
+- `parse_ordinal()`, and ordinals in `find_numbers` with `ordinal=True`: پہلا دوسرا
+  تیسرا چوتھا چھٹا, یکم, any cardinal + واں/ویں, and `5ویں`. پہلے ("before") and
+  دوسرے ("other") are not read as ordinals on their own.
 - `stem()` / `stem_tokens()` — a rule-based suffix stripper. It helps, a little:
   +0.008 recall@10 on title retrieval (p = 0.019), +0.005 on lead-sentence retrieval
   (not significant). Both are reported.
@@ -76,12 +85,13 @@ with its method, and the scripts that reproduce them are listed there.
 - Transliterating one long run of words and scanning a long run of number words were
   both superlinear; both are linear now.
 - The model loader failed on a zipped install under Python 3.10.
+- `transliterate_to_roman` silently dropped Urdu digits: ۱۲۳ vanished from the output.
 - CI now runs `mypy --strict`, the docstring examples, and the suite against the built
   wheel installed outside `src/`.
 
 ### Data
 
-The bundled models (3 MB) are derived from Dakshina (CC BY-SA 4.0), Wikipedia
+The bundled models (3.4 MB) are derived from Dakshina (CC BY-SA 4.0), Wikipedia
 (CC BY-SA 4.0) and HotpotQA (CC BY-SA 4.0). The code remains MIT.
 
 ## [0.1.0] — 2026-09-24 (never published to PyPI)

@@ -11,7 +11,14 @@ Pure Python, no dependencies, no model downloads.
 
 from .langid import LANGUAGES, LanguageGuess, identify_language, tag_roman_tokens
 from .normalize import is_urdu, normalize, remove_urls_and_mentions, resolve_arabic_heh
-from .numbers import NumberSpan, find_numbers, format_number, number_to_words, parse_number
+from .numbers import (
+    NumberSpan,
+    find_numbers,
+    format_number,
+    number_to_words,
+    parse_number,
+    parse_ordinal,
+)
 from .roman import group_roman_variants, roman_key
 from .stem import stem, stem_tokens
 from .stopwords import NEGATION, STOPWORDS, is_stopword, remove_stopwords
@@ -43,6 +50,7 @@ __all__ = [
     "normalize",
     "number_to_words",
     "parse_number",
+    "parse_ordinal",
     "remove_stopwords",
     "remove_urls_and_mentions",
     "resolve_arabic_heh",

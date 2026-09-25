@@ -102,12 +102,12 @@ class LanguageGuess:
 
     `language` is an ISO 639 code from `LANGUAGES`, or `None` when the text holds no
     Perso-Arabic letters at all. `margin` is how much more likely, per character,
-    the winner is than the runner-up, in nats. It is a warning light, not a
-    probability: on held-out 20-character windows, guesses with a margin under 0.1
-    were right about half the time, but they were only 4% of guesses, and most
-    errors still came with a comfortable margin - naive Bayes is confidently wrong
-    when two languages share the words in a short window. `evidence` lists letters
-    in the text that only a few of the eleven languages use, keyed by those
+    the winner is than the runner-up, in nats. **Do not read it as confidence.** On
+    held-out 20-character windows, 768 of 771 guesses had a margin above 0.1 - and
+    so did 33 of the 35 wrong ones: naive Bayes is confidently wrong when Urdu,
+    Punjabi and Saraiki share every word in a short window. What predicts an error
+    is length, not margin; see the accuracy by length below. `evidence` lists
+    letters in the text that only a few of the eleven languages use, keyed by those
     languages.
     """
 
@@ -130,7 +130,7 @@ def identify_language(text: str) -> LanguageGuess:
     punctuation are ignored. Accuracy falls with length, and falls fastest between
     the three closest languages - Urdu, Punjabi and Saraiki share most of their
     letters and much of their vocabulary. On held-out Wikipedia paragraphs it is
-    right 99% of the time; on ten characters, 85%.
+    right 99.5% of the time; on 50 characters 99.1%, on 20 95.5%, on ten 88.3%.
     """
     _require_str(text, "identify_language")
     runs = " ".join(_ARABIC_RUNS.findall(unicodedata.normalize("NFC", text)))
@@ -171,7 +171,7 @@ class _WordModel:
         self.char_totals = {ctx: sum(c.values()) for ctx, c in self.chars.items()}
         self.weight: float = data["unigram_weight"]
 
-    def _char_log(self, word: str) -> float:
+    def char_log_prob(self, word: str) -> float:
         padded = "^" * (self.order - 1) + word + "$"
         total = 0.0
         for j in range(self.order - 1, len(padded)):
@@ -190,7 +190,7 @@ class _WordModel:
     def log_prob(self, word: str) -> float:
         return math.log(
             self.weight * self.unigram.get(word, 0.0)
-            + (1 - self.weight) * math.exp(self._char_log(word))
+            + (1 - self.weight) * math.exp(self.char_log_prob(word))
         )
 
 

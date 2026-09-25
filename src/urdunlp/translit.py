@@ -725,22 +725,65 @@ _ASPIRATION = {"ھ", "ء"}
 _URDU_PUNCT_TO_ASCII = {"،": ",", "؛": ";", "؟": "?", "۔": "."}
 
 
-def transliterate_to_roman(text: str, *, insert_short_vowels: bool = True) -> str:
-    """Urdu script to Roman Urdu.
+def transliterate_to_roman(
+    text: str, *, method: str = "learned", insert_short_vowels: bool = True
+) -> str:
+    """Urdu script to Roman Urdu, spelled the way people spell it.
 
-    Lossy and one-way: several Urdu letters share a Roman sound (س ص ث all give `s`),
-    and that merge cannot be undone.
+    >>> transliterate_to_roman("میں ٹھیک ہوں")
+    'main theek hoon'
 
-    Urdu does not write short vowels, so a literal character mapping produces
-    consonant runs - جملہ becomes `jmlh`, which no Roman Urdu reader would write.
-    With `insert_short_vowels` an `a` is placed between adjacent consonants, giving
-    `jamlah`. That is a heuristic, not a pronunciation model: it is right far more
-    often than it is wrong, and it is off with one flag when you need the raw mapping.
+    `method="learned"` (the default) spells each word the way Urdu speakers romanise
+    it: the curated lexicon for function words, the most common spelling annotators
+    wrote for the ~24,000 words Dakshina covers, and otherwise a spelling generated
+    from the same letter model that reads Roman Urdu. Scored against people on
+    held-out Dakshina words, it matches a human spelling far more often than the
+    rules below - and it also converts back to Urdu more often. docs/CORPUS.md has
+    both numbers.
+
+    `method="rules"` is the 0.1 letter-by-letter mapping. Urdu does not write short
+    vowels, so a literal mapping gives consonant runs - جملہ becomes `jmlh`; with
+    `insert_short_vowels` an `a` goes between adjacent consonants, giving `jamlah`.
+    `insert_short_vowels=False` always means the literal mapping.
+
+    Either way it is lossy (س ص ث are all `s`), digits come out as ASCII, Urdu
+    punctuation as its ASCII equivalent, whitespace is kept, and characters with no
+    Roman form - emoji, stray marks - are dropped, so the result is always ASCII.
     """
     _require_str(text, "transliterate_to_roman")
-    text = normalize(text)
-    out: list[str] = []
+    if method not in ("learned", "rules"):
+        raise ValueError(f"method must be 'learned' or 'rules', not {method!r}")
+    text = normalize(text, normalize_digits=True, collapse_whitespace=False)
+    if method == "rules" or not insert_short_vowels:
+        return _rules_to_roman(text, insert_short_vowels)
 
+    model = _channel.channel()
+    out: list[str] = []
+    for match in _URDU_OR_OTHER.finditer(text):
+        token = match.group()
+        if _IS_URDU_SCRIPT.search(token) and token.isalpha():
+            spelled = _CURATED_ROMAN.get(token) or model.romanize(token)
+            out.append(spelled or _rules_to_roman(token, True))
+        else:
+            out.append(_rules_to_roman(token, True))
+    return "".join(out)
+
+
+# Runs of letters, and everything else one character at a time.
+_URDU_OR_OTHER = re.compile(r"[^\W\d_]+|.", re.DOTALL)
+
+# Urdu word -> the Roman spelling the curated lexicon lists first for it: میں is
+# `main`, not the rules' `min`. Only single words, and only real spellings.
+_CURATED_ROMAN: dict[str, str] = {}
+for _roman, _urdu in LEXICON.items():
+    _key = normalize(_urdu)
+    if _roman.isalpha() and " " not in _key and _key not in _CURATED_ROMAN:
+        _CURATED_ROMAN[_key] = _roman
+
+
+def _rules_to_roman(text: str, insert_short_vowels: bool) -> str:
+    """The 0.1 letter-by-letter mapping, over already-normalised text."""
+    out: list[str] = []
     for char in text:
         if char in URDU_TO_ROMAN:
             piece = URDU_TO_ROMAN[char]
@@ -760,8 +803,12 @@ def transliterate_to_roman(text: str, *, insert_short_vowels: bool = True) -> st
             out.append(piece)
         elif char in _URDU_PUNCT_TO_ASCII:
             out.append(_URDU_PUNCT_TO_ASCII[char])
-        elif char.isspace() or char.isascii():
+        elif char.isascii():
             out.append(char)
-        # Anything else - a stray mark - is dropped rather than emitted as noise.
+        elif char.isspace():
+            out.append(" ")  # a non-ASCII space (U+00A0, U+3000) keeps its place
+        # Anything else - a stray mark, an emoji - is dropped rather than emitted
+        # as noise. Urdu digits are not in this branch: normalize made them ASCII.
+        # Before it did, ۱۲۳ was silently dropped here.
 
-    return re.sub(r"\s+", " ", "".join(out)).strip()
+    return "".join(out)
