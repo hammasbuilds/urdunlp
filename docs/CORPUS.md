@@ -181,7 +181,7 @@ figure of 100% would mean the transliteration was not doing its job.
 >
 > | `insert_short_vowels` | 0.1 pipeline (lexicon, rules) | 0.2 pipeline (+ vocabulary) |
 > |---|---:|---:|
-> | `True` (default) | 42.0% | **90.5%** |
+> | `True` (default) | 42.0% | **90.8%** |
 > | `False` | 61.8% | **92.4%** |
 >
 > The 0.1 column reproduces the BBC figures above on a second corpus (44.7% and 61.2%),
@@ -255,7 +255,7 @@ a side effect of inserting one.
 
 ---
 
-## 7. Transliteration, scored against people: 43.1% → 87.0%
+## 7. Transliteration, scored against people: 43.1% → 90.7%
 
 The section below this one used to say that measuring transliteration correctness "needs
 human-checked pairs, which do not exist for Urdu at any useful scale". They exist.
@@ -276,15 +276,16 @@ sentences); the rest cannot be aligned without guessing. Correct means equal aft
 | | dev (51,764 words) | **test (52,087 words)** |
 |---|---:|---:|
 | 0.1: lexicon, then rules | 43.3% | **43.1%** |
-| 0.2: lexicon, then vocabulary, then rules | 87.4% | **87.0%** |
+| 0.2, each word on its own (`use_context=False`) | 88.8% | **88.4%** |
+| 0.2, each sentence decoded as a whole (default) | 91.1% | **90.7%** |
 
 Where the 0.2 answers come from, on test:
 
 | stage | share of words | right |
 |---|---:|---:|
-| curated lexicon | 34.1% | 95.4% |
-| vocabulary (new) | 65.3% | 83.2% |
-| rules | 0.5% | 2.9% |
+| curated lexicon | 33.7% | 96.6% |
+| vocabulary | 65.9% | 88.2% |
+| rules | 0.4% | 3.5% |
 
 The 0.1 figure is worth dwelling on. Over all 148,591 word pairs in Dakshina's aligned
 file, **two thirds of running text fell through to the rules, and the rules got 16.5% of
@@ -292,49 +293,78 @@ it right.** Two mechanical errors dominated — a word-initial vowel with no car
 یس instead of اس, `aik` → ےک instead of ایک) and short vowels written out that Urdu does
 not write (`jis` → جیس instead of جس, `karne` → کارنے instead of کرنے).
 
-**What the vocabulary stage is.** A noisy channel: choose the Urdu word *u* that maximises
-P(*u*) · P(roman | *u*). P(*u*) is the word's frequency in Urdu Wikipedia. P(roman | *u*)
-comes from a letter-emission model — each Urdu letter emits 0-4 Roman characters,
-conditioned on its position and on whether the next letter is a vowel letter — trained
-with EM on the 106,260 attested pairs of Dakshina's **training** lexicon. Candidates are
-retrieved by a coarse consonant key both scripts map to, with `h` dropped entirely and the
-letters Roman cannot tell apart (س ص ث ش, ت ط ٹ, ز ذ ض ظ ج) in one class. The gold word's
-key is among the Roman word's keys for **98.3%** of test spellings — that is the ceiling.
+### How it got there, one measured step at a time (dev sentences)
+
+| step | dev |
+|---|---:|
+| 0.1: lexicon, then rules | 43.3% |
+| + vocabulary: letter channel × word frequency, 42,498 words | 87.3% |
+| + decode the sentence with a word bigram model | 89.8% |
+| + 60,638 words instead of 42,498 | 90.0% |
+| + each word's own attested spellings mixed into the channel | **91.1%** |
+
+**The letter channel.** Choose the Urdu word *u* that maximises P(*u*) · P(roman | *u*).
+P(roman | *u*) comes from a letter-emission model — each Urdu letter emits 0-4 Roman
+characters, conditioned on its position and on whether the next letter is a vowel letter —
+trained with EM on the 106,260 attested pairs of Dakshina's **training** lexicon.
+Candidates are retrieved by a coarse consonant key both scripts map to, with `h` dropped
+entirely and the letters Roman cannot tell apart (س ص ث ش, ت ط ٹ, ز ذ ض ظ ج) in one class.
+The gold word's key is among the Roman word's keys for **98.3%** of test spellings — that
+is the ceiling.
+
+**Context.** After the channel, the right word was the top candidate 87.3% of the time and
+among the top five 93.6% of the time — six points a context model could reach. The
+largest single error was `ke`: کے (*of*) or کہ (*that*), which the curated lexicon always
+read as کے, wrong 223 times on dev. The sentence is now decoded by Viterbi over each word's
+five best candidates plus its lexicon entry, scoring P(roman | word) against a word bigram
+model — interpolated absolute discounting over the same decontaminated Wikipedia text,
+344,258 bigrams seen at least three times.
+
+That alone did not fix `ke`. The letter channel rated `ke` as a spelling of کہ at
+log-probability −6.6, because a final ہ is rarely typed as `e` — true of the letter, false
+of this word, which annotators wrote as `ke`. **Mixing each word's own attested spellings**
+into the channel (for the ~24,000 words of the training lexicon, backing off to the letter
+model with weight κ) put کہ within reach, and the bigram model does the rest: after کہا
+(*said*), کہ.
 
 **Word accuracy on the lexicon** — every spelling weighted by how many annotators wrote it:
 
 | | train (106,260) | dev (10,424) | test (10,517) |
 |---|---:|---:|---:|
 | 0.1 | 10.7% | 10.0% | 11.8% |
-| 0.2 | 64.9% | 59.1% | 58.1% |
+| 0.2 | 81.0% | 63.8% | 63.7% |
 
-Far lower than on sentences, and expected to be: the lexicon samples words across the
-vocabulary, so the rare words that the frequency prior helps least are over-represented
-compared with running text. The train/test gap is 6.8 points — the emissions were fitted
-to the training lexicon, the vocabulary was not.
+The 0.2 train figure is not comparable with the other two and is shown so that nobody
+mistakes it for one: the training lexicon's own spellings are now inside the model, so a
+training word is partly looked up. Dev and test words are disjoint from training words.
+Both are far lower than on sentences, as expected — the lexicon samples words across the
+vocabulary, so the rare words that the priors help least are over-represented compared
+with running text.
 
-**What was chosen on dev, and how.** Vocabulary size (words seen ≥ 2, 3 or 5 times:
-84,783 / 60,638 / 42,498 words) moved dev sentence accuracy by less than 0.3 points, so
-the smallest was kept. The prior weight: 0.5 gave 86.2%, 1.0 gave 87.0% — plain Bayes
-won. Conditioning emissions on the next letter improved the training log-likelihood
-after six EM iterations from −786,736 to −752,577 (−711,603 after ten) and dev accuracy by
-only 0.3 points: the remaining errors are not in the channel. Each extra letter class in the key (`g` as ج for *germany*, `s` as ز, `c` as
-س, `m` as ن) was kept only because removing it cost dev accuracy; `z` as س and `d` as ت
-changed nothing and were dropped.
+**What was chosen on dev, and how.** Word by word, vocabulary size (84,783 / 60,638 /
+42,498 words) moved dev accuracy by less than 0.3 points, and the prior weight 1.0 (plain
+Bayes) beat 0.5 by 0.8. With context: bigram weight 0.3 → 88.6%, 0.6 → 89.8%, 1.0 → 89.5%;
+bigrams kept from count 2 / 3 / 5 / 10 → 89.6 / 89.5 / 89.3 / 89.0% (at weight 0.45); κ 1 /
+3 / 10 / 30 / 100 → 90.7 / 91.0 / 91.1 / 91.0 / 90.9%; five candidates per word (three lost
+0.2, ten gained 0.05). Conditioning letter emissions on the next letter improved the
+training log-likelihood after six EM iterations from −786,736 to −752,577 and dev accuracy
+by only 0.3 points. Each extra letter class in the key (`g` as ج for *germany*, `s` as ز,
+`c` as س, `m` as ن) was kept only because removing it cost dev accuracy; `z` as س and `d`
+as ت changed nothing and were dropped.
 
-**The remaining errors**, from a dev run with the earlier prior weight of 0.5 (6,890 of
-51,764 words wrong):
+**A regression found by the round trip.** Decoding a lone word as a one-word sentence
+scores it by how often words *start* sentences, and the section 4 round trip — one word at
+a time — fell from 90.8% to 88.2% when context was switched on. A single word now takes
+the word-by-word path; there is no context to use.
 
-| kind | words |
-|---|---:|
-| the vocabulary picked a different real word | 4,811 |
-| the right word is not in the vocabulary | 1,344 |
-| the curated lexicon was wrong in context | 735 |
-
-The largest single error is context the model cannot see: `ke` is کے (*of*) or کہ
-(*that*), and the lexicon says کے — wrong 223 times on dev. `number` and `november` both
-key to N-M-P-R, and word frequency alone cannot separate them. A word-bigram model would
-address both; it would also add megabytes to a package whose premise is that it has none.
+**What is left** — 9.3% of test words. On dev, of the words still wrong after context was
+added (measured before the attested spellings, at 90.0%):
+2,053 had the right word among the five candidates and context chose another, 2,049 had
+it in the vocabulary but outside the five, and 1,095 had it outside the vocabulary
+altogether — English words and names spelled the English way (*Neptune*, *Texas*,
+*paradise*) and Arabic phrases (*sallallahu alaihi wasallam*). The package is 3 MB rather
+than 1 MB because of the bigram table; that is the price of the 3.8 points context and
+the attested spellings add.
 
 ## 8. Dakshina's held-out sentences are not held out
 
@@ -361,7 +391,7 @@ the Urdu word each one spells (B-cubed):
 | exact lowercase spelling | 0.985 | 0.232 | 0.375 |
 | consonant skeleton | 0.338 | 0.940 | 0.497 |
 | 0.1 transliteration (rules) | 0.977 | 0.409 | 0.577 |
-| **`roman_key`** | 0.917 | 0.756 | **0.829** |
+| **`roman_key`** | 0.932 | 0.750 | **0.831** |
 
 Exact matching is not 1.000 precise because some spellings genuinely belong to two words.
 The skeleton finds almost every variant and merges everything else with them. Resolving
@@ -498,12 +528,13 @@ measured in professional copy.
 
 **Roman Urdu from Wikipedia, not from chat.** Dakshina's romanisations were written by
 annotators transcribing encyclopaedia sentences. People texting write shorter words,
-drop more vowels and switch to English more often. Section 7's 87.0% is a figure for
+drop more vowels and switch to English more often. Section 7's 90.7% is a figure for
 careful romanisation; typed chat will score lower, by an amount nobody has measured.
 
 **Every language model trained and tested on Wikipedia.** Section 10's accuracies are
 for encyclopaedia prose. Wikipedia in the smaller languages is heavy with bot-written
 stubs, which makes paragraphs within one language unusually alike.
 
-**No context.** Transliteration picks each word on its own, which is why `ke` is always
-کے. That is the largest remaining error and the one this design cannot fix.
+**One word of context.** The transliterator reads each word with the word before it and
+no further. `ke` after کہا is کہ; `ke` whose deciding word is three words back is still a
+guess, and `sher` is شیر or شعر whatever precedes it.

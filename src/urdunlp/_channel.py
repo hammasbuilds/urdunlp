@@ -20,7 +20,20 @@ distinguishes but Roman cannot (س ص ث ش, ت ط ٹ, ز ذ ض ظ ج, ...) shar
 vowel letters are not part of the key. A Roman word can have several keys, because
 some Roman letters are ambiguous (`d` is د or ڑ, `z` is ز or س in English loans).
 
-Everything is plain Python over a small bundled table; there is no model download.
+Two refinements, each measured on Dakshina's dev sentences:
+
+  * **A word's own spellings.** For the ~24,000 words in the training lexicon, the
+    spellings annotators actually wrote are mixed into P(r | u). The letter model
+    alone rates `ke` as a spelling of کہ at log-probability -6.6, because a final ہ
+    is rarely typed as `e`; people type کہ as `ke` all the time.
+  * **The word before.** `decode` picks the whole sentence at once, by Viterbi over
+    each word's top candidates, with a word-bigram model (344,258 bigrams, absolute
+    discounting) in place of the plain frequency prior. That is what separates کہ
+    (*that*) from کے (*of*): after کہا (*said*) it is almost always کہ.
+
+Word by word, held-out test accuracy is 88.4%; decoding the sentence, 90.7%.
+
+Everything is plain Python over a bundled table; there is no model download.
 """
 
 from __future__ import annotations
@@ -152,6 +165,32 @@ class Channel:
         for w in counts:
             self.index.setdefault(urdu_key(w), []).append(w)
 
+        # A word's own attested spellings, mixed with the letter model.
+        self.kappa: float = data["kappa"]
+        self.attested: dict[str, dict[str, int]] = data["attested"]
+        self.attested_total = {u: sum(r.values()) for u, r in self.attested.items()}
+        self.by_spelling: dict[str, list[str]] = {}
+        for urdu, spellings in self.attested.items():
+            if urdu in counts:
+                for roman in spellings:
+                    self.by_spelling.setdefault(roman, []).append(urdu)
+
+        # The word-bigram model: interpolated absolute discounting, backing off to
+        # the word's add-half smoothed frequency.
+        self.lm_weight: float = data["lm_weight"]
+        self.lexicon_bonus: float = data["lexicon_bonus"]
+        self.discount: float = data["discount"]
+        self.k: int = data["candidates"]
+        self.ids: dict[str, int] = {w: i for i, w in enumerate(data["words"])}
+        self.context = {int(k): v for k, v in data["context"].items()}
+        self.bigrams: dict[int, dict[int, int]] = {
+            int(k): dict(zip(flat[0::2], flat[1::2], strict=True))
+            for k, flat in data["bigrams"].items()
+        }
+        denominator = total + 0.5 * len(counts)
+        self.unigram = {w: (c + 0.5) / denominator for w, c in counts.items()}
+        self.unigram_floor = 0.5 / denominator
+
     def table(self, key: tuple[str, str, str]) -> dict[str, float]:
         found = self.emit.get(key)
         if found is None:
@@ -159,7 +198,7 @@ class Channel:
         return found
 
     def log_emission(self, urdu: str, roman: str) -> float:
-        """log P(roman | urdu), summed over every monotone letter alignment."""
+        """log P(roman | urdu) under the letter model, over every monotone alignment."""
         n, m = len(urdu), len(roman)
         forward: list[dict[int, float]] = [{} for _ in range(n + 1)]
         forward[0][0] = 1.0
@@ -174,27 +213,102 @@ class Channel:
         z = forward[n].get(m, 0.0)
         return math.log(z) if z > 0 else -math.inf
 
+    def log_spelling(self, urdu: str, roman: str) -> float:
+        """log P(roman | urdu): the word's own attested spellings, backed off to letters.
+
+        The letter model has learnt that a final ہ is rarely typed as `e`. True of
+        the letter, false of کہ, which annotators wrote as `ke`. With its own
+        spellings mixed in, کہ can be reached from `ke` - and the bigram model then
+        decides between it and کے.
+        """
+        letters = self.log_emission(urdu, roman)
+        seen = self.attested_total.get(urdu)
+        if not seen:
+            return letters
+        p_letters = math.exp(letters) if letters > -700 else 0.0
+        p = (self.attested[urdu].get(roman, 0) + self.kappa * p_letters) / (seen + self.kappa)
+        return math.log(p) if p > 0 else -math.inf
+
     @functools.lru_cache(maxsize=65536)  # noqa: B019 - one Channel per process
+    def candidates(self, roman: str) -> tuple[tuple[str, float], ...]:
+        """The k likeliest words for a lowercase Roman token, with log P(roman | word).
+
+        Ranked by P(roman | word) * P(word), best first.
+        """
+        attested = set(self.by_spelling.get(roman, ()))
+        pool = set(attested)
+        for key in roman_keys(roman):
+            pool.update(self.index.get(key, ()))
+        scored = []
+        for word in pool:
+            # A word more than twice as long as the Roman string, or four times
+            # shorter, cannot align under MAX_EMIT; skip the DP unless attested.
+            too_far = len(word) > 2 * len(roman) + 1 or MAX_EMIT * len(word) < len(roman)
+            if too_far and word not in attested:
+                continue
+            emission = self.log_spelling(word, roman)
+            if emission == -math.inf:
+                continue
+            scored.append((emission + self.prior_weight * self.log_prior[word], emission, word))
+        scored.sort(reverse=True)
+        return tuple((w, e) for _, e, w in scored[: self.k])
+
     def best(self, roman: str) -> str | None:
         """The most probable vocabulary word for a lowercase Roman token, or None."""
-        best_word, best_score = None, -math.inf
-        seen: set[str] = set()
-        for key in roman_keys(roman):
-            for word in self.index.get(key, ()):
-                if word in seen:
-                    continue
-                seen.add(word)
-                # A word more than twice as long as the Roman string, or four times
-                # shorter, cannot align under MAX_EMIT anyway; skip the DP.
-                if len(word) > 2 * len(roman) + 1 or MAX_EMIT * len(word) < len(roman):
-                    continue
-                score = self.log_emission(word, roman)
-                if score == -math.inf:
-                    continue
-                score += self.prior_weight * self.log_prior[word]
-                if score > best_score:
-                    best_word, best_score = word, score
-        return best_word
+        found = self.candidates(roman)
+        return found[0][0] if found else None
+
+    def log_bigram(self, word: str, previous: str) -> float:
+        """log P(word | previous word)."""
+        p_word = self.unigram.get(word, self.unigram_floor)
+        v = self.ids.get(previous)
+        row = self.context.get(v) if v is not None else None
+        if not row:
+            return math.log(p_word)
+        total, types = row
+        w = self.ids.get(word)
+        count = self.bigrams.get(v, {}).get(w, 0) if w is not None else 0
+        p = max(count - self.discount, 0) / total + self.discount * types / total * p_word
+        return math.log(p)
+
+    def decode(self, romans: list[str], lexicon: dict[str, str]) -> list[tuple[str, str]]:
+        """The most probable Urdu for a run of lowercase Roman words, by Viterbi.
+
+        Each word offers its curated-lexicon entry, if it has one, and its top
+        candidates; the path maximises the sum of log P(roman | word) and a weighted
+        log P(word | previous word). Returns (urdu, source) per Roman word; source is
+        `lexicon`, `vocabulary`, or `rules` when there was nothing to choose from.
+        """
+        from .translit import _apply_rules  # deferred: translit imports this module
+
+        # last Urdu word on the path -> (score, [(urdu, source), ...])
+        states: dict[str, tuple[float, list[tuple[str, str]]]] = {"<s>": (0.0, [])}
+        for roman in romans:
+            options = [(w, e, "vocabulary") for w, e in self.candidates(roman)]
+            if roman in lexicon:
+                entry = normalize(lexicon[roman])
+                best_emission = max((e for _, e, _ in options), default=0.0)
+                options = [(entry, best_emission + self.lexicon_bonus, "lexicon")] + [
+                    option for option in options if option[0] != entry
+                ]
+            if not options:
+                options = [(normalize(_apply_rules(roman)), 0.0, "rules")]
+            new: dict[str, tuple[float, list[tuple[str, str]]]] = {}
+            for urdu, emission, source in options:
+                parts = urdu.split() or [urdu]
+                best_score, best_path = -math.inf, []
+                for previous, (score, path) in states.items():
+                    total, last = score + emission, previous
+                    for part in parts:
+                        total += self.lm_weight * self.log_bigram(part, last)
+                        last = part
+                    if total > best_score:
+                        best_score, best_path = total, path
+                key = parts[-1]
+                if key not in new or best_score > new[key][0]:
+                    new[key] = (best_score, [*best_path, (urdu, source)])
+            states = new
+        return max(states.values(), key=lambda state: state[0])[1]
 
 
 @functools.lru_cache(maxsize=1)
@@ -204,6 +318,6 @@ def channel() -> Channel:
 
 
 def resolve(roman: str) -> str | None:
-    """Most probable Urdu vocabulary word for a Roman token, normalised, or None."""
+    """Most probable Urdu vocabulary word for a Roman token on its own, or None."""
     word = channel().best(roman.lower())
     return normalize(word) if word else None

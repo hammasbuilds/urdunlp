@@ -14,15 +14,17 @@ with its method, and the scripts that reproduce them are listed there.
 ### Added
 
 - **A vocabulary stage in Roman → Urdu transliteration**, between the curated lexicon
-  and the rules: a noisy-channel search over 42,498 Urdu words for the one most likely
+  and the rules: a noisy-channel search over 60,638 Urdu words for the one most likely
   to have been typed as the Roman string. Letter emissions were trained with EM on
-  106,260 attested romanisations from Google's Dakshina lexicon. On 52,087 words of
-  held-out hand-romanised sentences, word accuracy goes from **43.1% to 87.0%**. It
-  finds the letters Roman cannot write: `baad` → بعد, `taur` → طور, `Ali` → علی.
-  `use_vocabulary=False` restores the 0.1 pipeline. New source label `vocabulary`,
-  new property `rule_share`.
+  106,260 attested romanisations from Google's Dakshina lexicon, and mixed with each
+  word's own attested spellings. Sentences are decoded as a whole with a word-bigram
+  model. On 52,087 words of held-out hand-romanised sentences, word accuracy goes from
+  **43.1% to 90.7%** (88.4% word by word, `use_context=False`). It finds the letters
+  Roman cannot write — `baad` → بعد, `taur` → طور, `Ali` → علی — and reads `ke` as کہ
+  after کہا. `use_vocabulary=False` restores the 0.1 pipeline. New source label
+  `vocabulary`, new property `rule_share`.
 - `roman_key()` / `group_roman_variants()` — group Roman spellings by the Urdu word they
-  stand for: `nahi`, `nhi`, `naheen`, `nahee` → نہیں. B-cubed F1 **0.829** on the
+  stand for: `nahi`, `nhi`, `naheen`, `nahee` → نہیں. B-cubed F1 **0.831** on the
   held-out lexicon, against 0.375 for exact matching and 0.497 for a consonant skeleton.
 - `identify_language()` — which of eleven Perso-Arabic-script languages a text is in:
   Urdu, Punjabi (Shahmukhi), Saraiki, Sindhi, Pashto, Kashmiri, Persian, Arabic,
@@ -50,7 +52,7 @@ with its method, and the scripts that reproduce them are listed there.
 - `transliterate_to_urdu("mera naam Ali hai")` now returns میرا نام **علی** ہے. The
   README example and its test are updated; the 0.1 behaviour is pinned under
   `use_vocabulary=False`.
-- Round-tripping Urdu → Roman → Urdu on held-out sentences: **42.0% → 90.5%** with the
+- Round-tripping Urdu → Roman → Urdu on held-out sentences: **42.0% → 90.8%** with the
   default short-vowel setting, 61.8% → 92.4% without it. The losses docs/CORPUS.md
   called "properties of the two writing systems" are mostly recoverable for words that
   exist - صرف comes back from `srf`.
@@ -63,7 +65,7 @@ with its method, and the scripts that reproduce them are listed there.
 
 ### Data
 
-The bundled models (1 MB) are derived from Dakshina (CC BY-SA 4.0), Wikipedia
+The bundled models (3 MB) are derived from Dakshina (CC BY-SA 4.0), Wikipedia
 (CC BY-SA 4.0) and HotpotQA (CC BY-SA 4.0). The code remains MIT.
 
 ## [0.1.0] — 2026-09-24 (never published to PyPI)

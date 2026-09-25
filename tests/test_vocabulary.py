@@ -53,6 +53,31 @@ def test_rule_share_counts_only_the_guesses():
     assert result.rule_share == 0.25
 
 
+class TestContext:
+    def test_the_sentence_decides_between_homographs(self):
+        """`ke` is کے (of) or کہ (that). After کہا (said) it is almost always کہ -
+        which a word-by-word transliterator, taking the curated lexicon's کے, gets
+        wrong every time. It was the largest single error before context."""
+        text = "us ne kaha ke woh kal aayega"
+        assert "کہا کہ" in transliterate_to_urdu(text)
+        assert "کہا کے" in transliterate_to_urdu(text, use_context=False)
+
+    def test_the_same_word_keeps_its_ordinary_reading_elsewhere(self):
+        assert transliterate_to_urdu("is ke baad") == "اس کے بعد"
+
+    def test_a_sentence_end_resets_the_context(self):
+        """A full stop ends the sentence the next word is chosen in."""
+        result = transliterate_with_confidence("kuch nahi hua. us ke ghar gaye")
+        assert result.text == "کچھ نہیں ہوا. اس کے گھر گئے"
+
+    def test_attested_spellings_reach_words_the_letter_model_misses(self):
+        """The letter model gave `ke` as کہ a log-probability of -6.6; annotators
+        wrote exactly that spelling for کہ, and the word's own spellings now count."""
+        from urdunlp._channel import channel
+
+        assert "کہ" in [w for w, _ in channel().candidates("ke")]
+
+
 class TestRomanKey:
     def test_spelling_variants_share_a_key(self):
         assert roman_key("nahi") == roman_key("nahin") == roman_key("nhi") == "نہیں"

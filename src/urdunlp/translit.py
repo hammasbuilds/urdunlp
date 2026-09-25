@@ -19,20 +19,20 @@ and reports which one produced each answer:
   1. **Lexicon.** A curated map of high-frequency words, covering the closed-class
      vocabulary - pronouns, postpositions, auxiliaries, common verbs - which is where
      most tokens in real text actually are.
-  2. **Vocabulary.** A noisy-channel search over 42,498 real Urdu words: the Urdu word
-     most likely to have been typed as this Roman string, weighing how a romaniser
-     spells each letter against how common the word is. This is where `baad` finds
-     بعد, `taur` finds طور and `ali` finds علی - letters Roman cannot write, recovered
-     because the word that contains them exists and the rule-built one does not.
-     See `_channel.py`.
+  2. **Vocabulary.** A noisy-channel search over 60,638 real Urdu words: the Urdu word
+     most likely to have been typed as this Roman string, weighing how people spell
+     it against how likely the word is after the word before it. This is where `baad`
+     finds بعد, `taur` finds طور and `ali` finds علی - letters Roman cannot write,
+     recovered because the word that contains them exists and the rule-built one does
+     not - and where `ke` after `kaha` becomes کہ rather than کے. See `_channel.py`.
   3. **Rules.** Longest-match grapheme substitution for whatever is left - mostly
      names and rare loanwords the vocabulary has never seen.
 
 Scored against 52,087 words of hand-romanised Urdu Wikipedia sentences held out
-from everything the model was built from (Dakshina's test split), the first two
-stages alone - lexicon, then rules - get 43.1% of words exactly right. With the
-vocabulary stage between them, 87.0%. The numbers, and how they were measured,
-are in docs/CORPUS.md.
+from everything the model was built from (Dakshina's test split), the first and
+last stages alone - lexicon, then rules - get 43.1% of words exactly right. With
+the vocabulary stage choosing each word on its own, 88.4%; choosing the sentence
+as a whole, 90.7%. The numbers, and how they were measured, are in docs/CORPUS.md.
 
 `transliterate_to_urdu` returns the text; `transliterate_with_confidence` returns the
 same thing plus which stage handled each token, so a caller can decide whether to
@@ -460,6 +460,9 @@ _PASSTHROUGH = re.compile(
 # Urdu script, which the Roman->Urdu direction must not claim to have converted.
 _IS_URDU_SCRIPT = re.compile(r"[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]")
 
+# Punctuation that ends a sentence, and so ends the context a word is chosen in.
+_SENTENCE_END = frozenset(".?!۔؟")
+
 
 @dataclass
 class Transliteration:
@@ -489,8 +492,8 @@ class Transliteration:
     def rule_share(self) -> float:
         """Share of Roman words that neither the lexicon nor the vocabulary resolved.
 
-        These are the guesses. On held-out hand-romanised Wikipedia sentences 0.5%
-        of words end up here, and 2.9% of those come out right, so a high value
+        These are the guesses. On held-out hand-romanised Wikipedia sentences 0.4%
+        of words end up here, and 3.5% of those come out right, so a high value
         means the text is full of names or words this library has never seen.
         """
         words = [s for t, s in self.sources if t.isalpha() and s != "already-urdu"]
@@ -528,12 +531,22 @@ def _apply_rules(token: str) -> str:
 
 
 def transliterate_with_confidence(
-    text: str, *, use_vocabulary: bool = True, keep_english: bool = False
+    text: str,
+    *,
+    use_vocabulary: bool = True,
+    use_context: bool = True,
+    keep_english: bool = False,
 ) -> Transliteration:
     """Roman Urdu to Urdu script, reporting how each token was resolved.
 
     `use_vocabulary=False` skips the noisy-channel stage and gives the 0.1 behaviour:
     lexicon, then rules. It is faster and far less accurate.
+
+    `use_context=False` resolves each word on its own instead of decoding the
+    sentence with a word-bigram model. Faster, and 2.3 points less accurate on
+    held-out sentences (88.4% against 90.7%); the curated lexicon then always wins,
+    so `ke` is always کے, never کہ. A single word on its own is always resolved
+    this way - with no neighbours there is no context to use.
 
     `keep_english=True` leaves tokens that `tag_roman_tokens` labels English in Latin
     script instead of transliterating them, and reports them as `english`. Off by
@@ -576,6 +589,36 @@ def transliterate_with_confidence(
         tags = _tagger().tag([plan[i][0] for i in roman_positions])
         english = {i for i, tag in zip(roman_positions, tags, strict=True) if tag == "en"}
 
+    # With context, each run of Roman words is decoded as a sequence, so a word can
+    # be chosen for the word before it: کہ after کہا, کے before بعد. A run ends at
+    # anything that is not a Roman word to transliterate, except commas and digits,
+    # which do not end a thought. Sentence-final punctuation always ends one.
+    decided: dict[int, tuple[str, str]] = {}
+    if use_vocabulary and use_context:
+        run: list[int] = []
+
+        def flush() -> None:
+            # A lone word has no context to use, and decoding it as a one-word
+            # sentence scores it by how often words *start* sentences - which cost
+            # 2.6 points of round-trip accuracy, word by word, until it was measured.
+            # One word goes through the word-by-word path below instead.
+            if len(run) == 1:
+                run.clear()
+            if run:
+                romans = [plan[i][0].lower() for i in run]
+                for i, choice in zip(run, _channel.channel().decode(romans, LEXICON), strict=True):
+                    decided[i] = choice
+                run.clear()
+
+        for position, (token, kind) in enumerate(plan):
+            if kind == "roman" and position not in english:
+                run.append(position)
+            elif kind == "passthrough" and not any(c in _SENTENCE_END for c in token):
+                continue
+            else:
+                flush()
+        flush()
+
     pieces: list[str] = []
     sources: list[tuple[str, str]] = []
     for position, (token, kind) in enumerate(plan):
@@ -586,6 +629,11 @@ def transliterate_with_confidence(
         if position in english:
             pieces.append(token)
             sources.append((token, "english"))
+            continue
+        if position in decided:
+            urdu, source = decided[position]
+            pieces.append(urdu)
+            sources.append((token, source))
             continue
         lowered = token.lower()
         if lowered in LEXICON:
@@ -612,7 +660,11 @@ def transliterate_with_confidence(
 
 
 def transliterate_to_urdu(
-    text: str, *, use_vocabulary: bool = True, keep_english: bool = False
+    text: str,
+    *,
+    use_vocabulary: bool = True,
+    use_context: bool = True,
+    keep_english: bool = False,
 ) -> str:
     """Roman Urdu to Urdu script.
 
@@ -621,7 +673,7 @@ def transliterate_to_urdu(
     اسٹیشن - unless `keep_english` is set. See `transliterate_with_confidence`.
     """
     return transliterate_with_confidence(
-        text, use_vocabulary=use_vocabulary, keep_english=keep_english
+        text, use_vocabulary=use_vocabulary, use_context=use_context, keep_english=keep_english
     ).text
 
 

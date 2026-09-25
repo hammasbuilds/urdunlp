@@ -54,7 +54,7 @@ packages = ["src/urdunlp"]
 # build backend drops. Without it in the wheel, mypy and pyright ignore every
 # annotation in this package and callers get `Any` back from a fully typed
 # library - PEP 561 requires the marker to be shipped, not just the hints.
-# The three .json.gz files are the bundled models (1 MB together); listed for the
+# The three .json.gz files are the bundled models (3 MB together); listed for the
 # same reason - a wheel that imports and then fails on first use is worse than
 # one that fails to build.
 artifacts = ["src/urdunlp/py.typed", "src/urdunlp/data/*.json.gz"]

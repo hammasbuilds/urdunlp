@@ -6,7 +6,7 @@
         --exclude data/dakshina/ur/romanized/ur.romanized.rejoined.{dev,test}.native.txt
     python scripts/build_translit_model.py
 
-Two ingredients, both from Dakshina (Roark et al. 2020, CC BY-SA 4.0):
+Four ingredients, all from Dakshina (Roark et al. 2020, CC BY-SA 4.0):
 
   * **Emissions** - P(Roman string | Urdu letter, position, next letter is a vowel
     letter), trained with EM over every monotone alignment of the 106,260 attested
@@ -16,6 +16,14 @@ Two ingredients, both from Dakshina (Roark et al. 2020, CC BY-SA 4.0):
     off to (letter, position) and then to the letter alone.
   * **Vocabulary** - words seen at least MIN_COUNT times in Dakshina's Urdu Wikipedia
     training text, counted with the evaluation sentences excluded.
+  * **Attested spellings** - for the 25,000 Urdu words in the training lexicon, how
+    often annotators wrote each Roman spelling. The letter model learns that a final ہ
+    is rarely typed as `e`, which is true of letters and false of کہ, which people
+    type as `ke` all the time. A word's own spellings are mixed with the letter model
+    (weight KAPPA), so evidence about the word beats evidence about its letters.
+  * **Word bigrams** - over the same training text, eval sentences excluded, kept if
+    seen at least BIGRAM_MIN_COUNT times. The transliterator decodes a sentence as a
+    whole with them, which is what separates کے from کہ after کہا.
 
 The settings below were chosen on the dev lexicon and dev sentences; the test
 partitions were not looked at until scripts/measure_translit.py reported them.
@@ -35,18 +43,36 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from urdunlp import normalize  # noqa: E402
+from urdunlp import normalize, words  # noqa: E402
 from urdunlp._channel import MAX_EMIT, _context  # noqa: E402
+from urdunlp.normalize import _is_urdu_letter  # noqa: E402
+from urdunlp.translit import LEXICON as CURATED  # noqa: E402
 
 LEXICON = ROOT / "data/dakshina/ur/lexicons/ur.translit.sampled.train.tsv"
 COUNTS = ROOT / "data/vocab/dakshina_train_counts.tsv"
 OUT = ROOT / "src/urdunlp/data/translit.json.gz"
 
 ITERATIONS = 10
-MIN_COUNT = 5  # 42,498 words; dev sentence accuracy was flat from 2 (84,783) to 5
-PRIOR_WEIGHT = 1.0  # plain Bayes; 0.5 scored 0.862 on dev sentences, 1.0 scored 0.870
+TEXT = ROOT / "data/dakshina/ur/native_script_wikipedia/ur.wiki-filt.train.text.shuf.txt.gz"
+EVAL_SENTENCES = [
+    ROOT / f"data/dakshina/ur/romanized/ur.romanized.rejoined.{split}.native.txt"
+    for split in ("dev", "test")
+]
+
+ITERATIONS = 10
+# Every setting below was chosen on the dev sentences (Dakshina's dev split, 51,764
+# aligned words). Word by word, vocabulary size barely mattered (flat from 42k to
+# 85k words); decoding with context, 60,638 words beat 42,498 by 0.2 points.
+MIN_COUNT = 3
+PRIOR_WEIGHT = 1.0  # word by word: plain Bayes; 0.5 scored 0.862, 1.0 scored 0.870
 SMOOTHING = 2.0
 FLOOR = 1e-5
+KAPPA = 10.0  # 1 -> 0.907, 3 -> 0.910, 10 -> 0.912, 30 -> 0.910, 100 -> 0.909
+BIGRAM_MIN_COUNT = 3  # 2 -> +0.1 point for 68% more bigrams; 5 -> -0.4; 10 -> -0.8
+LM_WEIGHT = 0.6  # 0.3 -> 0.886, 0.6 -> 0.898, 1.0 -> 0.895 (before attested spellings)
+LEXICON_BONUS = 0.0  # 2.0 -> -0.1 point; -2.0 -> -0.7
+DISCOUNT = 0.75
+CANDIDATES = 5  # 3 -> -0.2 point, 10 -> +0.05
 
 
 def load_pairs(path: Path) -> list[tuple[str, str, int]]:
@@ -139,6 +165,41 @@ def rounded(table: dict[str, float]) -> dict[str, float]:
     return {s: float(f"{p:.4g}") for s, p in sorted(table.items(), key=lambda kv: -kv[1])}
 
 
+def count_bigrams(keep: set[str]) -> tuple[dict, dict]:
+    """Bigram counts over the training text, and each context's total and type count.
+
+    Totals and type counts are taken before pruning, so the discounted estimate is
+    the same one the full table would give.
+    """
+    excluded = set()
+    for path in EVAL_SENTENCES:
+        excluded.update(" ".join(line.split()) for line in path.read_text("utf-8").splitlines())
+    bigrams: collections.Counter = collections.Counter()
+    with gzip.open(TEXT, "rt", encoding="utf-8") as handle:
+        for line in handle:
+            if " ".join(line.split()) in excluded:
+                continue
+            previous = "<s>"
+            for token in words(line):
+                if not all(_is_urdu_letter(c) and c.isalpha() for c in token):
+                    previous = "<unk>"
+                    continue
+                bigrams[(previous, token)] += 1
+                previous = token
+    context: dict[str, list[int]] = {}
+    for (v, _), c in bigrams.items():
+        if v in keep:
+            row = context.setdefault(v, [0, 0])
+            row[0] += c
+            row[1] += 1
+    kept = {
+        (v, w): c
+        for (v, w), c in bigrams.items()
+        if c >= BIGRAM_MIN_COUNT and v in keep and w in keep
+    }
+    return kept, context
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=Path, default=OUT)
@@ -151,26 +212,55 @@ def main() -> int:
 
     vocabulary = []
     for line in COUNTS.read_text(encoding="utf-8").splitlines():
-        word, count = line.split("\t")
+        word, count = line.split("	")
         if int(count) < MIN_COUNT:
             break
         vocabulary.append([word, int(count)])
+
+    attested: dict[str, dict[str, int]] = collections.defaultdict(dict)
+    for urdu, roman, count in pairs:
+        attested[urdu][roman] = attested[urdu].get(roman, 0) + count
+
+    # Word ids: the vocabulary, then the curated lexicon's words, then the two markers.
+    ids = [w for w, _ in vocabulary]
+    known = set(ids)
+    for value in CURATED.values():
+        for part in normalize(value).split():
+            if part not in known:
+                known.add(part)
+                ids.append(part)
+    ids += ["<s>", "<unk>"]
+    index = {w: i for i, w in enumerate(ids)}
+    bigrams, context = count_bigrams(set(ids))
+    table: dict[int, list[int]] = collections.defaultdict(list)
+    for (v, w), c in sorted(bigrams.items(), key=lambda kv: (index[kv[0][0]], index[kv[0][1]])):
+        table[index[v]] += [index[w], c]
 
     model = {
         "source": "Dakshina v1.0 Urdu (Roark et al., LREC 2020), CC BY-SA 4.0",
         "prior_weight": PRIOR_WEIGHT,
         "min_count": MIN_COUNT,
+        "kappa": KAPPA,
+        "lm_weight": LM_WEIGHT,
+        "lexicon_bonus": LEXICON_BONUS,
+        "discount": DISCOUNT,
+        "candidates": CANDIDATES,
         "emit": {"|".join(k): rounded(v) for k, v in sorted(emit.items())},
         "emit_mid": {"|".join(k): rounded(v) for k, v in sorted(mid.items())},
         "emit_letter": {k: rounded(v) for k, v in sorted(letter.items())},
         "vocabulary": vocabulary,
+        "attested": {u: dict(sorted(r.items())) for u, r in sorted(attested.items())},
+        "words": ids,
+        "context": {str(index[v]): context[v] for v in sorted(context, key=index.__getitem__)},
+        "bigrams": {str(k): v for k, v in table.items()},
     }
     blob = json.dumps(model, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_bytes(gzip.compress(blob, compresslevel=9, mtime=0))
     print(
-        f"{len(vocabulary):,} vocabulary words, {len(emit):,} emission contexts -> "
-        f"{args.out} ({args.out.stat().st_size / 1024:.0f} KB) in {time.time() - started:.0f}s"
+        f"{len(vocabulary):,} vocabulary words, {len(attested):,} attested words, "
+        f"{len(bigrams):,} bigrams, {len(emit):,} emission contexts -> {args.out} "
+        f"({args.out.stat().st_size / 1024:.0f} KB) in {time.time() - started:.0f}s"
     )
     return 0
 

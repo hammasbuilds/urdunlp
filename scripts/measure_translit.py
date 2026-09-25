@@ -44,7 +44,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from urdunlp import normalize, roman_key, words  # noqa: E402
-from urdunlp._channel import roman_keys, urdu_key  # noqa: E402
+from urdunlp._channel import channel, roman_keys, urdu_key  # noqa: E402
 from urdunlp.translit import LEXICON, _apply_rules, transliterate_with_confidence  # noqa: E402
 
 DAKSHINA = ROOT / "data/dakshina/ur"
@@ -60,7 +60,7 @@ def lexicon(split: str) -> list[tuple[str, str, int]]:
     return rows
 
 
-def sentence_words(split: str) -> tuple[list[tuple[str, str]], int, int]:
+def sentence_words(split: str) -> tuple[list[list[tuple[str, str]]], int, int]:
     def native(name: str) -> set[str]:
         path = DAKSHINA / f"romanized/ur.romanized.rejoined.{name}.native.txt"
         return {line.strip() for line in path.read_text(encoding="utf-8").splitlines()}
@@ -68,7 +68,7 @@ def sentence_words(split: str) -> tuple[list[tuple[str, str]], int, int]:
     keep = native(split)
     if split == "dev":
         keep -= native("test")  # val != test
-    pairs: list[tuple[str, str]] = []
+    sentences: list[list[tuple[str, str]]] = []
     used = total = 0
     rows = (DAKSHINA / "romanized/ur.romanized.rejoined.tsv").read_text("utf-8").splitlines()
     for line in rows:
@@ -80,20 +80,47 @@ def sentence_words(split: str) -> tuple[list[tuple[str, str]], int, int]:
         r = [w for w in re.findall(r"[A-Za-z]+|\d+", roman) if not w.isdigit()]
         if len(u) == len(r):
             used += 1
-            pairs.extend((a, b) for a, b in zip(u, r, strict=True) if b.isalpha())
-    return pairs, used, total
+            sentences.append([(a, b.lower()) for a, b in zip(u, r, strict=True) if b.isalpha()])
+    return sentences, used, total
 
 
 class Scorer:
+    """One Roman word at a time, with no context - the 0.1 pipeline or 0.2 word mode."""
+
     def __init__(self, use_vocabulary: bool) -> None:
         self.use_vocabulary = use_vocabulary
         self.cache: dict[str, tuple[str, str]] = {}
 
     def __call__(self, roman: str) -> tuple[str, str]:
         if roman not in self.cache:
-            result = transliterate_with_confidence(roman, use_vocabulary=self.use_vocabulary)
+            result = transliterate_with_confidence(
+                roman, use_vocabulary=self.use_vocabulary, use_context=False
+            )
             self.cache[roman] = (normalize(result.text), result.sources[0][1])
         return self.cache[roman]
+
+
+def score_in_context(sentences: list[list[tuple[str, str]]]) -> dict:
+    """Decode each sentence as a whole - the same Viterbi call transliteration makes."""
+    model = channel()
+    right = total = 0
+    by_source: dict[str, list[int]] = collections.defaultdict(lambda: [0, 0])
+    for sentence in sentences:
+        chosen = model.decode([r for _, r in sentence], LEXICON)
+        for (gold, _), (urdu, source) in zip(sentence, chosen, strict=True):
+            ok = normalize(urdu) == gold
+            right += ok
+            total += 1
+            by_source[source][0] += ok
+            by_source[source][1] += 1
+    return {
+        "accuracy": round(right / total, 4),
+        "n": total,
+        "by_source": {
+            s: {"share": round(n / total, 4), "accuracy": round(k / n, 4)}
+            for s, (k, n) in sorted(by_source.items())
+        },
+    }
 
 
 def score(items, scorer) -> dict:
@@ -152,21 +179,25 @@ def main() -> int:
     old, new = Scorer(False), Scorer(True)
     print("Sentences (word accuracy, Dakshina's own split)")
     for split in ("dev", "test"):
-        pairs, used, total = sentence_words(split)
-        items = [(u, r.lower(), 1) for u, r in pairs]
+        sentences, used, total = sentence_words(split)
+        items = [(u, r, 1) for sentence in sentences for u, r in sentence]
         a, b = score(items, old), score(items, new)
+        c = score_in_context(sentences)
         report[f"sentences_{split}"] = {
             "aligned_sentences": used,
             "sentences": total,
             "words": len(items),
             "v0.1": a,
-            "v0.2": b,
+            "v0.2_word_by_word": b,
+            "v0.2_in_context": c,
         }
         print(
             f"  {split:<5} {used:,}/{total:,} sentences aligned, {len(items):,} words: "
-            f"0.1 {a['accuracy']:.3f}  ->  0.2 {b['accuracy']:.3f}"
+            f"0.1 {a['accuracy']:.3f}  ->  word by word {b['accuracy']:.3f}  ->  "
+            f"in context {c['accuracy']:.3f}",
+            flush=True,
         )
-        for source, row in b["by_source"].items():
+        for source, row in c["by_source"].items():
             print(
                 f"        {source:<11} {row['share']:>6.1%} of words, {row['accuracy']:.3f} right"
             )

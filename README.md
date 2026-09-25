@@ -53,13 +53,13 @@ Version 0.1 had no accuracy figure for transliteration, and its docs said the da
 measure one "does not exist for Urdu at any useful scale". It does: Google's
 [Dakshina](https://github.com/google-research-datasets/dakshina) dataset had native
 speakers romanise ~10,000 Urdu Wikipedia sentences by hand. Scored against them, 0.1 got
-**43.1%** of words right. 0.2 gets **87.0%**. Every row below is on held-out data:
+**43.1%** of words right. 0.2 gets **90.7%**. Every row below is on held-out data:
 
 | | 0.1 | **0.2** | measured on |
 |---|---:|---:|---|
-| Roman → Urdu, word accuracy | 43.1% | **87.0%** | 52,087 words of hand-romanised test sentences |
-| Urdu → Roman → Urdu round trip (default setting) | 42.0% | **90.5%** | 15,098 tokens of held-out sentences |
-| Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.829** | 10,517 test-lexicon spellings |
+| Roman → Urdu, word accuracy | 43.1% | **90.7%** | 52,087 words of hand-romanised test sentences |
+| Urdu → Roman → Urdu round trip (default setting) | 42.0% | **90.8%** | 15,098 tokens of held-out sentences |
+| Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
 | Which of 11 Perso-Arabic languages (whole paragraph) | — | **99.1%** | 771 test paragraphs |
 | ... on 20 characters | — | **94.3%** | |
 | English words found inside Roman Urdu (recall) | — | **87.3%** | synthetic code-mixed test sentences |
@@ -69,7 +69,7 @@ The numbers that did not come out well are in that table too, on purpose. The st
 helps a little. `identify_language` is reliable on a sentence and guesses between
 neighbours on a word. `is_urdu` - a script check - turned out to say yes to **99.9% of
 Persian and 99.5% of Arabic**, which is why `identify_language` exists.
-&#128202; **[Method, splits and every number &rarr;](https://github.com/hammasbuilds/urdunlp/blob/main/docs/CORPUS.md#7-transliteration-scored-against-people-431--870)**
+&#128202; **[Method, splits and every number &rarr;](https://github.com/hammasbuilds/urdunlp/blob/main/docs/CORPUS.md#7-transliteration-scored-against-people-431--907)**
 
 ### The problem nobody handles: the same word has several encodings
 
@@ -128,12 +128,14 @@ r.sources            # [('mera','lexicon'), ('naam','vocabulary'),
 
 1. **Lexicon.** A curated map of the closed-class vocabulary — pronouns, postpositions,
    auxiliaries — which is where most tokens in real text are, and which is the most
-   irregular. 95.4% right on held-out sentences.
-2. **Vocabulary** (new in 0.2). A noisy-channel search over 42,498 real Urdu words for the
+   irregular. 96.6% right on held-out sentences.
+2. **Vocabulary** (new in 0.2). A noisy-channel search over 60,638 real Urdu words for the
    one most likely to have been typed as this Roman string. This is where `Ali` finds
    `علی`: ع cannot be written in Roman, but علی is a word and the rule-built `الی` is not.
-   It is also where `baad` finds بعد, `taur` finds طور and `haasil` finds حاصل.
-3. **Rules.** Longest-match grapheme substitution for what is left — 0.5% of words in
+   It is also where `baad` finds بعد, `taur` finds طور and `haasil` finds حاصل. The
+   sentence is chosen as a whole, with a word-bigram model, so the lexicon's answer can be
+   overruled by context: `us ne kaha ke` gives کہا **کہ**, not کہا کے.
+3. **Rules.** Longest-match grapheme substitution for what is left — 0.4% of words in
    held-out text, mostly names. `rule_share` tells you how much of your input landed here.
 
 In 0.1 there were only stages 1 and 3, and this example returned `الی` — correctly
@@ -164,7 +166,7 @@ every inserted vowel returns as an alef: `ساراف`.
 something has to convert it back.** The README previously documented neither.
 
 *That is the 0.1 pipeline.* With the vocabulary stage, `saraf` comes back as صرف and the
-round trip on held-out sentences is **90.5%** with the default and 92.4% without — the
+round trip on held-out sentences is **90.8%** with the default and 92.4% without — the
 losses are mostly recoverable for any word that exists. They remain for names.
 
 ## What it does
@@ -173,7 +175,7 @@ losses are mostly recoverable for any word that exists. They remain for names.
 |---|---|
 | `normalize` | Arabic↔Urdu unification, diacritics, tatweel, zero-width, digits, punctuation. `is_urdu()` script detection. |
 | `tokenize` | Sentence splitting on `۔` and `؟`, word tokenisation, merged-compound repair, character n-grams. |
-| `translit` | Roman Urdu ↔ Urdu script: curated lexicon, then a noisy-channel search over 42,498 words, then rules — with per-token provenance. `keep_english=True` leaves English in Latin script. |
+| `translit` | Roman Urdu ↔ Urdu script: curated lexicon, then a noisy-channel search over 60,638 words decoded a sentence at a time, then rules — with per-token provenance. `keep_english=True` leaves English in Latin script. |
 | `roman` | `roman_key` / `group_roman_variants`: spelling variants grouped by the Urdu word they spell. |
 | `langid` | `identify_language` over eleven Perso-Arabic-script languages, with letter evidence; `tag_roman_tokens` labels each Roman word `ur` or `en`. |
 | `numbers` | Urdu and Roman Urdu number words ↔ values, including ڈیڑھ ڈھائی سوا ساڑھے پونے and lakh/crore; `find_numbers` in running text; `12,34,567` grouping. |
@@ -220,8 +222,8 @@ The package is **typed** — `py.typed` ships in the wheel, so mypy and pyright 
 annotation rather than falling back to `Any`.
 
 "No model downloads" still holds in 0.2: the transliteration vocabulary, the language
-tables and the Roman tagger ship inside the wheel as three gzipped JSON files, 1 MB
-together, loaded on first use in about 0.2 s. There is nothing to fetch at runtime.
+tables and the Roman tagger ship inside the wheel as three gzipped JSON files, 3 MB
+together, loaded on first use in about 0.6 s. There is nothing to fetch at runtime.
 
 From a clone, there is nothing to install at all:
 
@@ -229,7 +231,7 @@ From a clone, there is nothing to install at all:
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py
-pytest -q          # 180 tests, no install step needed
+pytest -q          # 184 tests, no install step needed
 ```
 
 ---
@@ -301,7 +303,7 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 pytest
 ```
 
-**180 tests.** Each encodes a real property of the language rather than a convenient
+**184 tests.** Each encodes a real property of the language rather than a convenient
 example, so a failure means the library is wrong about Urdu, not about a fixture. They use
 only what ships in the package; the evaluation data under `data/` is for the measurement
 scripts and is never read by a test.
@@ -310,10 +312,10 @@ scripts and is never read by a test.
 
 Stated plainly, because a toolkit that overclaims wastes its users' time:
 
-- **Roman → Urdu is ambiguous by nature, and words are resolved one at a time.** `ke`
-  is کے (*of*) or کہ (*that*) and only the sentence can say which; the lexicon always
-  says کے, and that single word is the largest remaining error. `sher` is شیر or شعر.
-  On held-out hand-romanised sentences 13.0% of words still come out wrong.
+- **Roman → Urdu is ambiguous by nature, and one word of context is not much.** `ke`
+  is کے (*of*) or کہ (*that*); a bigram model gets it right after کہا, and not where
+  the deciding word is further back. `sher` is شیر or شعر whatever precedes it. On
+  held-out hand-romanised sentences 9.3% of words still come out wrong.
 - **The accuracy figures are for careful romanisation.** Dakshina's annotators
   transcribed encyclopaedia sentences. Chat is shorter, drops more vowels and switches
   to English more; it will score lower, by an amount nobody has measured.
@@ -328,7 +330,7 @@ Stated plainly, because a toolkit that overclaims wastes its users' time:
   of the doubtful cases, not all of them.
 - **Urdu → Roman is lossy and one-way.** س ص ث all give `s` in the Roman output, and
   nothing in that direction can restore the distinction. Going back, the vocabulary
-  stage recovers most of it for words that exist — 90.5% round-trip on held-out
+  stage recovers most of it for words that exist — 90.8% round-trip on held-out
   sentences — and none of it for names.
 - **Short vowels are inserted heuristically.** Urdu does not write them, so a literal
   mapping gives `jmlh` for جملہ. An `a` between consonants gives `jamalah` — right
@@ -364,7 +366,7 @@ Wikipedia and [HotpotQA](https://hotpotqa.github.io/), each CC BY-SA 4.0.
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 
-pytest -q               # 180 tests, no install step needed
+pytest -q               # 184 tests, no install step needed
 python demo.py          # see it work
 ```
 
@@ -485,7 +487,8 @@ sentences romanised by hand. Scored against it, 0.1 got **43.1%** of words right
 rules — which handled two thirds of running text — got **16.5%** of theirs. Two mechanical
 errors dominated: a word-initial vowel with no carrier (`is` → یس for اس) and short vowels
 written out that Urdu leaves unwritten (`jis` → جیس for جس). *Fixed* by a vocabulary stage
-that searches real words rather than building one letter by letter: **87.0%**.
+that searches real words rather than building one letter by letter: **87.0%**, and
+**90.7%** once each sentence is decoded as a whole.
 
 **The data the fix was measured on leaked into the data it was built from.** Dakshina's
 romanised sentences come from its held-out Wikipedia partition, and the vocabulary is counted
@@ -539,3 +542,12 @@ identifier and not a word at all. Every tag after a URL landed on the wrong word
 transliterated `meeting`. Found reading the code before release, not by a test — the
 tests had no sentence with both a URL and English in it. *Fixed* by tagging exactly the
 words the transliterator will process, and pinned by a test that has both.
+
+**Adding context made single words worse.** Decoding each sentence with a word bigram model
+took held-out accuracy from 88.4% to 90.7% - and the round trip, which transliterates one
+word at a time, fell from 90.8% to 88.2%. A lone word was being decoded as a one-word
+sentence, so it was scored by how often words *start* sentences. *Fixed* by sending a
+single word down the word-by-word path, where there is no context to misuse; the round
+trip is back to 90.8%. The sentence benchmark could not have caught this - it has no
+one-word sentences - which is why a feature is measured on more than the benchmark it
+was tuned on.
