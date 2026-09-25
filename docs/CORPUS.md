@@ -255,7 +255,7 @@ a side effect of inserting one.
 
 ---
 
-## 7. Transliteration, scored against people: 43.1% → 90.7%
+## 7. Transliteration, scored against people: 43.1% → 91.2%
 
 The section below this one used to say that measuring transliteration correctness "needs
 human-checked pairs, which do not exist for Urdu at any useful scale". They exist.
@@ -277,7 +277,7 @@ sentences); the rest cannot be aligned without guessing. Correct means equal aft
 |---|---:|---:|
 | 0.1: lexicon, then rules | 43.3% | **43.1%** |
 | 0.2, each word on its own (`use_context=False`) | 88.8% | **88.4%** |
-| 0.2, each sentence decoded as a whole (default) | 91.1% | **90.7%** |
+| 0.2, each sentence decoded as a whole (default) | 91.9% | **91.2%** |
 
 Where the 0.2 answers come from, on test:
 
@@ -301,7 +301,9 @@ not write (`jis` → جیس instead of جس, `karne` → کارنے instead of �
 | + vocabulary: letter channel × word frequency, 42,498 words | 87.3% |
 | + decode the sentence with a word bigram model | 89.8% |
 | + 60,638 words instead of 42,498 | 90.0% |
-| + each word's own attested spellings mixed into the channel | **91.1%** |
+| + each word's own attested spellings mixed into the channel | 91.1% |
+| + the Arabic article moved across the word boundary; initials, titles, `o` | 91.8% |
+| + کہ offered for `ki`, `ke`, `kay`, `keh` | **91.9%** |
 
 **The letter channel.** Choose the Urdu word *u* that maximises P(*u*) · P(roman | *u*).
 P(roman | *u*) comes from a letter-emission model — each Urdu letter emits 0-4 Roman
@@ -357,7 +359,33 @@ scores it by how often words *start* sentences, and the section 4 round trip —
 a time — fell from 90.8% to 88.2% when context was switched on. A single word now takes
 the word-by-word path; there is no context to use.
 
-**What is left** — 9.3% of test words. On dev, of the words still wrong after context was
+**The Arabic article.** A new breakdown of the remaining dev errors put 1,565 under "the
+right word is in the vocabulary but under a different key" - and most of those were one
+pattern. Roman Urdu writes the article on the word before it (`abdul rehman`, `bainul
+aqwami`, `darul uloom`); Urdu writes it on the word after (عبد الرحمن, بین الاقوامی, دار
+العلوم). Neither half of the pair can be right word by word: there is no Urdu word for
+`abdul`, and `rehman` is not الرحمن. That pattern alone was 441 dev errors. A pre-pass
+now rewrites a pair (`abdul rehman` → `abd alrehman`) when a real ال-word exists for the
+second half and the rewritten pair scores better by a margin (chosen on dev: margin 2 →
++0.54 points; −2 → +0.50; 8 → +0.45). `kabul`, `rasul` and `phool` end in -ul as well and
+are left alone, because nothing scores better. Capital initials are spelled by letter name
+(Dakshina: 115 of 127 capital single letters), a title's dot is dropped and no longer ends
+the sentence, and lowercase `o` is the conjunction و (123 of 127).
+
+**کہ.** `ki` and `ke` meaning کہ (*that*) were still 118 dev errors after context, because
+the training lexicon barely attests those spellings for کہ, so it never reached the
+decoder's candidates. Offering it for `ki`, `ke`, `kay` and `keh` at the best candidate's
+emission, and letting the bigram model decide, added 0.18 points on dev; widening the list
+to other function-word readings (`na` → نا, `ya` → یہ, `ki` → کے) cost up to 0.47.
+
+**Tried and not kept: generating words the vocabulary does not have.** 1,052 dev words
+have a gold spelling outside the 60,638-word vocabulary. Running the letter model in
+reverse with an Urdu character model generated the right spelling for 18.1% of them
+(34.8% in its top five), against 6.7% for the rules. As an extra candidate in the decoder
+it cost 0.31 points overall: an invented word that looks plausible wins against real
+ones too often, and there were not enough out-of-vocabulary words for it to pay that back.
+
+**What is left** — 8.8% of test words. On dev, of the words still wrong after context was
 added (measured before the attested spellings, at 90.0%):
 2,053 had the right word among the five candidates and context chose another, 2,049 had
 it in the vocabulary but outside the five, and 1,095 had it outside the vocabulary
@@ -418,34 +446,51 @@ Kashmiri. The distinctive letters `build_langid_models.py` found automatically b
 the *other* languages — Sindhi ڪ ٻ ڻ, Pashto ښ ځ ډ, Central Kurdish ڵ ێ, Uyghur ۇ ۋ.
 
 `identify_language` is a character 1-5-gram naive Bayes model, one table per language,
-trained on 80% of each sample (split by paragraph hash, 80/15/5). Accuracy on the test
-paragraphs — 771 of them, 57-80 per language, so each per-language figure is ±3-5 points:
+trained on 80% of each sample (split by paragraph hash, 80/15/5). Urdu, Punjabi and
+Saraiki - the three that get confused - have 5,000 paragraphs each; the other eight have
+1,500.
 
-| text | 1-3-grams, test | val (2,543) | **1-5-grams, test (771)** |
-|---|---:|---:|---:|
-| whole paragraph | 99.1% | 99.1% | **99.5%** |
-| 50 characters | 98.1% | 98.6% | **99.1%** |
-| 20 characters | 94.3% | 94.9% | **95.5%** |
-| 10 characters | 84.2% | 87.5% | **88.3%** |
+| text | first version, same test | val (4,109) | **test (1,254)** | Urdu, test |
+|---|---:|---:|---:|---:|
+| whole paragraph | 96.4% | 97.4% | **97.9%** | 98.7% |
+| 50 characters | 94.6% | 95.9% | **96.6%** | 98.0% |
+| 20 characters | 89.8% | 90.4% | **91.0%** | 93.3% |
+| 10 characters | 81.5% | 81.2% | **81.5%** | 84.0% |
 
-The first version used 1-3-grams. Measured on validation windows: 4-grams added 1.7
-points at 20 characters and 5-grams 3.3, unpruned; 6-grams added 0.3 more for another
-4.5 MB. All 5-grams are 5.4 MB, so each language keeps its 20,000 most frequent (848 KB,
-94.9% on validation) - a top-K cut beat a minimum-count cut of the same size.
+*First version: 1-3-grams, 1,500 paragraphs per language.*
+
+**These numbers are lower than the ones this page first published, and the model is
+better.** The first version was scored on 771 test paragraphs - 57 to 80 per language -
+and reported 99.1% on a paragraph. Growing the three closest languages to 5,000 paragraphs
+grew their test sets as well, and the first version, unchanged, scored 96.4% on the larger
+set. Punjabi fell from 95.8% to 89.3%: the small test set had been kind to it. On the
+larger set every change below is a gain.
+
+- **1-3 → 1-5-grams.** On validation windows 4-grams added 1.7 points at 20 characters and
+  5-grams 3.3, unpruned; 6-grams added 0.3 more for another 4.5 MB. All 5-grams are
+  5.4 MB, so each language keeps its 20,000 most frequent - a top-K cut beat a
+  minimum-count cut of the same size.
+- **1,500 → 5,000 paragraphs of Urdu, Punjabi and Saraiki.** On the same enlarged test set:
+  paragraph 96.4 → 97.9%, 50 characters 94.6 → 96.6%, 20 characters 89.8 → 91.0%, 10
+  characters level. Punjabi on a paragraph: 89.3 → 97.3%. The cost is Urdu on short
+  windows: at 10 characters on test it went from 87.1% to 84.0%, because a stronger
+  Punjabi model claims more of them.
+- **A prior for Urdu, tried and dropped.** Adding 2, 4 or 8 nats to Urdu's score moved its
+  10-character validation accuracy from 87.5% to 88.6%, 89.8% and 92.2% - and took the same
+  or more from Punjabi, lowering overall accuracy each time. There is no free point here.
 
 The errors are almost all between the three closest languages. At 20 characters, Saraiki
-is right 77.2% of the time (mostly read as Punjabi), Punjabi 93.0% and Urdu 94.0%.
-Arabic, Central Kurdish, Sindhi and Uyghur are 100% at 20 characters: they have letters
-or spellings nobody else uses. At 10 characters Urdu is 86.6%, Punjabi 77.5%, Saraiki
-68.4%.
+is right 75.1% of the time (mostly read as Punjabi), Punjabi 85.7% and Urdu 93.3%. Arabic,
+Central Kurdish, Sindhi and Uyghur are 100% at 20 characters: they have letters or
+spellings nobody else uses.
 
 **`margin` is not confidence.** With 1-3-grams, the 29 test windows (of 771, at 20
 characters) with a margin under 0.1 were right 55% of the time, and most errors still had
-a margin above it. With 5-grams the scores spread further: 768 of 771 windows have a
-margin above 0.1, and so do 33 of the 35 errors. Naive Bayes is confidently wrong when two
-languages share every word in a short window. An earlier docstring claimed almost every
-error had a margin below 0.05; the measurement said otherwise, twice, and the docstring now
-says to read length, not margin.
+a margin above it. With 5-grams the scores spread further: on the enlarged test set 1,239
+of 1,254 windows have a margin above 0.1, and so do 102 of the 113 errors. Naive Bayes is
+confidently wrong when two languages share every word in a short window. An earlier
+docstring claimed almost every error had a margin below 0.05; the measurement said
+otherwise, twice, and the docstring now says to read length, not margin.
 
 Accuracy per character count is the honest summary: give it a sentence and it is
 reliable; give it a word and it is guessing between neighbours.
@@ -515,6 +560,12 @@ stemmer removes — and it moved less, not more. Stemming shrinks the index by 1
 
 Both levels (`light=True` and the default) and both minimum stem lengths were tried; the
 default won validation on both tasks.
+
+**Tried and not kept: a vocabulary-checked stemmer**, which strips a suffix only when what
+is left - or it plus ا, ی, ہ or نا - is one of the 60,638 known words. The idea was that
+the small gain came from over-stripping. It did not: title retrieval 0.4447 validation /
+0.4638 test against the plain stemmer's 0.4455 / 0.4634, lead sentence 0.5991 / 0.6124
+against 0.6004 / 0.6128. Stemming is simply worth little to this kind of retrieval.
 
 ## 13. Numbers
 
@@ -594,7 +645,7 @@ measured in professional copy.
 
 **Roman Urdu from Wikipedia, not from chat.** Dakshina's romanisations were written by
 annotators transcribing encyclopaedia sentences. People texting write shorter words,
-drop more vowels and switch to English more often. Section 7's 90.7% is a figure for
+drop more vowels and switch to English more often. Section 7's 91.2% is a figure for
 careful romanisation; typed chat will score lower, by an amount nobody has measured.
 
 **Every language model trained and tested on Wikipedia.** Section 10's accuracies are

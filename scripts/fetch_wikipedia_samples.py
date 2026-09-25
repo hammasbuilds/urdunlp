@@ -74,10 +74,13 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=Path("data/wiki"))
     ap.add_argument("--paragraphs", type=int, default=1500)
     ap.add_argument("--max-requests", type=int, default=400)
+    ap.add_argument("--only", nargs="*", help="language codes to fetch (default: all)")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 
     for code, name in LANGUAGES.items():
+        if args.only and code not in args.only:
+            continue
         target = args.out / f"{code}.txt"
         seen: dict[str, None] = {}
         if target.exists():

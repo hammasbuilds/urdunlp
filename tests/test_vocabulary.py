@@ -63,6 +63,12 @@ class TestContext:
         assert "کہا کہ" in transliterate_to_urdu(text)
         assert "کہا کے" in transliterate_to_urdu(text, use_context=False)
 
+    def test_ki_can_be_that_too(self):
+        """`ki` is کی (of) and, typed by many writers, کہ (that). The training lexicon
+        barely attests it for کہ, so it is offered explicitly and context decides."""
+        assert "کہا کہ" in transliterate_to_urdu("us ne kaha ki woh aayega")
+        assert transliterate_to_urdu("is ki kitab") == "اس کی کتاب"
+
     def test_the_same_word_keeps_its_ordinary_reading_elsewhere(self):
         assert transliterate_to_urdu("is ke baad") == "اس کے بعد"
 
@@ -153,3 +159,46 @@ class TestLearnedRoman:
     def test_an_unknown_method_is_refused(self):
         with pytest.raises(ValueError, match="method must be"):
             transliterate_to_roman("کتاب", method="phonetic")
+
+
+class TestArabicArticle:
+    """Roman writes the article on the word before it; Urdu on the word after."""
+
+    @pytest.mark.parametrize(
+        ("roman", "urdu"),
+        [
+            ("abdul rehman", "عبد الرحمن"),
+            ("bainul aqwami", "بین الاقوامی"),
+            ("darul uloom", "دار العلوم"),
+        ],
+    )
+    def test_the_article_moves_to_the_next_word(self, roman, urdu):
+        assert transliterate_to_urdu(roman) == urdu
+
+    @pytest.mark.parametrize(
+        ("roman", "urdu"),
+        [("kabul shehar", "کابل شہر"), ("rasul allah", "رسول اللہ"), ("phool bagh", "پھول باغ")],
+    )
+    def test_words_that_merely_end_in_ul_are_left_alone(self, roman, urdu):
+        assert transliterate_to_urdu(roman) == urdu
+
+
+class TestInitialsAndTitles:
+    def test_a_capital_letter_is_an_initial(self):
+        assert transliterate_to_urdu("C. M. Naim").startswith("سی ایم ")
+
+    def test_lowercase_o_is_the_conjunction(self):
+        assert transliterate_to_urdu("zabt o nazm") == "ضبط و نظم"
+
+    @pytest.mark.parametrize(
+        ("roman", "urdu"),
+        [("Dr. Abdul Qadeer Khan", "ڈاکٹر عبد القدیر خان"), ("Mr. Ali", "مسٹر علی")],
+    )
+    def test_titles_are_written_in_full_without_the_dot(self, roman, urdu):
+        """Mr. Ali was میر علی - Mir Ali is a common name - until a title followed
+        by its dot stopped being left to the decoder."""
+        assert transliterate_to_urdu(roman) == urdu
+
+    def test_an_abbreviation_dot_does_not_end_the_sentence(self):
+        """The dot of Dr. used to reset the context, cutting it mid-name."""
+        assert "کہا کہ" in transliterate_to_urdu("Dr. Khan ne kaha ke woh aayenge")

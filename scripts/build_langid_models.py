@@ -1,6 +1,8 @@
-"""Train the two language models in `urdunlp.langid` and write them into the package.
+r"""Train the two language models in `urdunlp.langid` and write them into the package.
 
-    python scripts/fetch_wikipedia_samples.py      # data/wiki/<code>.txt
+    python scripts/fetch_wikipedia_samples.py      # data/wiki/<code>.txt, 1,500 each
+    python scripts/fetch_wikipedia_samples.py --only ur pnb skr \
+        --paragraphs 5000 --max-requests 1500      # the three that get confused
     python scripts/fetch_dakshina.py               # Roman Urdu lexicon + sentences
     python scripts/extract_english.py <hotpot dir> # data/english/{train,val,test}.txt
     python scripts/build_langid_models.py

@@ -19,7 +19,7 @@ with its method, and the scripts that reproduce them are listed there.
   106,260 attested romanisations from Google's Dakshina lexicon, and mixed with each
   word's own attested spellings. Sentences are decoded as a whole with a word-bigram
   model. On 52,087 words of held-out hand-romanised sentences, word accuracy goes from
-  **43.1% to 90.7%** (88.4% word by word, `use_context=False`). It finds the letters
+  **43.1% to 91.2%** (88.4% word by word, `use_context=False`). It finds the letters
   Roman cannot write — `baad` → بعد, `taur` → طور, `Ali` → علی — and reads `ke` as کہ
   after کہا. `use_vocabulary=False` restores the 0.1 pipeline. New source label
   `vocabulary`, new property `rule_share`.
@@ -28,9 +28,10 @@ with its method, and the scripts that reproduce them are listed there.
   held-out lexicon, against 0.375 for exact matching and 0.497 for a consonant skeleton.
 - `identify_language()` — which of eleven Perso-Arabic-script languages a text is in:
   Urdu, Punjabi (Shahmukhi), Saraiki, Sindhi, Pashto, Kashmiri, Persian, Arabic,
-  Central Kurdish, Uyghur, South Azerbaijani. **99.5%** on held-out Wikipedia
-  paragraphs, 95.5% on 20 characters, 88.3% on 10 (character 1-5-grams; 1-3-grams
-  scored 99.1 / 94.3 / 84.2). Reports the distinctive letters it
+  Central Kurdish, Uyghur, South Azerbaijani. **97.9%** on 1,254 held-out Wikipedia
+  paragraphs, 91.0% on 20 characters, 81.5% on 10 - character 1-5-grams, with 5,000
+  paragraphs each of the three closest languages. The 1-3-gram, 1,500-paragraph first
+  version scored 96.4 / 89.8 / 81.5 on the same test set. Reports the distinctive letters it
   saw as evidence.
 - `tag_roman_tokens()` and `keep_english=True` — label each word of Roman Urdu as `ur`
   or `en`, smoothed over the sentence. English recall 0.873 on synthetic code-mixed
@@ -44,6 +45,11 @@ with its method, and the scripts that reproduce them are listed there.
   words, a spelling some annotator wrote 33.4% → **54.1%** of the time; in running text,
   exactly the annotator's spelling 28.6% → **54.9%**; and the round trip back to Urdu
   90.8% → **94.3%** - readable and reversible stopped being a trade-off.
+- The Arabic article moves across the word boundary: `abdul rehman` → عبد الرحمن,
+  `bainul aqwami` → بین الاقوامی, `darul uloom` → دار العلوم. Capital initials are
+  spelled by letter name (`C. M.` → سی ایم), titles written in full without their dot
+  (`Dr.` → ڈاکٹر, `Mr.` → مسٹر), lowercase `o` is و, and `ki`/`ke` may be کہ when the
+  sentence says so. Together: 90.7% → 91.2% on the test sentences.
 - `parse_ordinal()`, and ordinals in `find_numbers` with `ordinal=True`: پہلا دوسرا
   تیسرا چوتھا چھٹا, یکم, any cardinal + واں/ویں, and `5ویں`. پہلے ("before") and
   دوسرے ("other") are not read as ordinals on their own.

@@ -32,7 +32,7 @@ Scored against 52,087 words of hand-romanised Urdu Wikipedia sentences held out
 from everything the model was built from (Dakshina's test split), the first and
 last stages alone - lexicon, then rules - get 43.1% of words exactly right. With
 the vocabulary stage choosing each word on its own, 88.4%; choosing the sentence
-as a whole, 90.7%. The numbers, and how they were measured, are in docs/CORPUS.md.
+as a whole, 91.2%. The numbers, and how they were measured, are in docs/CORPUS.md.
 
 `transliterate_to_urdu` returns the text; `transliterate_with_confidence` returns the
 same thing plus which stage handled each token, so a caller can decide whether to
@@ -146,6 +146,7 @@ LEXICON: dict[str, str] = {
     "aur": "اور",
     "or": "اور",
     "ya": "یا",
+    "o": "و",  # the conjunction in zabt o nazm; Dakshina: 123 of 127 lowercase o
     "agar": "اگر",
     "to": "تو",
     "tou": "تو",
@@ -233,7 +234,6 @@ LEXICON: dict[str, str] = {
     # nouns
     "ghar": "گھر",
     "kaam": "کام",
-    "kam2": "کام",
     "waqt": "وقت",
     "wqt": "وقت",
     "din": "دن",
@@ -282,6 +282,11 @@ LEXICON: dict[str, str] = {
     "log": "لوگ",
     "admi": "آدمی",
     "aurat": "عورت",
+    # titles, written abbreviated in Roman and in full in Urdu
+    "dr": "ڈاکٹر",
+    "prof": "پروفیسر",
+    "mr": "مسٹر",
+    "mrs": "مسز",
     # greetings and fixed phrases
     "salam": "سلام",
     "assalam": "السلام",
@@ -477,8 +482,13 @@ LETTER_NAMES: dict[str, str] = {
 }  # fmt: skip
 
 
+_TITLES = frozenset({"dr", "prof", "mr", "mrs"})
+
+
 def _ends_context(token: str, kind: str) -> bool:
     """Whether a non-word token ends the sentence a Roman word is decoded in."""
+    if kind in ("abbreviation-dot", "title"):
+        return False
     if kind == "space":
         return "\n" in token
     if kind == "passthrough":
@@ -487,7 +497,10 @@ def _ends_context(token: str, kind: str) -> bool:
 
 
 def _is_acronym(word: str) -> bool:
-    return 2 <= len(word) <= 6 and word.isupper() and sum(c in "AEIOU" for c in word) <= 1
+    # A single capital is an initial: Dakshina's annotators wrote C as سی 20 times,
+    # L as ایل 18, A as اے 12 - letter names for about 115 of 127 capitals. A single
+    # lowercase letter is not: `o` is the conjunction و, 123 times.
+    return 1 <= len(word) <= 6 and word.isupper() and sum(c in "AEIOU" for c in word) <= 1
 
 
 # Any character in the Arabic/Urdu blocks. Used to spot text that is already in
@@ -580,7 +593,7 @@ def transliterate_with_confidence(
 
     `use_context=False` resolves each word on its own instead of decoding the
     sentence with a word-bigram model. Faster, and 2.3 points less accurate on
-    held-out sentences (88.4% against 90.7%); the curated lexicon then always wins,
+    held-out sentences (88.4% against 91.2%); the curated lexicon then always wins,
     so `ke` is always کے, never کہ. A single word on its own is always resolved
     this way - with no neighbours there is no context to use.
 
@@ -615,6 +628,21 @@ def transliterate_with_confidence(
             # that looked transliterated, with `lexicon_coverage` reading 0.0,
             # which says "guessed badly" rather than "wrong direction".
             plan.append((token, "already-urdu"))
+        elif (
+            token == "."
+            and plan
+            and (
+                plan[-1][1] == "acronym"
+                or (plan[-1][1] == "roman" and plan[-1][0].lower() in _TITLES)
+            )
+        ):
+            # The dot of `Dr.` or `C.`: Urdu writes ڈاکٹر and سی without one, and it
+            # does not end a sentence - it used to, and cut the context mid-name.
+            # With its dot a title is certain, so it is not left to the decoder,
+            # which read `Mr. Ali` as میر علی - Mir Ali is a common name.
+            if plan[-1][1] == "roman":
+                plan[-1] = (plan[-1][0], "title")
+            plan.append((token, "abbreviation-dot"))
         else:
             # Numbers, codes like 5th, punctuation, and letters of any script this
             # function does not convert (é, Devanagari): emitted unchanged.
@@ -664,6 +692,13 @@ def transliterate_with_confidence(
     for position, (token, kind) in enumerate(plan):
         if kind == "space":
             pieces.append(token)
+            continue
+        if kind == "abbreviation-dot":
+            sources.append((token, "passthrough"))
+            continue
+        if kind == "title":
+            pieces.append(LEXICON[token.lower()])
+            sources.append((token, "lexicon"))
             continue
         if kind == "acronym":
             pieces.append(" ".join(LETTER_NAMES[c] for c in token if c in LETTER_NAMES))

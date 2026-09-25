@@ -103,8 +103,8 @@ class LanguageGuess:
     `language` is an ISO 639 code from `LANGUAGES`, or `None` when the text holds no
     Perso-Arabic letters at all. `margin` is how much more likely, per character,
     the winner is than the runner-up, in nats. **Do not read it as confidence.** On
-    held-out 20-character windows, 768 of 771 guesses had a margin above 0.1 - and
-    so did 33 of the 35 wrong ones: naive Bayes is confidently wrong when Urdu,
+    held-out 20-character windows, 1,239 of 1,254 guesses had a margin above 0.1 -
+    and so did 102 of the 113 wrong ones: naive Bayes is confidently wrong when Urdu,
     Punjabi and Saraiki share every word in a short window. What predicts an error
     is length, not margin; see the accuracy by length below. `evidence` lists
     letters in the text that only a few of the eleven languages use, keyed by those
@@ -130,7 +130,8 @@ def identify_language(text: str) -> LanguageGuess:
     punctuation are ignored. Accuracy falls with length, and falls fastest between
     the three closest languages - Urdu, Punjabi and Saraiki share most of their
     letters and much of their vocabulary. On held-out Wikipedia paragraphs it is
-    right 99.5% of the time; on 50 characters 99.1%, on 20 95.5%, on ten 88.3%.
+    right 97.9% of the time; on 50 characters 96.6%, on 20 91.0%, on ten 81.5%.
+    Urdu itself: 98.7%, 98.0%, 93.3% and 84.0%.
     """
     _require_str(text, "identify_language")
     runs = " ".join(_ARABIC_RUNS.findall(unicodedata.normalize("NFC", text)))

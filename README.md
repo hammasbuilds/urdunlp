@@ -53,16 +53,16 @@ Version 0.1 had no accuracy figure for transliteration, and its docs said the da
 measure one "does not exist for Urdu at any useful scale". It does: Google's
 [Dakshina](https://github.com/google-research-datasets/dakshina) dataset had native
 speakers romanise ~10,000 Urdu Wikipedia sentences by hand. Scored against them, 0.1 got
-**43.1%** of words right. 0.2 gets **90.7%**. Every row below is on held-out data:
+**43.1%** of words right. 0.2 gets **91.2%**. Every row below is on held-out data:
 
 | | 0.1 | **0.2** | measured on |
 |---|---:|---:|---|
-| Roman → Urdu, word accuracy | 43.1% | **90.7%** | 52,087 words of hand-romanised test sentences |
+| Roman → Urdu, word accuracy | 43.1% | **91.2%** | 52,087 words of hand-romanised test sentences |
 | Urdu → Roman, spelled as a person spelled it | 28.6% | **54.9%** | 52,087 words of test sentences |
 | Urdu → Roman → Urdu round trip | 42.0% | **94.3%** | 15,098 tokens of held-out sentences |
 | Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
-| Which of 11 Perso-Arabic languages (whole paragraph) | — | **99.5%** | 771 test paragraphs |
-| ... on 20 characters | — | **95.5%** | |
+| Which of 11 Perso-Arabic languages (whole paragraph) | — | **97.9%** | 1,254 test paragraphs |
+| ... on 20 characters | — | **91.0%** | |
 | English words found inside Roman Urdu (recall) | — | **87.3%** | synthetic code-mixed test sentences |
 | Stemming, retrieval recall@10 | — | **+0.008** | 2,583 test queries, sign test p = 0.019 |
 
@@ -237,7 +237,7 @@ From a clone, there is nothing to install at all:
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py
-pytest -q          # 346 tests, no install step needed
+pytest -q          # 358 tests, no install step needed
 ```
 
 ---
@@ -309,7 +309,7 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 pytest
 ```
 
-**346 tests.** Each encodes a real property of the language rather than a convenient
+**358 tests.** Each encodes a real property of the language rather than a convenient
 example, so a failure means the library is wrong about Urdu, not about a fixture. They use
 only what ships in the package; the evaluation data under `data/` is for the measurement
 scripts and is never read by a test.
@@ -330,8 +330,8 @@ Stated plainly, because a toolkit that overclaims wastes its users' time:
   Urdu. By default English words are transliterated the way Urdu writes them
   (`station` → اسٹیشن), which is usually what an Urdu reader wants; `keep_english=True`
   leaves tagged words in Latin script instead. Names are the weak spot either way.
-- **Language identification needs a sentence.** 99.5% on a paragraph, 95.5% on twenty
-  characters, 88.3% on ten — and the errors fall between Urdu, Punjabi and Saraiki,
+- **Language identification needs a sentence.** 97.9% on a paragraph, 91.0% on twenty
+  characters, 81.5% on ten — and the errors fall between Urdu, Punjabi and Saraiki,
   which share most of their letters and much of their vocabulary. `margin` flags some
   of the doubtful cases, not all of them.
 - **Urdu → Roman is lossy and one-way.** س ص ث all give `s` in the Roman output, and
@@ -372,7 +372,7 @@ Wikipedia and [HotpotQA](https://hotpotqa.github.io/), each CC BY-SA 4.0.
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 
-pytest -q               # 346 tests, no install step needed
+pytest -q               # 358 tests, no install step needed
 python demo.py          # see it work
 ```
 
@@ -599,4 +599,20 @@ identification moved from 1-3-grams to pruned 1-5-grams (84.2% → 88.3% on ten
 characters). One attempted fix did nothing - giving the English tagger a spelling for all
 60,638 vocabulary words left its false-alarm rate at 3.6%, because most of those "false
 alarms" are real English - and it was not shipped.
+
+**The test set that looked best was too small to trust.** Language identification had been
+scored on 57-80 held-out paragraphs per language. Growing the Urdu, Punjabi and Saraiki
+samples from 1,500 to 5,000 paragraphs grew their test sets too - and the *unchanged* model
+scored 96.4% on the larger test set, not the 99.5% published from the smaller one. Punjabi
+alone went from 95.8% to 89.3%. The larger training sample then lifted it back: 97.9%
+overall, Punjabi 97.3%. The headline number went down and the model got better; the table
+above now reports the larger test set. Adding a prior for Urdu was tried to win back its
+short-window accuracy and was dropped - every point it gave Urdu it took from Punjabi.
+
+**Two ideas measured and not shipped.** Generating a spelling for Roman words the
+vocabulary does not hold was right 18% of the time on those words, against 7% for the
+rules - but as a candidate in the decoder it cost 0.31 points overall, because an invented
+word that looks plausible beats a real one too often. A stemmer that only strips a suffix
+when what is left is a known word scored the same as the plain one. Both are recorded in
+docs/CORPUS.md so nobody spends the afternoon on them again.
 

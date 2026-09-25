@@ -31,7 +31,7 @@ Two refinements, each measured on Dakshina's dev sentences:
     discounting) in place of the plain frequency prior. That is what separates کہ
     (*that*) from کے (*of*): after کہا (*said*) it is almost always کہ.
 
-Word by word, held-out test accuracy is 88.4%; decoding the sentence, 90.7%.
+Word by word, held-out test accuracy is 88.4%; decoding the sentence, 91.2%.
 
 Everything is plain Python over a bundled table; there is no model download.
 """
@@ -43,6 +43,7 @@ import gzip
 import itertools
 import json
 import math
+import re
 from importlib import resources
 from typing import Any
 
@@ -252,13 +253,24 @@ class Channel:
                 continue
             scored.append((emission + self.prior_weight * self.log_prior[word], emission, word))
         scored.sort(reverse=True)
-        return tuple((w, e) for _, e, w in scored[: self.k])
+        chosen = [(w, e) for _, e, w in scored[: self.k]]
+        # کہ (that) is typed ki, ke, kay and keh as often as کی and کے are, but the
+        # training lexicon barely attests those spellings for it, so the letter
+        # model kept it out of reach and the decoder could not pick it even after
+        # کہا (said). It is offered at the best candidate's emission and the
+        # bigram model decides. Chosen on dev: +0.18 points; widening the table
+        # to na, ya and the other ki/ke readings cost up to 0.47, so it stays narrow.
+        for word in _HOMOGRAPHS.get(roman, ()):
+            best = max((e for _, e in chosen), default=0.0)
+            chosen = [(w, e) for w, e in chosen if w != word] + [(word, best)]
+        return tuple(chosen)
 
     def best(self, roman: str) -> str | None:
         """The most probable vocabulary word for a lowercase Roman token, or None."""
         found = self.candidates(roman)
         return found[0][0] if found else None
 
+    @functools.lru_cache(maxsize=1 << 18)  # noqa: B019 - one Channel per process
     def log_bigram(self, word: str, previous: str) -> float:
         """log P(word | previous word)."""
         p_word = self.unigram.get(word, self.unigram_floor)
@@ -272,6 +284,47 @@ class Channel:
         p = max(count - self.discount, 0) / total + self.discount * types / total * p_word
         return math.log(p)
 
+    def _best_score(self, roman: str, prefix: str = "") -> float:
+        """Best word-by-word log P(roman | w) P(w), over words starting with `prefix`."""
+        scores = [e + self.log_prior[w] for w, e in self.candidates(roman) if w.startswith(prefix)]
+        return max(scores, default=-math.inf)
+
+    def move_articles(self, romans: list[str], lexicon: dict[str, str]) -> list[str]:
+        """Move the Arabic article from the end of one Roman word to the next.
+
+        Roman Urdu writes the article on the word before it - `abdul rehman`,
+        `bainul aqwami`, `darul uloom` - and Urdu on the word after: عبد الرحمن,
+        بین الاقوامی, دار العلوم. Word by word, neither half can be right: there
+        is no Urdu word for `abdul`, and `rehman` is not الرحمن. On Dakshina's dev
+        sentences this pattern was 441 of the 4,581 remaining errors.
+
+        A pair is rewritten (`abdul rehman` -> `abd alrehman`) only when a real
+        ال-word exists for the second half and the rewritten pair scores better,
+        by _ARTICLE_MARGIN, than the pair as written. `kabul`, `rasul` and `phool`
+        end in -ul too; they are left alone because nothing scores better.
+        """
+        out = list(romans)
+        i = 0
+        while i < len(out) - 1:
+            match = _ARTICLE_ENDING.match(out[i])
+            if match and out[i] not in lexicon:
+                as_written = self._best_score(out[i]) + self._best_score(out[i + 1])
+                after = self._best_score("al" + out[i + 1], prefix="ال")
+                chosen = None
+                # abdul -> abd + al..., but abul -> abu + l...: try both bases.
+                for base in (match["base"], match["base"] + "u"):
+                    score = self._best_score(base) + after
+                    if score > as_written + _ARTICLE_MARGIN and (
+                        chosen is None or score > chosen[0]
+                    ):
+                        chosen = (score, base)
+                if chosen:
+                    out[i], out[i + 1] = chosen[1], "al" + out[i + 1]
+                    i += 2
+                    continue
+            i += 1
+        return out
+
     def decode(self, romans: list[str], lexicon: dict[str, str]) -> list[tuple[str, str]]:
         """The most probable Urdu for a run of lowercase Roman words, by Viterbi.
 
@@ -282,6 +335,7 @@ class Channel:
         """
         from .translit import _apply_rules  # deferred: translit imports this module
 
+        romans = self.move_articles(romans, lexicon)
         # One layer per word: last Urdu word on the path -> (score, previous key,
         # choice). Back-pointers, not paths: carrying the whole path in every state
         # copied it at every step, and 50,000 words without a full stop took 36 s.
@@ -359,6 +413,19 @@ class Channel:
                 best, best_score = candidate, score
         return best
 
+
+_HOMOGRAPHS: dict[str, tuple[str, ...]] = {
+    "ki": ("کہ",),
+    "ke": ("کہ",),
+    "kay": ("کہ",),
+    "keh": ("کہ",),
+}
+
+# The article forms: -ul, and the assimilated -ur -us -ud -ut -un -ush -uz before
+# a "sun letter" (abdur rehman, abdus sattar). The margin was chosen on dev
+# sentences: -2 -> +0.50 points, 0 -> +0.53, 2 -> +0.54, 4 -> +0.54, 8 -> +0.45.
+_ARTICLE_ENDING = re.compile(r"^(?P<base>[a-z]{2,}?)(?:ul|al|ur|us|ud|ut|un|ush|uz|uth|udh)$")
+_ARTICLE_MARGIN = 2.0
 
 # Urdu -> Roman generation, chosen on Dakshina's dev lexicon and dev sentences:
 # character-model weight 0 -> 45.8% of dev lexicon words spelled as a person spelled
