@@ -69,6 +69,32 @@ _HEH_AFTER_ASPIRABLE = re.compile(f"([{ASPIRABLE}]){ARABIC_HEH}")
 ARABIC_INDIC_DIGITS = {chr(0x0660 + i): str(i) for i in range(10)}
 URDU_DIGITS = {chr(0x06F0 + i): str(i) for i in range(10)}
 
+# Arabic-Indic digit -> the Urdu one. They are different codepoints for the same
+# digit (٣ U+0663 and ۳ U+06F3 are both 3), and Urdu fonts draw 4, 5, 6 and 7
+# differently from Arabic ones, so unifying the letters and not the digits left
+# "۲۳" and "٢٣" unequal after normalize(). Done with the letters, by default;
+# normalize_digits=True goes further and writes 0-9.
+ARABIC_INDIC_TO_URDU_DIGITS = {chr(0x0660 + i): chr(0x06F0 + i) for i in range(10)}
+
+# Arabic Presentation Forms A and B: one codepoint per letter *shape* (initial,
+# medial, final, isolated) and for ligatures such as ﷲ. Nobody types them; they are
+# what text copied out of a PDF, or produced by an old shaping engine, is made of -
+# ﻛﺘﺎﺏ looks like کتاب and shares no codepoint with it. NFKC maps each to the letter
+# it is a shape of, Urdu-specific letters included (ﮨ -> ہ, ﮐ -> ک, ﯾ -> ی, ﮮ -> ے),
+# and is applied to these two blocks only: over the whole text it would also rewrite
+# Latin ligatures, full-width forms and superscripts that are none of its business.
+# Three ligatures are kept as they are, because each is a whole phrase used as a
+# symbol in Urdu writing, and expanding it would put a sentence where one character
+# was: ﷺ (U+FDFA), ﷻ (U+FDFB) and the basmala ﷽ (U+FDFD).
+_PRESENTATION_FORMS = re.compile("[\ufb50-\ufdf9\ufdfc\ufdfe-\ufdff\ufe70-\ufefc]+")
+
+
+def _expand_presentation_forms(match: re.Match[str]) -> str:
+    # The isolated forms of the harakat (U+FE70-FE7F) decompose to a space and the
+    # mark; the space is not in the text the reader saw, so it is not kept.
+    return "".join(unicodedata.normalize("NFKC", char).lstrip(" ") for char in match.group())
+
+
 # Punctuation that has an Urdu-specific form.
 URDU_PUNCTUATION = {
     "،": ",",  # ARABIC COMMA
@@ -109,7 +135,7 @@ IDENTIFIER = (
 )
 _IDENTIFIER = re.compile(IDENTIFIER)
 
-_ARABIC_TRANSLATION = str.maketrans(ARABIC_TO_URDU)
+_ARABIC_TRANSLATION = str.maketrans({**ARABIC_TO_URDU, **ARABIC_INDIC_TO_URDU_DIGITS})
 _DIGIT_TRANSLATION = str.maketrans({**ARABIC_INDIC_DIGITS, **URDU_DIGITS})
 _PUNCT_TRANSLATION = str.maketrans(URDU_PUNCTUATION)
 
@@ -194,6 +220,16 @@ def normalize(
 
     >>> normalize("كتاب") == "کتاب"
     True
+    >>> normalize("ﻛﺘﺎﺏ") == "کتاب"   # presentation forms, as copied out of a PDF
+    True
+    >>> normalize("٣") == "۳"         # Arabic-Indic digit -> Urdu digit
+    True
+
+    `unify_characters` (on by default) does three things: maps the Arabic letters
+    that stand in for Urdu ones (ي ك ه ...) to the Urdu letters, maps Arabic-Indic
+    digits (٠-٩) to the Urdu digits (۰-۹), and turns the presentation forms a PDF
+    or an old system emits (ﻛﺘﺎﺏ, ﷲ) into ordinary letters. `normalize_digits=True`
+    also writes every Urdu and Arabic digit as 0-9.
     """
     _require_str(text, "normalize")
     if not text:
@@ -205,6 +241,7 @@ def normalize(
     text = text.replace(TATWEEL, "")
 
     if unify_characters:
+        text = _PRESENTATION_FORMS.sub(_expand_presentation_forms, text)
         text = text.translate(_ARABIC_TRANSLATION)
         text = resolve_arabic_heh(text)
     if strip_diacritics:

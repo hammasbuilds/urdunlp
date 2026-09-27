@@ -30,7 +30,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
-from .normalize import _require_str
+from .normalize import _PRESENTATION_FORMS, IDENTIFIER, _expand_presentation_forms, _require_str
 
 LANGUAGES: dict[str, str] = {
     "ur": "Urdu",
@@ -148,7 +148,10 @@ def identify_language(text: str) -> LanguageGuess:
     `short=True`: on one word, expect a neighbouring language about as often as not.
     """
     _require_str(text, "identify_language")
-    runs = " ".join(_ARABIC_RUNS.findall(unicodedata.normalize("NFC", text)))
+    # Presentation forms (text copied out of a PDF) become the letters they are
+    # shapes of: that changes no letter's identity, so no evidence is lost.
+    text = _PRESENTATION_FORMS.sub(_expand_presentation_forms, unicodedata.normalize("NFC", text))
+    runs = " ".join(_ARABIC_RUNS.findall(text))
     if not runs.strip():
         return LanguageGuess(None, None, 0.0, [], short=True)
     model = _script_model()
