@@ -41,7 +41,9 @@ def test_marks_that_belong_to_an_urdu_word_are_still_dropped():
 
 
 def test_arabic_percent_sign_is_converted():
-    assert U.transliterate_to_roman("قیمت ۵۰٪") == "qeemat 50%"
+    # qimat and qeemat were written equally often; the tie now goes to the spelling
+    # the letter model rates higher, not to the alphabetically first
+    assert U.transliterate_to_roman("قیمت ۵۰٪") == "qimat 50%"
 
 
 # --- Roman -> Urdu punctuation ------------------------------------------------------

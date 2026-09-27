@@ -43,7 +43,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from urdunlp import normalize, roman_key, transliterate_to_roman, words  # noqa: E402
+from urdunlp import normalize, roman_key, translit, transliterate_to_roman, words  # noqa: E402
 from urdunlp._channel import channel, roman_keys, urdu_key  # noqa: E402
 from urdunlp.translit import LEXICON, _apply_rules, transliterate_with_confidence  # noqa: E402
 
@@ -102,13 +102,34 @@ class Scorer:
         return self.cache[roman]
 
 
+def _public_path(romans: list[str]) -> list[tuple[str, str]]:
+    """(urdu, source) per word, exactly as transliterate_to_urdu produces it.
+
+    Until round 2 this called the Viterbi decoder directly, which is not quite what
+    a user gets: the public function sends a one-word sentence down the word-by-word
+    path, and since round 2 it also reads stretched letters, keeps clearly English
+    words it cannot resolve, and so on. Scoring the decoder measured a function
+    nobody calls. For a version without `_render` (0.2 before round 2) the old
+    public behaviour is rebuilt: the decoder for two words or more, else the
+    word-by-word path.
+    """
+    render = getattr(translit, "_render", None)
+    if render is not None:
+        out = [(u, s) for _, u, s in render(" ".join(romans)) if s != "space"]
+        assert len(out) == len(romans), romans
+        return out
+    if len(romans) > 1:
+        return channel().decode(romans, LEXICON)
+    result = transliterate_with_confidence(romans[0])
+    return [(result.text, result.sources[0][1])]
+
+
 def score_in_context(sentences: list[list[tuple[str, str]]]) -> dict:
-    """Decode each sentence as a whole - the same Viterbi call transliteration makes."""
-    model = channel()
+    """Transliterate each sentence as a whole, the way transliterate_to_urdu does."""
     right = total = 0
     by_source: dict[str, list[int]] = collections.defaultdict(lambda: [0, 0])
     for sentence in sentences:
-        chosen = model.decode([r for _, r in sentence], LEXICON)
+        chosen = _public_path([r for _, r in sentence])
         for (gold, _), (urdu, source) in zip(sentence, chosen, strict=True):
             ok = normalize(urdu) == gold
             right += ok

@@ -132,7 +132,7 @@ class TestLearnedRoman:
         ("urdu", "roman"),
         [
             ("میں ٹھیک ہوں", "main theek hoon"),  # the rules gave `min thik hon`
-            ("میرا نام علی ہے", "mera naam ali hai"),
+            ("میرا نام علی ہے", "mera nam ali hai"),  # nam and naam: an even split
             ("کتاب", "kitab"),  # the rules gave `katab`
             ("پاکستان", "pakistan"),  # the rules gave `pakasatan`
         ],

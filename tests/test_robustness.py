@@ -182,10 +182,14 @@ def test_transliteration_is_linear_in_the_length_of_a_run():
     words = ["mera", "naam", "ali", "hai", "aur", "main", "lahore", "mein", "rehta", "hoon"]
     short = " ".join(words * 200)  # 2,000 words
     long = " ".join(words * 2000)  # 20,000 words
-    U.transliterate_to_urdu(short)
+    from urdunlp import translit
+
+    U.transliterate_to_urdu(short)  # loads the model and warms the per-word caches
+    translit._decode.cache_clear()  # a sentence seen before is not decoded again
     start = time.perf_counter()
     U.transliterate_to_urdu(short)
     t_short = time.perf_counter() - start
+    translit._decode.cache_clear()
     start = time.perf_counter()
     U.transliterate_to_urdu(long)
     t_long = time.perf_counter() - start

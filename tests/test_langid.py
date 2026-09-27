@@ -90,5 +90,25 @@ class TestRomanTagger:
         assert dict(tag_roman_tokens("is ke baad woh ghar gaya"))["is"] == "ur"
         assert dict(tag_roman_tokens("this is a very good report"))["is"] == "en"
 
-    def test_non_latin_is_skipped(self):
-        assert tag_roman_tokens("یہ 123 !") == []
+    def test_non_latin_tokens_are_kept_with_a_kind(self):
+        """Audit round 2: the words alone came back, and `3` and `,` were dropped, so
+        the tags could not be lined up with the text."""
+        assert tag_roman_tokens("یہ 123 !") == [("یہ", "other"), ("123", "num"), ("!", "punct")]
+        tagged = tag_roman_tokens("wese i think u r right bro, kal meeting hai 3 baje 😂")
+        assert "".join(t for t, _ in tagged) == "weseithinkurrightbro,kalmeetinghai3baje😂"
+        kinds = dict(tagged)
+        assert (kinds[","], kinds["3"], kinds["😂"]) == ("punct", "num", "other")
+        assert dict(tag_roman_tokens("mp3 5th http://x.co @ali"))["5th"] == "code"
+        assert dict(tag_roman_tokens("http://x.co @ali"))["@ali"] == "id"
+
+    def test_stretched_letters_are_read_as_the_word(self):
+        """`nahiii` and `sachiii` stayed in Latin under keep_english: no table knew
+        the stretched spelling, so the character model called it English."""
+        assert dict(tag_roman_tokens("nahiii yaar sachiii"))["nahiii"] == "ur"
+        assert dict(tag_roman_tokens("nahiii yaar sachiii"))["sachiii"] == "ur"
+
+    def test_urdu_function_words_are_never_english(self):
+        """`pe` was carried into English by the words either side of it."""
+        assert dict(tag_roman_tokens("WhatsApp pe msg kr do"))["pe"] == "ur"
+        # ...while words English shares with Roman Urdu can still go either way
+        assert dict(tag_roman_tokens("I want to go home now"))["to"] == "en"

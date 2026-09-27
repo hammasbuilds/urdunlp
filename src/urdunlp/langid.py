@@ -23,6 +23,7 @@ Accuracy, measured on held-out data, is in docs/CORPUS.md.
 from __future__ import annotations
 
 import functools
+import itertools
 import math
 import re
 import unicodedata
@@ -52,7 +53,37 @@ LANGUAGES: dict[str, str] = {
 SHORT_TEXT = 20
 
 _ARABIC_RUNS = re.compile("[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿‌]+")
-_ROMAN_WORD = re.compile(r"[A-Za-z]+")
+
+# A letter typed three or more times in a row (`nahiii`, `bohttt`), and the runs of
+# a repeated letter in a word, for `_Tagger.collapse`.
+_STRETCHED = re.compile(r"([a-z])\1\1")
+_STRETCH_RUN = re.compile(r"([a-z])\1+")
+
+# Words of the curated Roman Urdu lexicon that are also everyday English, and so may
+# be tagged either way. Every other lexicon word - hai, nahi, pe, ko, kya - is Urdu
+# wherever it appears.
+ENGLISH_HOMOGRAPHS = frozenset({
+    "a", "ab", "ana", "beta", "chai", "din", "dr", "h", "hay", "he", "hi", "hum", "karen",
+    "log", "main", "mat", "me", "mr", "mrs", "o", "or", "par", "prof", "sham", "school",
+    "sorry", "tab", "the", "to", "university", "ya",
+    # chat English the lexicon spells in Urdu script
+    "msg", "ok", "okay", "pls", "plz", "thanks", "thx", "wow",
+})  # fmt: skip
+
+# One token of Roman Urdu text, for `tag_roman_tokens`: a URL, email, @mention or
+# #hashtag; a code mixing letters and digits (5th, mp3); a number (2.5, 3:30, 10%);
+# a Latin word; a run of letters in another script; or one other character.
+_ROMAN_TOKEN = re.compile(
+    rf"""
+      (?P<id>{IDENTIFIER})
+    | (?P<code>[A-Za-z0-9]*(?:[A-Za-z][0-9]|[0-9][A-Za-z])[A-Za-z0-9]*)
+    | (?P<num>\d+(?:[.,:/-]\d+)*%?)
+    | (?P<word>[A-Za-z]+(?![^\W\d_]))  # not the start of café
+    | (?P<letters>[^\W\d_]+)
+    | (?P<other>\S)
+    """,
+    re.VERBOSE,
+)
 
 
 def _load(name: str) -> dict[str, Any]:
@@ -223,12 +254,63 @@ class _Tagger:
 
     @functools.lru_cache(maxsize=65536)  # noqa: B019 - one tagger per process
     def emissions(self, word: str) -> tuple[float, float]:
+        if word in self.anchored:
+            # A curated Urdu function word that is not also an English word: never
+            # English, whatever surrounds it. Without this `WhatsApp pe msg kr do`
+            # kept `pe` in Latin, carried along by the English words either side.
+            return self.urdu.log_prob(word) + self.urdu_bias, -math.inf
         return self.urdu.log_prob(word) + self.urdu_bias, self.english.log_prob(word)
+
+    @functools.cached_property
+    def anchored(self) -> frozenset[str]:
+        from .translit import LEXICON  # deferred: translit imports this module lazily
+
+        return frozenset(LEXICON) - ENGLISH_HOMOGRAPHS
+
+    @functools.lru_cache(maxsize=65536)  # noqa: B019 - one tagger per process
+    def collapse(self, word: str) -> str:
+        """`nahiii` -> `nahi`, `bohttt` -> `boht`: letters stretched for emphasis.
+
+        Chat repeats a letter three or more times for emphasis, and no dictionary
+        holds the stretched form, so `nahiii` came out نہی and `bohttt` بہتات
+        (*abundance*). Each run of three or more is shortened to two or to one;
+        the first form the curated lexicon knows wins, then the form either word
+        table has seen most often, then the run shortened to two. A word with no
+        such run is returned unchanged, so this never touches ordinary spelling.
+        """
+        lowered = word.lower()
+        if not _STRETCHED.search(lowered):
+            return lowered
+        from .translit import LEXICON  # deferred: translit imports this module lazily
+
+        # Every run of a repeated letter, with the text between runs: a run of three
+        # or more may become two letters or one, a shorter run stays as typed.
+        texts, options, end = [], [], 0
+        for run in _STRETCH_RUN.finditer(lowered):
+            texts.append(lowered[end : run.start()])
+            letters = run.group()
+            options.append((letters[0] * 2, letters[0]) if len(letters) >= 3 else (letters,))
+            end = run.end()
+        tail = lowered[end:]
+        variants = [
+            "".join(t + r for t, r in zip(texts, choice, strict=True)) + tail
+            for choice in itertools.islice(itertools.product(*options), 64)
+        ]
+        for variant in variants:
+            if variant in LEXICON:
+                return variant
+        seen = max(
+            variants,
+            key=lambda v: max(self.urdu.unigram.get(v, 0.0), self.english.unigram.get(v, 0.0)),
+        )
+        if self.urdu.unigram.get(seen) or self.english.unigram.get(seen):
+            return seen
+        return variants[0]
 
     def tag(self, words: list[str]) -> list[str]:
         if not words:
             return []
-        emissions = [self.emissions(w.lower()) for w in words]
+        emissions = [self.emissions(self.collapse(w)) for w in words]
         score = list(emissions[0])
         back: list[tuple[int, int]] = []
         for urdu, english in emissions[1:]:
@@ -255,15 +337,39 @@ def _tagger() -> _Tagger:
 
 
 def tag_roman_tokens(text: str) -> list[tuple[str, str]]:
-    """Label each Latin-script word in Roman Urdu text as `ur` or `en`.
+    """Label every token of Roman Urdu text: `ur` or `en` for a Latin word, and a
+    kind for everything else, so the result lines up with the text.
 
     >>> tag_roman_tokens("kal meeting cancel ho gayi")
     [('kal', 'ur'), ('meeting', 'en'), ('cancel', 'en'), ('ho', 'ur'), ('gayi', 'ur')]
+    >>> tag_roman_tokens("kal 3 baje, ok?")
+    [('kal', 'ur'), ('3', 'num'), ('baje', 'ur'), (',', 'punct'), ('ok', 'en'), ('?', 'punct')]
 
-    Returns one pair per run of Latin letters, in order; everything else is skipped.
-    Names are the weak spot: a name spelled the English way (`Robert`, `Illinois`) is
-    labelled `en`, and a name spelled the Urdu way (`Muttahida`) sometimes is too.
+    Every character that is not whitespace belongs to exactly one token, in order.
+    Latin words are `ur` or `en`; numbers (`3`, `2.5`, `10%`) are `num`; a URL,
+    email, @mention or #hashtag is `id`; a code mixing letters and digits (`5th`,
+    `mp3`) is `code`; punctuation is `punct`; anything else - emoji, symbols, words
+    in another script - is `other`. Only the Latin words are tagged by the model,
+    and they are tagged as one sequence, so a number or a comma between two words
+    does not break the context. The first version returned the words alone and
+    silently dropped `3` and `,`, so its output could not be matched back to the
+    text it came from.
+
+    Names are the weak spot: a name spelled the English way (`Robert`, `Illinois`)
+    is labelled `en`, and a name spelled the Urdu way (`Muttahida`) sometimes is too.
     """
     _require_str(text, "tag_roman_tokens")
-    words = _ROMAN_WORD.findall(text)
-    return list(zip(words, _tagger().tag(words), strict=True))
+    tokens: list[tuple[str, str]] = []
+    for match in _ROMAN_TOKEN.finditer(text):
+        kind = match.lastgroup or "other"
+        token = match.group()
+        if kind == "letters":
+            kind = "other"
+        elif kind == "other":
+            kind = "punct" if unicodedata.category(token).startswith("P") else "other"
+        tokens.append((token, kind))
+    positions = [i for i, (_, kind) in enumerate(tokens) if kind == "word"]
+    tags = _tagger().tag([tokens[i][0] for i in positions])
+    for i, tag in zip(positions, tags, strict=True):
+        tokens[i] = (tokens[i][0], tag)
+    return tokens

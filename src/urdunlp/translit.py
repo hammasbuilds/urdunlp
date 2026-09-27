@@ -41,6 +41,8 @@ trust it. Hiding that distinction would be the dishonest design.
 
 from __future__ import annotations
 
+import functools
+import math
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -314,6 +316,7 @@ LEXICON: dict[str, str] = {
     "mubarak": "مبارک",
     "maaf": "معاف",
     "sorry": "معذرت",
+    "zindabad": "زندہ باد",
     # place names
     "pakistan": "پاکستان",
     "lahore": "لاہور",
@@ -327,6 +330,27 @@ LEXICON: dict[str, str] = {
     "sindh": "سندھ",
     "urdu": "اردو",
 }
+
+# Chat spellings and chat English, which the Wikipedia statistics behind the decoder
+# know nothing about: in a sentence the decoder overruled the lexicon and `ok thanks`
+# came out اوک تھنگز. These are part of the lexicon and, unlike the rest of it, are
+# never overruled by context. None of them occurs in Dakshina's dev sentences.
+CHAT_LEXICON: dict[str, str] = {
+    "boht": "بہت",
+    "bohot": "بہت",
+    "ok": "اوکے",
+    "okay": "اوکے",
+    "plz": "پلیز",
+    "pls": "پلیز",
+    "thanks": "تھینکس",
+    "thx": "تھینکس",
+    "msg": "میسج",
+    "wow": "واؤ",
+    "haha": "ہاہا",
+    "hahaha": "ہاہاہا",
+}
+LEXICON.update(CHAT_LEXICON)
+_FIXED = frozenset(CHAT_LEXICON)
 
 # --- Stage 2: rules ---------------------------------------------------------------
 # Ordered longest-first, so digraphs win over the single letters inside them: `kh`
@@ -467,6 +491,10 @@ _TOKEN = re.compile(
     rf"""
       (?P<space>\s+)
     | (?P<identifier>{IDENTIFIER})           # URL, email, @mention, #hashtag
+    | (?P<greeting>(?i:(?:as+ala+m(?:[ou]|-[ou]-|\s+[ou]\s+|\s+)|wa?\s*)a?la[iy]+ku[mn]
+                     (?:\s+(?:as+ala+m|salaam|salam))?)(?![^\W\d_]))  # assalam o alaikum
+    | (?P<izafat>[A-Za-z]+(?:-[eEoO]-[A-Za-z]+)+(?![^\W\d_]))  # wazir-e-azam, zabt-o-nazm
+    | (?P<marks>(?:[?!]+\?|\?[?!]+)[?!]*)   # ?? ?! !?! - two or more, one a question
     | (?P<dotted>(?:[A-Z]\.)+[A-Z]\b\.?)    # U.S.A, U.N. - an acronym, spelled
     | (?P<mixed>[A-Za-z0-9]*(?:[A-Za-z][0-9]|[0-9][A-Za-z])[A-Za-z0-9]*)  # 5th, mp3, A1
     | (?P<number>\d+(?:[.,:/-]\d+)*%?)      # 2.5  12,34,567  3:30  25-12-2024  10%
@@ -494,7 +522,7 @@ _TITLES = frozenset({"dr", "prof", "mr", "mrs"})
 
 def _ends_context(token: str, kind: str) -> bool:
     """Whether a non-word token ends the sentence a Roman word is decoded in."""
-    if kind in ("abbreviation-dot", "title"):
+    if kind in ("abbreviation-dot", "title", "izafat"):
         return False
     if kind == "space":
         return "\n" in token
@@ -559,10 +587,38 @@ def _is_urdu_punctuation_slot(text: str, match: re.Match[str], plan: list[tuple[
     closing quote or bracket, or the end of the text follows it.
     """
     token = match.group()
-    if token not in _ASCII_TO_URDU_PUNCT or not plan or plan[-1][1] not in _WORD_KINDS:
+    if match.lastgroup != "marks" and token not in _ASCII_TO_URDU_PUNCT:
+        return False
+    if not plan or plan[-1][1] not in _WORD_KINDS:
         return False
     after = text[match.end() : match.end() + 1]
-    return after == "" or after.isspace() or after in "\"')]}"
+    return (
+        after == ""
+        or after.isspace()
+        or after in "\"')]}!"
+        # an emoji straight after the mark: `hai?😂`
+        or unicodedata.category(after) in ("So", "Sk")
+    )
+
+
+# Chat abbreviations and units with no Urdu spelling of their own. Transliterated,
+# `lol` came out لال (*red*) and `Rs` راس; they are kept as typed, in any case.
+KEEP_LATIN = frozenset({
+    "aka", "asap", "bff", "brb", "btw", "diy", "dm", "etc", "fyi", "gb", "gtg", "idk",
+    "imho", "imo", "irl", "jk", "kb", "kg", "km", "lmao", "lmfao", "lol", "mb", "mg", "ml",
+    "mm", "omg", "pkr", "rofl", "rs", "smh", "tbh", "ttyl", "usd", "vs", "wtf",
+})  # fmt: skip
+
+# A capital after a lowercase letter inside a word marks a brand or a name written
+# the way its owner writes it: iPhone, WhatsApp, YouTube, McDonald, iOS. There is no
+# Roman Urdu spelling to read it from - `iPhone` became افیون (*opium*) and
+# `WhatsApp` وہاتساپپ - so it is kept in Latin script.
+_INTERNAL_CAPITAL = re.compile(r"[a-z][A-Z]")
+
+
+def _kept_in_latin(token: str) -> bool:
+    """Whether a Latin word is kept as typed whatever the settings: see KEEP_LATIN."""
+    return token.lower() in KEEP_LATIN or _INTERNAL_CAPITAL.search(token) is not None
 
 
 @dataclass
@@ -664,11 +720,45 @@ def transliterate_with_confidence(
     end of the text is converted, so `2.5`, `3:30`, `...` and `:)` are untouched.
     Reported as `punctuation`. `False` leaves every mark as typed.
     """
+    _require_str(text, "transliterate_with_confidence")
+    rendered = _render(
+        text,
+        use_vocabulary=use_vocabulary,
+        use_context=use_context,
+        keep_english=keep_english,
+        urdu_punctuation=urdu_punctuation,
+    )
+    # The input's own whitespace is in the output pieces, so joining with nothing
+    # reproduces its spacing and line breaks exactly around the converted words.
+    return Transliteration(
+        text="".join(out for _, out, _ in rendered),
+        sources=[(token, source) for token, _, source in rendered if source != "space"],
+    )
+
+
+def _classify_word(token: str, shouting: bool) -> str:
+    if _kept_in_latin(token):
+        return "latin"
+    return "acronym" if _is_acronym(token, shouting) else "roman"
+
+
+def _render(
+    text: str,
+    *,
+    use_vocabulary: bool = True,
+    use_context: bool = True,
+    keep_english: bool = False,
+    urdu_punctuation: bool = True,
+) -> list[tuple[str, str, str]]:
+    """(token, output, source) for every token of the text, whitespace included.
+
+    `transliterate_with_confidence` joins the outputs; scripts/measure_translit.py
+    scores them word by word, so the accuracy figures are of this exact code path.
+    """
     # First decide what every token is, then transliterate. Two passes, because
     # `keep_english` has to tag the Roman words *as this function sees them*: tagging
     # the raw text instead counted the letters inside a URL as words, so one URL
     # shifted every later English tag onto the wrong word.
-    _require_str(text, "transliterate_with_confidence")
     plan: list[tuple[str, str]] = []
     shouting = _is_shouting(text)
     for match in _TOKEN.finditer(text):
@@ -677,8 +767,18 @@ def transliterate_with_confidence(
             plan.append((token, "space"))
         elif group == "identifier":
             plan.append((token, "identifier"))
+        elif group == "greeting":
+            plan.append((token, "greeting"))
         elif group == "word":
-            plan.append((token, "acronym" if _is_acronym(token, shouting) else "roman"))
+            plan.append((token, _classify_word(token, shouting)))
+        elif group == "izafat":
+            # wazir-e-azam, zabt-o-nazm: the words are read as words, and the
+            # connector is written the Urdu way below.
+            for part in _IZAFAT_SPLIT.split(token):
+                if _IZAFAT_SPLIT.fullmatch(part):
+                    plan.append((part, "izafat"))
+                else:
+                    plan.append((part, _classify_word(part, shouting)))
         elif group == "dotted":
             plan.append((token, "acronym"))
         elif group == "letters" and _IS_URDU_SCRIPT.search(token):
@@ -713,13 +813,26 @@ def transliterate_with_confidence(
             # function does not convert (é, Devanagari): emitted unchanged.
             plan.append((token, "passthrough"))
 
+    # The spelling each Roman word is looked up by: lower case, and with letters
+    # stretched for emphasis shortened - `nahiii` is looked up as `nahi`.
+    lookup: dict[int, str] = {}
+    for position, (token, kind) in enumerate(plan):
+        if kind == "roman":
+            lookup[position] = _lookup_form(token)
+
     english: set[int] = set()
     if keep_english:
         from .langid import _tagger
 
-        roman_positions = [i for i, (_, kind) in enumerate(plan) if kind == "roman"]
-        tags = _tagger().tag([plan[i][0] for i in roman_positions])
-        english = {i for i, tag in zip(roman_positions, tags, strict=True) if tag == "en"}
+        # The pronoun I is a capital on its own, spelled آئی like any initial; in
+        # English it is a word like the others and is tagged with them.
+        tagged = [
+            i
+            for i, (token, kind) in enumerate(plan)
+            if kind == "roman" or (kind == "acronym" and token == "I")
+        ]
+        tags = _tagger().tag([plan[i][0] for i in tagged])
+        english = {i for i, tag in zip(tagged, tags, strict=True) if tag == "en"}
 
     # With context, each run of Roman words is decoded as a sequence, so a word can
     # be chosen for the word before it: کہ after کہا, کے before بعد. A run ends at
@@ -738,8 +851,8 @@ def transliterate_with_confidence(
             if len(run) == 1:
                 run.clear()
             if run:
-                romans = [plan[i][0].lower() for i in run]
-                for i, choice in zip(run, _channel.channel().decode(romans, LEXICON), strict=True):
+                romans = tuple(lookup[i] for i in run)
+                for i, choice in zip(run, _decode(romans), strict=True):
                     decided[i] = choice
                 run.clear()
 
@@ -752,56 +865,153 @@ def transliterate_with_confidence(
                 flush()
         flush()
 
-    pieces: list[str] = []
-    sources: list[tuple[str, str]] = []
+    rendered: list[tuple[str, str, str]] = []
     for position, (token, kind) in enumerate(plan):
         if kind == "space":
-            pieces.append(token)
-            continue
-        if kind == "abbreviation-dot":
-            sources.append((token, "passthrough"))
-            continue
-        if kind == "title":
-            pieces.append(LEXICON[token.lower()])
-            sources.append((token, "lexicon"))
-            continue
-        if kind == "punctuation":
-            pieces.append(_ASCII_TO_URDU_PUNCT[token])
-            sources.append((token, "punctuation"))
-            continue
-        if kind == "acronym":
-            pieces.append(" ".join(LETTER_NAMES[c] for c in token if c in LETTER_NAMES))
-            sources.append((token, "acronym"))
-            continue
-        if kind != "roman":
-            pieces.append(token)
-            sources.append((token, kind))
-            continue
-        if position in english:
-            pieces.append(token)
-            sources.append((token, "english"))
-            continue
-        if position in decided:
-            urdu, source = decided[position]
-            pieces.append(urdu)
-            sources.append((token, source))
-            continue
-        lowered = token.lower()
-        if lowered in LEXICON:
-            pieces.append(LEXICON[lowered])
-            sources.append((token, "lexicon"))
-            continue
-        found = _channel.resolve(lowered) if use_vocabulary else None
-        if found:
-            pieces.append(found)
-            sources.append((token, "vocabulary"))
+            rendered.append((token, token, "space"))
+        elif kind == "abbreviation-dot":
+            rendered.append((token, "", "passthrough"))
+        elif kind == "title":
+            rendered.append((token, LEXICON[token.lower()], "lexicon"))
+        elif kind == "punctuation":
+            # Not after a word left in English: `Hello, how are you` keeps its comma.
+            if position - 1 in english or (position and plan[position - 1][1] == "latin"):
+                rendered.append((token, token, "passthrough"))
+            else:
+                urdu = "".join(_ASCII_TO_URDU_PUNCT.get(c, c) for c in token)
+                rendered.append((token, urdu, "punctuation"))
+        elif kind == "acronym":
+            if position in english:
+                rendered.append((token, token, "english"))
+            else:
+                names = " ".join(LETTER_NAMES[c] for c in token if c in LETTER_NAMES)
+                rendered.append((token, names, "acronym"))
+        elif kind == "latin":
+            rendered.append((token, token, "english"))
+        elif kind == "greeting":
+            # Word by word, `assalam o alaikum` gave السلام و علیکم: the `o` is a
+            # linking vowel, not the conjunction و.
+            lowered = token.lower()
+            if not lowered.startswith("w"):
+                urdu = "السلام علیکم"
+            else:
+                urdu = "وعلیکم السلام" if "sala" in lowered else "وعلیکم"
+            rendered.append((token, urdu, "lexicon"))
+        elif kind == "izafat":
+            rendered.append((token, token, "izafat"))  # written below, once both sides are known
+        elif kind != "roman":
+            rendered.append((token, token, kind))
+        elif position in english:
+            rendered.append((token, token, "english"))
         else:
-            pieces.append(_apply_rules(token))
-            sources.append((token, "rules"))
+            if position in decided:
+                urdu, source = decided[position]
+            else:
+                urdu, source = _resolve_word(lookup[position], use_vocabulary)
+            if source == "rules" and _is_english_word(lookup[position]):
+                # Neither the lexicon nor the vocabulary knows it, and it is an
+                # English word: the letter rules would only garble it - `recharge`
+                # came out رےچارگے. It is kept as typed.
+                rendered.append((token, token, "english"))
+            else:
+                if not urdu:  # the rules, over the spelling it was looked up by
+                    urdu = _apply_rules(lookup[position])
+                rendered.append((token, urdu, source))
+    _write_izafat(rendered, use_vocabulary)
+    return rendered
 
-    # The input's own whitespace is in `pieces`, so joining with nothing reproduces
-    # its spacing and line breaks exactly around the converted words.
-    return Transliteration(text="".join(pieces), sources=sources)
+
+_IZAFAT_SPLIT = re.compile(r"(-[eEoO]-)")
+
+
+def _write_izafat(rendered: list[tuple[str, str, str]], use_vocabulary: bool) -> None:
+    """Write each izafat connector the Urdu way, in place.
+
+    `-o-` is the conjunction: zabt-o-nazm is ضبط و نظم. `-e-` joins a noun to what
+    describes it, and Urdu writes it with no letter at all after a consonant
+    (tehreek-e-insaf, تحریک انصاف), as ۂ after a final ہ (sheesha-e-dil, شیشۂ دل)
+    and as ئے after ا or و (dunya-e-islam, دنیائے اسلام). A pair the vocabulary
+    holds as one word - وزیراعظم against وزیر اعظم - is written joined only when the
+    joined word is the likelier of the two.
+    """
+    converted = {"lexicon", "vocabulary", "rules"}
+    for i, (token, _, source) in enumerate(rendered):
+        if source != "izafat":
+            continue
+        before = rendered[i - 1] if i else None
+        after = rendered[i + 1] if i + 1 < len(rendered) else None
+        if not (before and after and before[2] in converted and after[2] in converted):
+            continue  # a side left in Latin: the connector stays as typed
+        x, y = before[1], after[1]
+        if token.lower() == "-o-":
+            rendered[i] = (token, " و ", "izafat")
+            continue
+        if use_vocabulary and " " not in x and " " not in y:
+            model = _channel.channel()
+            joined = model.log_prior.get(x + y)
+            apart = model.log_prior.get(x, -math.inf) + model.log_bigram(y, x)
+            if joined is not None and joined > apart:
+                rendered[i - 1] = (before[0], x + y, before[2])
+                rendered[i] = (token, "", "izafat")
+                rendered[i + 1] = (after[0], "", after[2])
+                continue
+        if x.endswith("ہ"):
+            rendered[i - 1] = (before[0], x[:-1] + "ۂ", before[2])
+        elif x.endswith(("ا", "و")):
+            rendered[i - 1] = (before[0], x + "ئے", before[2])
+        rendered[i] = (token, " ", "izafat")
+
+
+def _lookup_form(token: str) -> str:
+    lowered = token.lower()
+    if _STRETCHED.search(lowered):
+        from .langid import _tagger
+
+        return _tagger().collapse(lowered)
+    return lowered
+
+
+_STRETCHED = re.compile(r"([a-z])\1\1")
+
+
+@functools.lru_cache(maxsize=1 << 16)
+def _resolve_word(lowered: str, use_vocabulary: bool) -> tuple[str, str]:
+    """One Roman word on its own: the lexicon, then the vocabulary, then the rules.
+
+    Cached: running text repeats its words, and each vocabulary lookup scores
+    hundreds of candidates. `rules` comes back with an empty string - the caller
+    applies the rules to the word as typed.
+    """
+    if lowered in LEXICON:
+        return LEXICON[lowered], "lexicon"
+    found = _channel.resolve(lowered) if use_vocabulary else None
+    if found:
+        return found, "vocabulary"
+    return "", "rules"
+
+
+@functools.lru_cache(maxsize=1 << 14)
+def _decode(romans: tuple[str, ...]) -> tuple[tuple[str, str], ...]:
+    """A run of Roman words decoded as a sentence. Cached: chat repeats itself."""
+    return tuple(_channel.channel().decode(list(romans), LEXICON, _FIXED))
+
+
+def _is_english_word(lowered: str) -> bool:
+    """Whether an unknown Roman word is clearly English, and so better kept as typed.
+
+    Asked only of words the lexicon and the vocabulary could not resolve. Clearly
+    means: the Roman tagger's English model rates it at least e^2 times likelier
+    than its Roman Urdu model, and the English character model finds it an ordinary
+    English spelling (above -2.5 nats a letter). `recharge` and `screenshot` pass;
+    names spelled the Urdu way (`shahzaib`, `muttahida`) and keyboard noise (`xqzvt`)
+    do not, and still go to the rules.
+    """
+    from .langid import _tagger
+
+    tagger = _tagger()
+    urdu, english = tagger.emissions(lowered)
+    per_letter = tagger.english.char_log_prob(lowered) / (len(lowered) + 1)
+    return english > urdu + 2.0 and per_letter > -2.5
 
 
 def transliterate_to_urdu(
@@ -871,9 +1081,11 @@ def transliterate_to_roman(
 
     model = _channel.channel()
     out: list[str] = []
-    for match in _URDU_OR_OTHER.finditer(text):
+    for match in _PHRASE_OR_URDU_OR_OTHER.finditer(text):
         token = match.group()
-        if _IS_URDU_SCRIPT.search(token) and token.isalpha():
+        if match.lastgroup == "phrase":
+            out.append(_ROMAN_PHRASES[" ".join(token.split())])
+        elif _IS_URDU_SCRIPT.search(token) and token.isalpha():
             spelled = _CURATED_ROMAN.get(token) or model.romanize(token)
             out.append(spelled or _rules_to_roman(token, True))
         else:
@@ -887,11 +1099,72 @@ _URDU_OR_OTHER = re.compile(r"[^\W\d_]+|.", re.DOTALL)
 
 # Urdu word -> the Roman spelling the curated lexicon lists first for it: میں is
 # `main`, not the rules' `min`. Only single words, and only real spellings.
+# Chat abbreviations are left out: میسج is `message`, not `msg`.
 _CURATED_ROMAN: dict[str, str] = {}
 for _roman, _urdu in LEXICON.items():
     _key = normalize(_urdu)
-    if _roman.isalpha() and " " not in _key and _key not in _CURATED_ROMAN:
+    if (
+        _roman.isalpha()
+        and _roman not in CHAT_LEXICON
+        and " " not in _key
+        and _key not in _CURATED_ROMAN
+    ):
         _CURATED_ROMAN[_key] = _roman
+
+# Fixed expressions and compounds, spelled the way Pakistani news and chat spell
+# them. Word by word they came out as nobody writes them: زندہ باد as `jinda baad`,
+# and وزیراعظم (prime minister) as `wazir` - minister - because Dakshina's
+# annotators wrote that part-spelling more often than any whole one. The izafat
+# compounds are written with `-e-`, which transliterate_to_urdu reads back.
+_ROMAN_PHRASES: dict[str, str] = {
+    normalize(urdu): roman
+    for urdu, roman in {
+        "وزیراعظم": "wazir-e-azam",
+        "وزیر اعظم": "wazir-e-azam",
+        "وزیراعلیٰ": "wazir-e-aala",
+        "وزیر اعلیٰ": "wazir-e-aala",
+        "قائداعظم": "quaid-e-azam",
+        "قائد اعظم": "quaid-e-azam",
+        "وزیر خارجہ": "wazir-e-kharja",
+        "وزیر داخلہ": "wazir-e-dakhla",
+        "وزیر خزانہ": "wazir-e-khazana",
+        "وزیر اطلاعات": "wazir-e-ittelaat",
+        "تحریک انصاف": "tehreek-e-insaf",
+        "جماعت اسلامی": "jamaat-e-islami",
+        "نشان حیدر": "nishan-e-haider",
+        "اقوام متحدہ": "aqwam-e-muttahida",
+        "بین الاقوامی": "bainul aqwami",
+        "بینالاقوامی": "bainul aqwami",
+        "زندہ باد": "zindabad",
+        "ان شاء اللہ": "inshallah",
+        "انشاءاللہ": "inshallah",
+        "ماشاء اللہ": "mashallah",
+        "ماشاءاللہ": "mashallah",
+        "السلام علیکم": "assalam-o-alaikum",
+        "وعلیکم السلام": "walaikum assalam",
+        "خدا حافظ": "khuda hafiz",
+        "اللہ حافظ": "allah hafiz",
+        "جزاک اللہ": "jazakallah",
+        "سبحان اللہ": "subhanallah",
+        "الحمد للہ": "alhamdulillah",
+        "الحمدللہ": "alhamdulillah",
+        "صلی اللہ علیہ وسلم": "sallallahu alaihi wasallam",
+        # English loanwords the letter model spells as Urdu (`paliz`, `misaj`)
+        "اوکے": "okay",
+        "پلیز": "please",
+        "میسج": "message",
+        "تھینکس": "thanks",
+    }.items()
+}
+_PHRASE_OR_URDU_OR_OTHER = re.compile(
+    "(?P<phrase>"
+    + "|".join(
+        re.escape(phrase).replace(r"\ ", r"[ \t]+")
+        for phrase in sorted(_ROMAN_PHRASES, key=len, reverse=True)
+    )
+    + r")(?![^\W\d_])|[^\W\d_]+|.",
+    re.DOTALL,
+)
 
 
 def _rules_to_roman(text: str, insert_short_vowels: bool, previous: str = "") -> str:

@@ -151,6 +151,46 @@ def roman_keys(word: str) -> frozenset[str]:
     return frozenset(keys)
 
 
+def covers(urdu: str, roman: str) -> bool:
+    """Whether a Roman spelling writes every consonant class of an Urdu word, in order.
+
+    The guard on Urdu -> Roman. Dakshina's annotators sometimes romanised a word
+    only in part - وزیراعظم (prime minister) was written `wazir` twice, more often
+    than any full spelling - and taking the commonest spelling then silently turned
+    the prime minister into a minister. A spelling that drops a consonant class of
+    the word (here the ظ and م of اعظم) is not a spelling of that word.
+
+    Extra consonants in the Roman are allowed - ۃ is written `t` and has no class -
+    so this asks only whether the word's key is a subsequence of what the spelling
+    can stand for. Unlike `roman_keys` it is not capped, so a long word with many
+    ambiguous letters is still judged on all of its readings.
+    """
+    target = urdu_key(urdu)
+    w = roman.lower()
+    states = {0}  # how many classes of the Urdu key are matched so far
+    i = 0
+    while i < len(w):
+        if w.startswith("tion", i) or w.startswith("sion", i):
+            alts: tuple[str, ...] = ("S", "T")  # `ti` of -tion: شن, or just a t
+            i += 2
+        elif w.startswith("ch", i):
+            alts = ("C",) if w.startswith("chh", i) else ("C", "K")
+            i += 2
+        else:
+            alts = _ROMAN_CLASSES.get(w[i], ())
+            i += 1
+        grown = set(states)
+        for position in states:
+            for part in alts:
+                p = position
+                for cls in part:
+                    if p < len(target) and target[p] == cls:
+                        p += 1
+                grown.add(p)
+        states = grown
+    return len(target) in states
+
+
 def _context(word: str, i: int) -> tuple[str, str, str]:
     n = len(word)
     position = "I" if i == 0 else ("F" if i == n - 1 else "M")
@@ -379,13 +419,16 @@ class Channel:
             i += 1
         return out
 
-    def decode(self, romans: list[str], lexicon: dict[str, str]) -> list[tuple[str, str]]:
+    def decode(
+        self, romans: list[str], lexicon: dict[str, str], fixed: frozenset[str] = frozenset()
+    ) -> list[tuple[str, str]]:
         """The most probable Urdu for a run of lowercase Roman words, by Viterbi.
 
         Each word offers its curated-lexicon entry, if it has one, and its top
         candidates; the path maximises the sum of log P(roman | word) and a weighted
         log P(word | previous word). Returns (urdu, source) per Roman word; source is
         `lexicon`, `vocabulary`, or `rules` when there was nothing to choose from.
+        A word in `fixed` offers its lexicon entry alone, so context cannot overrule it.
         """
         from .translit import _apply_rules  # deferred: translit imports this module
 
@@ -401,7 +444,7 @@ class Channel:
                 entry = normalize(lexicon[roman])
                 best_emission = max((e for _, e, _ in options), default=0.0)
                 options = [(entry, best_emission + self.lexicon_bonus, "lexicon")] + [
-                    option for option in options if option[0] != entry
+                    option for option in options if option[0] != entry and roman not in fixed
                 ]
             if not options:
                 options = [(normalize(_apply_rules(roman)), 0.0, "rules")]
@@ -443,7 +486,30 @@ class Channel:
         """
         seen = self.attested.get(urdu)
         if seen:
-            return max(seen.items(), key=lambda kv: kv[1])[0]
+            # Commonest first; a tie goes to the spelling the generator below would
+            # rate higher - زندہ was `jinda` twice and `zinda` twice, and
+            # alphabetical order chose jinda. On dev sentences, against alphabetical
+            # order: exact spelling 54.97% -> 55.02%, any annotator's 77.14% -> 77.56%.
+            # A spelling that leaves out part of the word (`wazir` for وزیراعظم) is
+            # skipped, however common: see `covers`.
+            ranked = sorted(seen.items(), key=lambda kv: (-kv[1], -self._tie(urdu, kv[0]), kv[0]))
+            for spelling, _ in ranked:
+                if covers(urdu, spelling):
+                    return spelling
+        generated = self._generate(urdu)
+        # A generated spelling can drop a consonant too; the caller then falls back
+        # to the letter rules, which never do.
+        return generated if covers(urdu, generated) else ""
+
+    def _tie(self, urdu: str, roman: str) -> float:
+        """How the generator would rate a spelling: letter model plus Roman Urdu LM."""
+        from .langid import _tagger  # deferred: the Roman Urdu character model
+
+        lm = _tagger().urdu.char_log_prob(roman)
+        return self.log_emission(urdu, roman) + _ROMAN_LM_WEIGHT * lm
+
+    def _generate(self, urdu: str) -> str:
+        """A Roman spelling built from the letter emissions, for an unattested word."""
         partial: list[tuple[str, float]] = [("", 0.0)]
         for i in range(len(urdu)):
             options = sorted(self.table(_context(urdu, i)).items(), key=lambda kv: -kv[1])
