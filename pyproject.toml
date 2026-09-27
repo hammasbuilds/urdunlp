@@ -34,6 +34,9 @@ classifiers = [
 # dependency here becomes a dependency of every Urdu project that uses it.
 dependencies = []
 
+[project.scripts]
+urdunlp = "urdunlp.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/hammasbuilds/urdunlp"
 Issues = "https://github.com/hammasbuilds/urdunlp/issues"
