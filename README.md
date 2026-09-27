@@ -24,17 +24,11 @@
 
 ## Why this exists
 
-```mermaid
-flowchart LR
-    I["raw Urdu or<br/>Roman Urdu text"] --> L["identify_language<br/>which of 11 languages"]
-    L --> N["normalise<br/>Unicode, diacritics, digits"]
-    I --> R["tag_roman_tokens<br/>Urdu or English, per word"]
-    R --> T["transliterate<br/>lexicon, vocabulary, rules"]
-    N --> W["words, stems,<br/>numbers"]
-    T --> O["clean, consistent text"]
-    W --> O
-
-    style O fill:#16a34a,color:#fff
+```text
+Urdu script  -> identify_language -> normalize        -> words, stems, numbers -+
+                (which of 11)        (letters, marks)                           +-> clean,
+Roman Urdu   -> tag_roman_tokens  -> transliterate    -> Urdu script ----------+   consistent
+                (Urdu or English)    (lexicon, vocabulary, rules)                   text
 ```
 
 **Zero dependencies and no model downloads.** Urdu tooling usually assumes a GPU and a
@@ -58,8 +52,8 @@ speakers romanise ~10,000 Urdu Wikipedia sentences by hand. Scored against them,
 | | 0.1 | **0.2** | measured on |
 |---|---:|---:|---|
 | Roman → Urdu, word accuracy | 43.1% | **91.2%** | 52,087 words of hand-romanised test sentences |
-| Urdu → Roman, spelled as a person spelled it | 28.6% | **54.9%** | 52,087 words of test sentences |
-| Urdu → Roman → Urdu round trip | 42.0% | **94.3%** | 15,098 tokens of held-out sentences |
+| Urdu → Roman, spelled as a person spelled it | 28.6% | **54.7%** | 52,087 words of test sentences |
+| Urdu → Roman → Urdu round trip | 42.0% | **93.9%** | 15,088 tokens of held-out sentences |
 | Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
 | Which of 11 Perso-Arabic languages (whole paragraph) | — | **97.9%** | 1,254 test paragraphs |
 | ... on 20 characters | — | **91.0%** | |
@@ -70,7 +64,7 @@ The numbers that did not come out well are in that table too, on purpose. The st
 helps a little. `identify_language` is reliable on a sentence and guesses between
 neighbours on a word. `is_urdu` - a script check - turned out to say yes to **99.9% of
 Persian and 99.5% of Arabic**, which is why `identify_language` exists.
-&#128202; **[Method, splits and every number &rarr;](https://github.com/hammasbuilds/urdunlp/blob/main/docs/CORPUS.md#7-transliteration-scored-against-people-431--907)**
+&#128202; **[Method, splits and every number &rarr;](https://github.com/hammasbuilds/urdunlp/blob/main/docs/CORPUS.md#7-transliteration-scored-against-people-431--912)**
 
 ### The problem nobody handles: the same word has several encodings
 
@@ -96,6 +90,8 @@ vocabularies fragment, and every downstream model quietly learns three versions 
 same word.
 
 ```python
+from urdunlp import normalize
+
 normalize("كتاب") == normalize("کتاب")   # True. Without it: False.
 ```
 
@@ -120,6 +116,8 @@ This library does not pretend that is solved. It works in three stages and **tel
 which one answered**:
 
 ```python
+from urdunlp import transliterate_with_confidence
+
 r = transliterate_with_confidence("mera naam Ali hai")
 r.text               # 'میرا نام علی ہے'
 r.lexicon_coverage   # 0.5  — half from the curated lexicon
@@ -129,14 +127,14 @@ r.sources            # [('mera','lexicon'), ('naam','vocabulary'),
 
 1. **Lexicon.** A curated map of the closed-class vocabulary — pronouns, postpositions,
    auxiliaries — which is where most tokens in real text are, and which is the most
-   irregular. 96.6% right on held-out sentences.
+   irregular. 97.0% right on held-out sentences.
 2. **Vocabulary** (new in 0.2). A noisy-channel search over 60,638 real Urdu words for the
    one most likely to have been typed as this Roman string. This is where `Ali` finds
    `علی`: ع cannot be written in Roman, but علی is a word and the rule-built `الی` is not.
    It is also where `baad` finds بعد, `taur` finds طور and `haasil` finds حاصل. The
    sentence is chosen as a whole, with a word-bigram model, so the lexicon's answer can be
    overruled by context: `us ne kaha ke` gives کہا **کہ**, not کہا کے.
-3. **Rules.** Longest-match grapheme substitution for what is left — 0.4% of words in
+3. **Rules.** Longest-match grapheme substitution for what is left — 0.3% of words in
    held-out text, mostly names. `rule_share` tells you how much of your input landed here.
 
 In 0.1 there were only stages 1 and 3, and this example returned `الی` — correctly
@@ -164,9 +162,9 @@ everything else a spelling generated from the same letter model that reads Roman
 | test split | 0.1 rules | **0.2 learned** |
 |---|---:|---:|
 | words spelled as some annotator spelled them (lexicon) | 33.4% | **54.1%** |
-| sentence words spelled exactly as that annotator did | 28.6% | **54.9%** |
+| sentence words spelled exactly as that annotator did | 28.6% | **54.7%** |
 | sentence words spelled as any annotator spelled that word | 41.4% | **77.9%** |
-| Urdu → Roman → Urdu round trip | 90.8%* | **94.3%** |
+| Urdu → Roman → Urdu round trip | 90.9%* | **93.9%** |
 
 *\*with the 0.2 Roman → Urdu stage. With 0.1's rules both ways, the round trip was
 44.7% on BBC news and 42.0% on these sentences.*
@@ -180,13 +178,14 @@ literal mapping, `insert_short_vowels=False`). The learned spellings are both at
 | Module | |
 |---|---|
 | `normalize` | Arabic↔Urdu unification, diacritics, tatweel, zero-width, digits, punctuation. `is_urdu()` script detection. |
-| `tokenize` | Sentence splitting on `۔` and `؟`, word tokenisation, merged-compound repair, character n-grams. |
-| `translit` | Roman Urdu ↔ Urdu script: curated lexicon, then a noisy-channel search over 60,638 words decoded a sentence at a time, then rules — with per-token provenance. `keep_english=True` leaves English in Latin script. |
+| `tokenize` | Sentence splitting on `۔` and `؟`, word tokenisation (URLs, emails, `@mentions` and `2.5`-style numbers stay whole), merged-compound repair, character n-grams. |
+| `translit` | Roman Urdu ↔ Urdu script: curated lexicon, then a noisy-channel search over 60,638 words decoded a sentence at a time, then rules — with per-token provenance. `keep_english=True` leaves English in Latin script. Urdu → Roman keeps emoji and symbols; Roman → Urdu writes `?` `,` `.` as ؟ ، ۔. |
 | `roman` | `roman_key` / `group_roman_variants`: spelling variants grouped by the Urdu word they spell. |
-| `langid` | `identify_language` over eleven Perso-Arabic-script languages, with letter evidence; `tag_roman_tokens` labels each Roman word `ur` or `en`. |
+| `langid` | `identify_language` over eleven Perso-Arabic-script languages, with letter evidence and a `short` flag for text too short to trust; `tag_roman_tokens` labels each Roman word `ur` or `en`. |
 | `numbers` | Urdu and Roman Urdu number words ↔ values, including ڈیڑھ ڈھائی سوا ساڑھے پونے and lakh/crore; ordinals (تیسرا، پانچویں، یکم); `find_numbers` in running text; `12,34,567` grouping. |
 | `stem` | Rule-based suffix stripping for retrieval keys. |
 | `stopwords` | 115 function words — **with negation held separately**. |
+| `cli` | The `urdunlp` command: `to-urdu`, `to-roman`, `langid`, `normalize`, `words`. |
 
 ### Three details that are usually wrong elsewhere
 
@@ -204,6 +203,8 @@ a stopword list that deletes it inverts every sentiment label. It is kept in a
 separate `NEGATION` set and preserved by default:
 
 ```python
+from urdunlp import remove_stopwords, words
+
 remove_stopwords(words("یہ اچھا نہیں ہے"))   # ['اچھا', 'نہیں']  — negation survives
 ```
 
@@ -213,13 +214,9 @@ remove_stopwords(words("یہ اچھا نہیں ہے"))   # ['اچھا', 'نہی�
 pip install urdunlp
 ```
 
-The distribution is `urdunlp`, which is also the import name. **It is not on PyPI
-yet** — the badge above will show a version once the first release is uploaded. Until
-then, install from the repository:
-
-```bash
-pip install git+https://github.com/hammasbuilds/urdunlp
-```
+The distribution is `urdunlp`, which is also the import name. Python 3.10 or newer, on
+any OS. For the unreleased code on `main`:
+`pip install git+https://github.com/hammasbuilds/urdunlp`.
 
 No dependencies, deliberately. This is the layer other Urdu projects sit on, and a
 dependency here becomes a dependency of all of them.
@@ -229,15 +226,41 @@ annotation rather than falling back to `Any`.
 
 "No model downloads" still holds in 0.2: the transliteration vocabulary, the language
 tables and the Roman tagger ship inside the wheel as three gzipped JSON files, 3.4 MB
-together, loaded on first use in about 0.6 s. There is nothing to fetch at runtime.
+together. There is nothing to fetch at runtime.
 
-From a clone, there is nothing to install at all:
+**Startup.** `import urdunlp` loads no model (about 0.1 s of CPU). Each model loads on
+the first call that needs it, once per process: about **1 s of CPU** for
+transliteration (the 2.2 MB file), 0.2 s for `identify_language`, 0.1 s for
+`tag_roman_tokens`. After that, Roman → Urdu runs at about 280 words a second of CPU on
+held-out Wikipedia sentences (50 ms for a 14-word sentence), faster on words it has
+already seen; `identify_language` takes about 1 ms a sentence and Urdu → Roman well
+under that. Measured in CPU time on a 16-core Windows desktop that other jobs were
+using, where wall-clock time was up to three times the CPU time. In a web server, make
+one call at startup so the first request does not pay for the load.
+
+### From the command line
+
+Installing also gives an `urdunlp` command (or `python -m urdunlp`):
+
+```bash
+urdunlp to-urdu "mera naam ali hai"          # میرا نام علی ہے
+urdunlp to-roman "میں ٹھیک ہوں"                # main theek hoon
+urdunlp langid "هي ڪتاب منهنجو آهي"            # sd  Sindhi  margin ...
+urdunlp normalize "كتاب"                     # کتاب
+urdunlp words "رابطہ: test@x.com"            # رابطہ | test@x.com
+echo "kal milte hain" | urdunlp to-urdu      # reads standard input, line by line
+urdunlp to-urdu --help                       # options: --keep-english, --sources, ...
+```
+
+### From a clone
+
+Nothing to install to use it or run the demo; the tests need pytest:
 
 ```bash
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py
-pytest -q          # 358 tests, no install step needed
+pip install pytest && python -m pytest -q      # 437 tests
 ```
 
 ---
@@ -306,10 +329,11 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 ## Tests
 
 ```bash
-pytest
+pip install pytest
+python -m pytest
 ```
 
-**358 tests.** Each encodes a real property of the language rather than a convenient
+**437 tests.** Each encodes a real property of the language rather than a convenient
 example, so a failure means the library is wrong about Urdu, not about a fixture. They use
 only what ships in the package; the evaluation data under `data/` is for the measurement
 scripts and is never read by a test.
@@ -321,10 +345,12 @@ Stated plainly, because a toolkit that overclaims wastes its users' time:
 - **Roman → Urdu is ambiguous by nature, and one word of context is not much.** `ke`
   is کے (*of*) or کہ (*that*); a bigram model gets it right after کہا, and not where
   the deciding word is further back. `sher` is شیر or شعر whatever precedes it. On
-  held-out hand-romanised sentences 9.3% of words still come out wrong.
+  held-out hand-romanised sentences 8.8% of words still come out wrong.
 - **The accuracy figures are for careful romanisation.** Dakshina's annotators
   transcribed encyclopaedia sentences. Chat is shorter, drops more vowels and switches
-  to English more; it will score lower, by an amount nobody has measured.
+  to English more; it will score lower, by an amount nobody has measured. The word
+  statistics are Wikipedia's too, so a chat phrase can be read as an encyclopaedia one:
+  `kya hal hai bhai` gives کیا حال ہی بھائی (حال ہی, *recently*); `haal` gets it right.
 - **English inside Roman Urdu is found, not perfectly.** `tag_roman_tokens` finds 87.3%
   of English words in synthetic code-mixed sentences and mislabels 1.6% of English as
   Urdu. By default English words are transliterated the way Urdu writes them
@@ -332,11 +358,12 @@ Stated plainly, because a toolkit that overclaims wastes its users' time:
   leaves tagged words in Latin script instead. Names are the weak spot either way.
 - **Language identification needs a sentence.** 97.9% on a paragraph, 91.0% on twenty
   characters, 81.5% on ten — and the errors fall between Urdu, Punjabi and Saraiki,
-  which share most of their letters and much of their vocabulary. `margin` flags some
-  of the doubtful cases, not all of them.
+  which share most of their letters and much of their vocabulary. A guess on fewer than
+  20 letters comes back with `short=True`. `margin` is not a confidence score: most
+  wrong guesses on 20-character windows had a margin as large as the right ones.
 - **Urdu → Roman is lossy and one-way.** س ص ث all give `s` in the Roman output, and
   nothing in that direction can restore the distinction. Going back, the vocabulary
-  stage recovers most of it for words that exist — 94.3% round-trip on held-out
+  stage recovers most of it for words that exist — 93.9% round-trip on held-out
   sentences — and none of it for names.
 - **Short vowels are inserted heuristically.** Urdu does not write them, so a literal
   mapping gives `jmlh` for جملہ. An `a` between consonants gives `jamalah` — right
@@ -372,8 +399,8 @@ Wikipedia and [HotpotQA](https://hotpotqa.github.io/), each CC BY-SA 4.0.
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 
-pytest -q               # 358 tests, no install step needed
-python demo.py          # see it work
+python demo.py                                 # see it work - nothing to install
+pip install pytest && python -m pytest -q      # 437 tests
 ```
 
 ```python
@@ -381,7 +408,7 @@ from urdunlp import normalize, transliterate_to_urdu, words, remove_stopwords
 
 normalize("كتاب")                          # 'کتاب'
 transliterate_to_urdu("main theek hoon")   # 'میں ٹھیک ہوں'
-words("کیا، واقعی؟", keep_punctuation=True)
+words("کیا، واقعی؟", keep_punctuation=True) # ['کیا', '،', 'واقعی', '؟']
 remove_stopwords(words("یہ اچھا نہیں ہے")) # ['اچھا', 'نہیں'] — negation kept
 
 from urdunlp import roman_key, identify_language, tag_roman_tokens, parse_number, stem
@@ -392,6 +419,14 @@ identify_language("هي ڪتاب منهنجو آهي").name         # 'Sindhi'
 tag_roman_tokens("kal meeting cancel ho gayi")       # [('kal','ur'), ('meeting','en'), ...]
 parse_number("sawa do crore")                        # 22500000
 stem("کتابوں")                                       # 'کتاب'
+
+from urdunlp import transliterate_to_roman
+
+transliterate_to_urdu("ye kitab hai?")               # 'یہ کتاب ہے؟'
+transliterate_to_urdu("main kal aaunga")             # 'میں کل آؤں گا'
+transliterate_to_roman("میں خوش ہوں 😀")               # 'main khush hoon 😀'
+words("رابطہ: test@x.com")                           # ['رابطہ', 'test@x.com']
+identify_language("کتاب").short                      # True — one word is a guess
 ```
 
 Works on Python 3.10–3.13, Linux and Windows. No model downloads, no GPU: the three
@@ -493,8 +528,9 @@ sentences romanised by hand. Scored against it, 0.1 got **43.1%** of words right
 rules — which handled two thirds of running text — got **16.5%** of theirs. Two mechanical
 errors dominated: a word-initial vowel with no carrier (`is` → یس for اس) and short vowels
 written out that Urdu leaves unwritten (`jis` → جیس for جس). *Fixed* by a vocabulary stage
-that searches real words rather than building one letter by letter: **87.0%**, and
-**90.7%** once each sentence is decoded as a whole.
+that searches real words rather than building one letter by letter: 87.0% at first,
+90.7% once each sentence was decoded as a whole, and **91.2%** after the fixes further
+down this list.
 
 **The data the fix was measured on leaked into the data it was built from.** Dakshina's
 romanised sentences come from its held-out Wikipedia partition, and the vocabulary is counted
@@ -550,7 +586,7 @@ tests had no sentence with both a URL and English in it. *Fixed* by tagging exac
 words the transliterator will process, and pinned by a test that has both.
 
 **Adding context made single words worse.** Decoding each sentence with a word bigram model
-took held-out accuracy from 88.4% to 90.7% - and the round trip, which transliterates one
+took held-out accuracy from 88.4% to 90.7% at the time - and the round trip, which transliterates one
 word at a time, fell from 90.8% to 88.2%. A lone word was being decoded as a one-word
 sentence, so it was scored by how often words *start* sentences. *Fixed* by sending a
 single word down the word-by-word path, where there is no context to misuse; the round
@@ -566,8 +602,7 @@ hand found the bugs a crash count cannot:
 | found | was | now |
 |---|---|---|
 | `price 2.5 crore` | `2. 5` - tokens rejoined with single spaces | the input's own spacing, exactly |
-| `kal
-parso` | line break lost | kept, and it ends the sentence context |
+| `kal` ⏎ `parso` (a line break between them) | line break lost | kept, and it ends the sentence context |
 | `0300-1234567`, `25-12-2024`, `3:30`, `1,500` | split at every mark | one token, untouched |
 | `5th`, `mp3` | `5` + the Roman word `th` | passed through |
 | `BBC`, `TV`, `U.S.A` | sounded out as words | بی بی سی, ٹی وی, یو ایس اے - letter names, as Dakshina's annotators wrote TV 25 times of 25 |
@@ -589,12 +624,12 @@ returned `''`, `roman_key(None)` raised `AttributeError` from deep inside,
 All of it is pinned in `tests/test_robustness.py`.
 
 **Half the library had never been scored against people.** Roman → Urdu had been, and
-was at 90.7%; Urdu → Roman had only ever been round-tripped. Scored against Dakshina's
+was above 90%; Urdu → Roman had only ever been round-tripped. Scored against Dakshina's
 annotators it wrote a spelling a person wrote for **33.4%** of held-out words - `min thik
 hon` for میں ٹھیک ہوں. It also silently deleted Urdu digits. *Fixed* by spelling words the
-way the model that reads Roman Urdu expects them: **54.1%**, and 54.9% exactly as the
-annotator wrote it in running text, up from 28.6% - and it round-trips better too, 94.3%
-against 90.8%, so 0.1's "readable or reversible, pick one" is gone. Language
+way the model that reads Roman Urdu expects them: **54.1%**, and 54.7% exactly as the
+annotator wrote it in running text, up from 28.6% - and it round-trips better too, 93.9%
+against 90.9%, so 0.1's "readable or reversible, pick one" is gone. Language
 identification moved from 1-3-grams to pruned 1-5-grams (84.2% → 88.3% on ten
 characters). One attempted fix did nothing - giving the English tagger a spelling for all
 60,638 vocabulary words left its false-alarm rate at 3.6%, because most of those "false
@@ -615,4 +650,30 @@ rules - but as a candidate in the decoder it cost 0.31 points overall, because a
 word that looks plausible beats a real one too often. A stemmer that only strips a suffix
 when what is left is a known word scored the same as the plain one. Both are recorded in
 docs/CORPUS.md so nobody spends the afternoon on them again.
+
+**Someone used it the way a newcomer would, and found what the benchmarks could not.** A
+user-view audit before release installed the package, typed chat Roman Urdu at it and
+wrote down every answer that would make someone file an issue:
+
+| found | was | now |
+|---|---|---|
+| `transliterate_to_roman("میں خوش ہوں 😀")` | `main khush hoon ` - every emoji and symbol deleted | `main khush hoon 😀` |
+| `ye kitab hai?` | یہ کتاب ہے? - a Latin question mark in Urdu | یہ کتاب ہے؟ (and ، ؛ ۔ likewise) |
+| `meri gaari` | میری غار (*my cave*) - Dakshina once spelled غار `gaari` | میری گاڑی |
+| `main karunga`, `hum dekhenge` | کرؤنگ, and letter-by-letter rules | کروں گا, دیکھیں گے |
+| `kal parso` | کل پرشو - the lexicon's پرسوں lost in every sentence | کل پرسوں |
+| `words("... test@x.com")` | `test`, `x`, `com` | `test@x.com`, as the transliterator sees it |
+| `remove_urls_and_mentions("test@x.com")` | `test .com` - `@x` removed as a mention | removed whole |
+| `remove_stopwords(b"x")` | "is_stopword() expects a str, got int" | "remove_stopwords() expects a list of words, got bytes" |
+| `identify_language("کتاب")` | Saraiki, as confidently as a paragraph | still Saraiki, now with `short=True` |
+
+The chat fixes were checked on Dakshina's dev sentences before they went in: the lexicon
+additions changed five dev words (all for the better) and the future-tense split changed
+none, so the 91.2% did not move - and there is still no chat test set, so what they are
+worth on chat is not a number anyone has. Some chat is still read as Wikipedia:
+`kya hal hai bhai` gives کیا حال **ہی** بھائی, because حال ہی (*recently*) is one of the
+commonest pairs in the text the bigram model was counted from. Stopping the decoder from
+overruling the lexicon for `hai` would fix it and cost 0.04 points on dev, so it stays.
+The README also said startup took 0.6 s; measured, the first transliteration takes about
+a second of CPU, and the page now says so.
 

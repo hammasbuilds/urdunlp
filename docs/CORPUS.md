@@ -128,7 +128,12 @@ which is where most tokens in real text actually are". Measured:
 
 Every one is a function word. That is the claim, measured.
 
-## 4. Transliteration is lossy — and the default setting is the worse one
+## 4. Round trips: what 0.1 lost, and what 0.2 recovers
+
+*Written for 0.1, and the first half still describes 0.1: the letter-by-letter
+Urdu → Roman rules, and a Roman → Urdu direction with no vocabulary. The 0.2 box at the
+end of the section and section 14 have the current figures. In 0.2 the default setting
+is no longer the worse one, and the round trip is 93.9%.*
 
 Round-tripping Urdu → Roman → Urdu on **457,380 sampled tokens** (every 97th, spread across
 the whole corpus, 21,766 distinct types):
@@ -177,12 +182,12 @@ figure of 100% would mean the transliteration was not doing its job.
 > **0.2: half of that paragraph was wrong.** The information is gone from the Roman
 > string, but not from the language. `srf` is not a word; صرف is the real word whose
 > romanisation it most likely is, and the vocabulary stage (section 7) finds it. On
-> 15,098 tokens sampled from 9,759 held-out Dakshina sentences:
+> 15,088 tokens sampled from 9,759 held-out Dakshina sentences:
 >
 > | `insert_short_vowels` | 0.1 pipeline (lexicon, rules) | 0.2 pipeline (+ vocabulary) |
 > |---|---:|---:|
-> | `True` (default) | 42.0% | **90.8%** |
-> | `False` | 61.8% | **92.4%** |
+> | `True` (default) | 42.0% | **90.9%** |
+> | `False` | 61.7% | **92.7%** |
 >
 > The 0.1 column reproduces the BBC figures above on a second corpus (44.7% and 61.2%),
 > so the method holds. With the vocabulary, the 18-point penalty for the readable
@@ -275,17 +280,17 @@ sentences); the rest cannot be aligned without guessing. Correct means equal aft
 
 | | dev (51,764 words) | **test (52,087 words)** |
 |---|---:|---:|
-| 0.1: lexicon, then rules | 43.3% | **43.1%** |
-| 0.2, each word on its own (`use_context=False`) | 88.8% | **88.4%** |
-| 0.2, each sentence decoded as a whole (default) | 91.9% | **91.2%** |
+| 0.1: lexicon, then rules | 43.4% | **43.1%** |
+| 0.2, each word on its own (`use_context=False`) | 88.9% | **88.5%** |
+| 0.2, each sentence decoded as a whole (default) | 92.0% | **91.2%** |
 
 Where the 0.2 answers come from, on test:
 
 | stage | share of words | right |
 |---|---:|---:|
-| curated lexicon | 33.7% | 96.6% |
-| vocabulary | 65.9% | 88.2% |
-| rules | 0.4% | 3.5% |
+| curated lexicon | 33.6% | 97.0% |
+| vocabulary | 66.1% | 88.8% |
+| rules | 0.3% | 3.9% |
 
 The 0.1 figure is worth dwelling on. Over all 148,591 word pairs in Dakshina's aligned
 file, **two thirds of running text fell through to the rules, and the rules got 16.5% of
@@ -297,13 +302,14 @@ not write (`jis` → جیس instead of جس, `karne` → کارنے instead of �
 
 | step | dev |
 |---|---:|
-| 0.1: lexicon, then rules | 43.3% |
+| 0.1: lexicon, then rules | 43.4% |
 | + vocabulary: letter channel × word frequency, 42,498 words | 87.3% |
 | + decode the sentence with a word bigram model | 89.8% |
 | + 60,638 words instead of 42,498 | 90.0% |
 | + each word's own attested spellings mixed into the channel | 91.1% |
 | + the Arabic article moved across the word boundary; initials, titles, `o` | 91.8% |
-| + کہ offered for `ki`, `ke`, `kay`, `keh` | **91.9%** |
+| + کہ offered for `ki`, `ke`, `kay`, `keh` | 91.9% |
+| + chat spellings (`pata`, `gaari`, `h`, ...), the merged future (`karunga`): 5 more words right, 91.94% → 91.95% | **92.0%** |
 
 **The letter channel.** Choose the Urdu word *u* that maximises P(*u*) · P(roman | *u*).
 P(roman | *u*) comes from a letter-emission model — each Urdu letter emits 0-4 Roman
@@ -334,7 +340,7 @@ model with weight κ) put کہ within reach, and the bigram model does the rest:
 | | train (106,260) | dev (10,424) | test (10,517) |
 |---|---:|---:|---:|
 | 0.1 | 10.7% | 10.0% | 11.8% |
-| 0.2 | 81.0% | 63.8% | 63.7% |
+| 0.2 | 81.0% | 63.8% | 63.6% |
 
 The 0.2 train figure is not comparable with the other two and is shown so that nobody
 mistakes it for one: the training lexicon's own spellings are now inside the model, so a
@@ -607,7 +613,7 @@ question: a spelling is right if an annotator wrote exactly it.
 | 0.2 learned | 53.9% | **54.1%** |
 | **sentence words** (51,764 / 52,087) spelled exactly as that annotator did | | |
 | 0.1 rules, short vowels inserted | 29.1% | **28.6%** |
-| 0.2 learned | 55.1% | **54.9%** |
+| 0.2 learned | 55.0% | **54.7%** |
 | **sentence words** spelled as any annotator spelled that word | | |
 | 0.1 rules, short vowels inserted | 41.5% | **41.4%** |
 | 0.2 learned | 77.2% | **77.9%** |
@@ -621,13 +627,21 @@ was chosen on dev: 0 → 45.8% of dev lexicon words, 0.3 → 53.9%, 0.6 → 52.7
 Dev and test lexicon words are disjoint from training-lexicon words, so the lexicon rows
 measure the generator, not the lookup.
 
-**It also round-trips better.** Converting 15,098 held-out tokens to Roman and back:
+**It also round-trips better.** Converting 15,088 held-out tokens to Roman and back:
 
 | Roman spelling used | back to Urdu |
 |---|---:|
-| 0.1 rules, short vowels inserted | 90.8% |
-| 0.1 rules, literal | 92.4% |
-| **0.2 learned** | **94.3%** |
+| 0.1 rules, short vowels inserted | 90.9% |
+| 0.1 rules, literal | 92.7% |
+| **0.2 learned** | **93.9%** |
+
+An earlier draft of this table said 94.3%, from an older run that was not repeated when
+the decoder changed afterwards. Re-measured for the release it is 93.9%. The last round
+of changes (chat spellings, the merged future, punctuation) is not the cause: the code
+before them scores the same on the same tokens, and only one distinct token in the
+sample changed its Roman spelling (پتہ is now `pata`). The token count moved too, from 15,098
+to 15,088, because `words` now keeps a number like `2.5` whole, and every eleventh token
+is sampled.
 
 0.1 documented a trade-off: insert short vowels for a reader, leave them out for a
 machine. The learned spelling beats both at both, because it is the spelling the

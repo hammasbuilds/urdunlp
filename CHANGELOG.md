@@ -19,7 +19,7 @@ with its method, and the scripts that reproduce them are listed there.
   106,260 attested romanisations from Google's Dakshina lexicon, and mixed with each
   word's own attested spellings. Sentences are decoded as a whole with a word-bigram
   model. On 52,087 words of held-out hand-romanised sentences, word accuracy goes from
-  **43.1% to 91.2%** (88.4% word by word, `use_context=False`). It finds the letters
+  **43.1% to 91.2%** (88.5% word by word, `use_context=False`). It finds the letters
   Roman cannot write — `baad` → بعد, `taur` → طور, `Ali` → علی — and reads `ke` as کہ
   after کہا. `use_vocabulary=False` restores the 0.1 pipeline. New source label
   `vocabulary`, new property `rule_share`.
@@ -43,8 +43,8 @@ with its method, and the scripts that reproduce them are listed there.
 - **Urdu → Roman spelled the way people spell it** (`transliterate_to_roman`, now the
   default; `method="rules"` keeps the 0.1 letter mapping). On held-out Dakshina test
   words, a spelling some annotator wrote 33.4% → **54.1%** of the time; in running text,
-  exactly the annotator's spelling 28.6% → **54.9%**; and the round trip back to Urdu
-  90.8% → **94.3%** - readable and reversible stopped being a trade-off.
+  exactly the annotator's spelling 28.6% → **54.7%**; and the round trip back to Urdu
+  90.9% → **93.9%** - readable and reversible stopped being a trade-off.
 - The Arabic article moves across the word boundary: `abdul rehman` → عبد الرحمن,
   `bainul aqwami` → بین الاقوامی, `darul uloom` → دار العلوم. Capital initials are
   spelled by letter name (`C. M.` → سی ایم), titles written in full without their dot
@@ -61,17 +61,55 @@ with its method, and the scripts that reproduce them are listed there.
   `fetch_wikipedia_samples.py`, `extract_english.py`, `count_vocabulary.py`,
   `build_translit_model.py`, `build_langid_models.py`, `measure_translit.py`,
   `measure_langid.py`, `measure_stemmer.py`.
+- **An `urdunlp` command** (also `python -m urdunlp`): `to-urdu`, `to-roman`, `langid`,
+  `normalize` and `words`, each taking text as arguments or line by line on standard
+  input, with `--help` and `--version`.
+- `urdu_punctuation=True` (the default) in Roman → Urdu: `?` `,` `;` and a full stop
+  after a word become ؟ ، ؛ ۔ - `ye kitab hai?` gives یہ کتاب ہے؟. Marks inside `2.5`,
+  `...` or `:)` are left alone. New source label `punctuation`.
+- The merged Roman future is written the standard way, as two words: `karunga` → کروں
+  گا, `dekhenge` → دیکھیں گے, `milega` → ملے گا. It came out as non-words before
+  (کرؤنگ) or fell to the letter rules.
+- Chat spellings in the lexicon: `h` (ہے), `kse`, `bhot`, `pata` (پتہ), `gaari`,
+  `gaadi`, `gadi` (گاڑی). Checked on dev sentences first: five dev words changed, all
+  for the better.
+- `LanguageGuess.short`: True when the text had fewer than 20 Perso-Arabic letters,
+  where held-out accuracy is 91% or less.
 
 ### Changed
 
 - `transliterate_to_urdu("mera naam Ali hai")` now returns میرا نام **علی** ہے. The
   README example and its test are updated; the 0.1 behaviour is pinned under
   `use_vocabulary=False`.
-- Round-tripping Urdu → Roman → Urdu on held-out sentences: **42.0% → 90.8%** with the
-  default short-vowel setting, 61.8% → 92.4% without it. The losses docs/CORPUS.md
+- Round-tripping Urdu → Roman → Urdu on held-out sentences with the 0.1 letter rules:
+  **42.0% → 90.9%** with the default short-vowel setting, 61.7% → 92.7% without it. The losses docs/CORPUS.md
   called "properties of the two writing systems" are mostly recoverable for words that
   exist - صرف comes back from `srf`.
 - `measure_corpus.py` reads `.txt.gz` and reports both pipelines' round-trip rates.
+
+### Changed in the release candidate, after a user-view audit
+
+- `transliterate_to_roman` keeps emoji, symbols and letters of other scripts. It used
+  to delete every character without a Roman form: `میں خوش ہوں 😀` gave
+  `main khush hoon `. The output is therefore no longer guaranteed ASCII; only Urdu
+  diacritics and zero-width marks inside Urdu words are dropped. `٪` becomes `%`.
+- `words()` keeps URLs, emails, `@mentions`, `#hashtags` and numbers with separators
+  (`2.5`, `1,500`, `3:30`, `۱۲٫۵`) as single tokens, the way the transliterator always
+  had. `test@x.com` used to become `test`, `x`, `com`.
+- `remove_urls_and_mentions` removes emails whole (it removed `@x` from `test@x.com`
+  as a mention, leaving `test .com`), and a URL no longer takes the full stop after it.
+- The list-taking functions name themselves and the offending type or item:
+  `remove_stopwords(b"x")` said "is_stopword() expects a str, got int". They also accept
+  any iterable of strings, a generator included.
+- A curated word the vocabulary never counted lost to any vocabulary word in a
+  sentence: `kal parso` gave کل پرشو. Such words now get a median word frequency.
+- Faster first load: `import urdunlp` no longer imports `gzip`/`json`, and the model
+  builds its bigram rows on demand. The first transliteration still costs about 1 s of
+  CPU; the README's "about 0.6 s" was never measured and is replaced by measured figures.
+- Two numbers corrected after re-running every measurement for the release: the learned
+  Urdu → Roman round trip is 93.9%, not 94.3%, and sentence words spelled exactly as the
+  annotator did are 54.7%, not 54.9%. Both earlier figures came from older runs and
+  had not been updated. The 91.2% headline was re-measured and did not move.
 
 ### Fixed
 
