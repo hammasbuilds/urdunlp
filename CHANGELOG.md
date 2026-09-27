@@ -70,9 +70,12 @@ with its method, and the scripts that reproduce them are listed there.
 - The merged Roman future is written the standard way, as two words: `karunga` → کروں
   گا, `dekhenge` → دیکھیں گے, `milega` → ملے گا. It came out as non-words before
   (کرؤنگ) or fell to the letter rules.
-- Chat spellings in the lexicon: `h` (ہے), `kse`, `bhot`, `pata` (پتہ), `gaari`,
+- Chat spellings in the lexicon: `h` (ہے), `kse`, `bhot`, `kro`, `pata` (پتہ), `gaari`,
   `gaadi`, `gadi` (گاڑی). Checked on dev sentences first: five dev words changed, all
   for the better.
+- Chat typed in capitals is not read as acronyms: `KYA HAAL HAI` gave کے وائی اے حال
+  ہے. A word the curated lexicon knows is never an acronym, and in text written in
+  capitals throughout only dotted acronyms (`U.S.A`) are spelled; `BBC TV` still is.
 - `LanguageGuess.short`: True when the text had fewer than 20 Perso-Arabic letters,
   where held-out accuracy is 91% or less.
 

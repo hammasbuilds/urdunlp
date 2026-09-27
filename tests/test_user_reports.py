@@ -266,3 +266,31 @@ def test_python_dash_m_runs_the_cli():
         check=True,
     )
     assert done.stdout.decode("utf-8").strip() == "یہ کتاب ہے؟"
+
+
+# --- Chat in capitals ---------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("roman", "urdu"),
+    [
+        ("KYA HAAL HAI", "کیا حال ہے"),  # KYA was spelled کے وائی اے
+        ("main NHI jaunga", "میں نہیں جاؤں گا"),  # a lexicon word is never an acronym
+        ("PLZ CALL KRO", "پلیز کال کرو"),
+        ("KAL MEETING HAI", "کل میٹنگ ہے"),
+    ],
+)
+def test_shouting_is_not_a_row_of_acronyms(roman, urdu):
+    assert U.transliterate_to_urdu(roman) == urdu
+
+
+@pytest.mark.parametrize(
+    ("roman", "urdu"),
+    [
+        ("BBC TV", "بی بی سی ٹی وی"),
+        ("FBI ne kaha", "ایف بی آئی نے کہا"),
+        ("C. M. Ali", "سی ایم علی"),
+    ],
+)
+def test_real_acronyms_are_still_spelled(roman, urdu):
+    assert U.transliterate_to_urdu(roman) == urdu

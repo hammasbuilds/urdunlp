@@ -168,6 +168,7 @@ LEXICON: dict[str, str] = {
     "karte": "کرتے",
     "kar": "کر",
     "karo": "کرو",
+    "kro": "کرو",
     "karen": "کریں",
     "hona": "ہونا",
     "jana": "جانا",
@@ -502,11 +503,36 @@ def _ends_context(token: str, kind: str) -> bool:
     return True
 
 
-def _is_acronym(word: str) -> bool:
+def _is_acronym(word: str, shouting: bool = False) -> bool:
     # A single capital is an initial: Dakshina's annotators wrote C as سی 20 times,
     # L as ایل 18, A as اے 12 - letter names for about 115 of 127 capitals. A single
     # lowercase letter is not: `o` is the conjunction و, 123 times.
-    return 1 <= len(word) <= 6 and word.isupper() and sum(c in "AEIOU" for c in word) <= 1
+    if not (1 <= len(word) <= 6 and word.isupper() and sum(c in "AEIOU" for c in word) <= 1):
+        return False
+    if len(word) == 1:
+        return True
+    # Chat in capitals is shouting, not acronyms: `KYA HAAL HAI` came out
+    # کے وائی اے حال ہے and `main NHI jaunga` spelled NHI letter by letter. A word
+    # the curated lexicon knows is never an acronym, and in text written entirely
+    # in capitals nothing is, unless it is dotted (U.S.A).
+    return not shouting and word.lower() not in LEXICON
+
+
+def _is_shouting(text: str) -> bool:
+    """Whether the Latin text is written in capitals throughout, like `KYA HAAL HAI`.
+
+    Two or more words of two letters or more, all upper case, one of them a word
+    the curated lexicon knows - so a lone `BBC` or `BBC TV` is still acronyms.
+    """
+    long_words = [w for w in _LATIN_WORD.findall(text) if len(w) > 1]
+    return (
+        len(long_words) >= 2
+        and all(w.isupper() for w in long_words)
+        and any(w.lower() in LEXICON for w in long_words)
+    )
+
+
+_LATIN_WORD = re.compile(r"[A-Za-z]+")
 
 
 # Any character in the Arabic/Urdu blocks. Used to spot text that is already in
@@ -644,6 +670,7 @@ def transliterate_with_confidence(
     # shifted every later English tag onto the wrong word.
     _require_str(text, "transliterate_with_confidence")
     plan: list[tuple[str, str]] = []
+    shouting = _is_shouting(text)
     for match in _TOKEN.finditer(text):
         token, group = match.group(), match.lastgroup
         if group == "space":
@@ -651,7 +678,7 @@ def transliterate_with_confidence(
         elif group == "identifier":
             plan.append((token, "identifier"))
         elif group == "word":
-            plan.append((token, "acronym" if _is_acronym(token) else "roman"))
+            plan.append((token, "acronym" if _is_acronym(token, shouting) else "roman"))
         elif group == "dotted":
             plan.append((token, "acronym"))
         elif group == "letters" and _IS_URDU_SCRIPT.search(token):

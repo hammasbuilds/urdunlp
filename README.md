@@ -260,7 +260,7 @@ Nothing to install to use it or run the demo; the tests need pytest:
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py
-pip install pytest && python -m pytest -q      # 437 tests
+pip install pytest && python -m pytest -q      # 444 tests
 ```
 
 ---
@@ -333,7 +333,7 @@ pip install pytest
 python -m pytest
 ```
 
-**437 tests.** Each encodes a real property of the language rather than a convenient
+**444 tests.** Each encodes a real property of the language rather than a convenient
 example, so a failure means the library is wrong about Urdu, not about a fixture. They use
 only what ships in the package; the evaluation data under `data/` is for the measurement
 scripts and is never read by a test.
@@ -400,7 +400,7 @@ git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 
 python demo.py                                 # see it work - nothing to install
-pip install pytest && python -m pytest -q      # 437 tests
+pip install pytest && python -m pytest -q      # 444 tests
 ```
 
 ```python
@@ -662,6 +662,7 @@ wrote down every answer that would make someone file an issue:
 | `meri gaari` | میری غار (*my cave*) - Dakshina once spelled غار `gaari` | میری گاڑی |
 | `main karunga`, `hum dekhenge` | کرؤنگ, and letter-by-letter rules | کروں گا, دیکھیں گے |
 | `kal parso` | کل پرشو - the lexicon's پرسوں lost in every sentence | کل پرسوں |
+| `KYA HAAL HAI` | کے وائی اے حال ہے - capitals read as an acronym | کیا حال ہے |
 | `words("... test@x.com")` | `test`, `x`, `com` | `test@x.com`, as the transliterator sees it |
 | `remove_urls_and_mentions("test@x.com")` | `test .com` - `@x` removed as a mention | removed whole |
 | `remove_stopwords(b"x")` | "is_stopword() expects a str, got int" | "remove_stopwords() expects a list of words, got bytes" |
