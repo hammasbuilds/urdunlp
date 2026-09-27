@@ -123,6 +123,12 @@ def test_izafat(roman, urdu):
         ("ok thanks", "اوکے تھینکس"),  # was اوک تھنگز: context overruled the lexicon
         ("Assalam o alaikum! kaise ho", "السلام علیکم! کیسے ہو"),  # was السلام و علیکم
         ("walaikum assalam", "وعلیکم السلام"),
+        # found hunting after the audit
+        ("JazakAllah bhai", "جزاک اللہ بھائی"),  # was kept in Latin as a brand name
+        ("InshaAllah kal", "ان شاء اللہ کل"),
+        ("aoa sir", "السلام علیکم سر"),  # was آوا
+        ("mujhe nahi pata yaar", "مجھے نہیں پتہ یار"),  # was پاتا, "finds"
+        ("gym jaa raha hun", "جم جا رہا ہوں"),  # was جاتا
     ],
 )
 def test_chat_spellings(roman, urdu):

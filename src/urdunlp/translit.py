@@ -348,9 +348,18 @@ CHAT_LEXICON: dict[str, str] = {
     "wow": "واؤ",
     "haha": "ہاہا",
     "hahaha": "ہاہاہا",
+    "jaa": "جا",  # was جاتا: one annotator's stray spelling
+    "aoa": "السلام علیکم",
+    "jazakallah": "جزاک اللہ",
+    "subhanallah": "سبحان اللہ",
+    "alhamdulillah": "الحمد للہ",
+    "inshaallah": "ان شاء اللہ",
+    "mashaallah": "ماشاء اللہ",
 }
 LEXICON.update(CHAT_LEXICON)
-_FIXED = frozenset(CHAT_LEXICON)
+# `pata` is in the curated lexicon above; in a sentence the decoder read it as
+# پاتا (*finds*), which Wikipedia uses and chat almost never means.
+_FIXED = frozenset(CHAT_LEXICON) | {"pata"}
 
 # --- Stage 2: rules ---------------------------------------------------------------
 # Ordered longest-first, so digraphs win over the single letters inside them: `kh`
@@ -618,7 +627,11 @@ _INTERNAL_CAPITAL = re.compile(r"[a-z][A-Z]")
 
 def _kept_in_latin(token: str) -> bool:
     """Whether a Latin word is kept as typed whatever the settings: see KEEP_LATIN."""
-    return token.lower() in KEEP_LATIN or _INTERNAL_CAPITAL.search(token) is not None
+    lowered = token.lower()
+    if lowered in KEEP_LATIN:
+        return True
+    # JazakAllah and InshaAllah have internal capitals too, and are Urdu
+    return _INTERNAL_CAPITAL.search(token) is not None and lowered not in LEXICON
 
 
 @dataclass
