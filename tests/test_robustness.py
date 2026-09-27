@@ -137,7 +137,8 @@ def test_punctuation_ends_a_number_phrase():
     """ایک لاکھ، دو ہزار was read as one number, 102,000."""
     spans = U.find_numbers("ایک لاکھ، دو ہزار")
     assert [s.value for s in spans] == [100_000, 2_000]
-    assert U.find_numbers("اسی،lakh") == []
+    # not eighty lakh; `lakh` on its own is a lakh, as لاکھ on its own is
+    assert [s.value for s in U.find_numbers("اسی،lakh")] == [100_000]
 
 
 def test_arabic_decimal_and_thousands_separators():

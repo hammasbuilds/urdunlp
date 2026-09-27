@@ -7,7 +7,7 @@ import random
 import pytest
 
 import urdunlp as U
-from urdunlp import find_numbers, format_number, number_to_words, parse_number
+from urdunlp import find_numbers, format_number, number_to_words, parse_number, parse_ordinal
 from urdunlp.numbers import _UNITS
 
 
@@ -200,3 +200,41 @@ class TestOrdinals:
     def test_words_that_mostly_mean_something_else_are_left_alone(self, text):
         """پہلے is "before" 11,584 times in the corpus; دوسرے is "other"."""
         assert U.find_numbers(text) == []
+
+
+# --- audit round 2 -------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "value"),
+    [
+        ("pehla", 1),  # raised ValueError, though Roman cardinals worked
+        ("pehli", 1),
+        ("doosri", 2),
+        ("teesra", 3),
+        ("chautha", 4),
+        ("chhata", 6),
+        ("paanchwan", 5),
+        ("dasvi", 10),
+        ("ek sau paanchwan", 105),
+        ("5th", 5),
+        ("21st", 21),
+    ],
+)
+def test_roman_ordinals(text, value):
+    assert parse_ordinal(text) == value
+
+
+def test_a_roman_cardinal_is_still_not_an_ordinal():
+    with pytest.raises(ValueError):
+        parse_ordinal("paanch")
+
+
+def test_a_single_unambiguous_roman_number_word_is_found_as_urdu_is():
+    """ایک was found on its own and `ek` was not."""
+    found = [(n.text, n.value) for n in find_numbers("ek din main aaya")]
+    assert found == [("ek", 1)]
+    assert [n.value for n in find_numbers("ایک دن میں آیا")] == [1]
+    # do (give), so (sleep) and no are words, not numbers, on their own
+    assert find_numbers("do din baad so gaye, no problem") == []
+    assert [n.value for n in find_numbers("do lakh")] == [200000]

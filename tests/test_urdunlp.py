@@ -394,3 +394,14 @@ class TestRoundTrip:
             transliterate_to_urdu(transliterate_to_roman("لاہور", insert_short_vowels=False))
             == "لاہور"
         )
+
+
+def test_the_ergative_ne_is_a_stopword():
+    """نے, the sixth most frequent word in BBC Urdu, was missing from the list."""
+    from urdunlp import STOPWORDS, is_stopword, remove_stopwords, words
+
+    assert is_stopword("نے")
+    for word in ("جس", "اپنے", "کیونکہ", "والے", "سکتا"):
+        assert word in STOPWORDS
+    assert remove_stopwords(words("علی نے کتاب پڑھی")) == ["علی", "کتاب", "پڑھی"]
+    assert not is_stopword("نہیں")  # negation still kept

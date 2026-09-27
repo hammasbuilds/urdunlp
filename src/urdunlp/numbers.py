@@ -268,6 +268,47 @@ ROMAN_NUMBER_WORDS: dict[str, str] = {
 }
 
 
+# Roman ordinals. The irregular ones are spelled out; every other ordinal is a Roman
+# cardinal plus -wan/-van/-vaan or -wen/-ven/-veen/-vin (paanchwan, dasvi), and an
+# English numeral ordinal (5th, 21st) is accepted too.
+ROMAN_ORDINAL_WORDS: dict[str, str] = {
+    **dict.fromkeys(("pehla", "pehli", "pehle", "pahla", "pahli", "pahle", "pela"), "پہلا"),
+    **dict.fromkeys(("doosra", "dusra", "doosri", "dusri", "doosre", "dusre"), "دوسرا"),
+    **dict.fromkeys(("teesra", "tisra", "teesri", "tisri", "teesre", "tisre"), "تیسرا"),
+    **dict.fromkeys(("chautha", "chotha", "chauthi", "chothi", "chauthe", "chothe"), "چوتھا"),
+    **dict.fromkeys(("chhata", "chata", "chhati", "chati", "chhate", "chate"), "چھٹا"),
+}
+_ROMAN_ORDINAL_SUFFIX = re.compile(
+    r"^(?P<base>[a-z]+?)(?:waan|wan|vaan|van|ween|wen|veen|ven|vin|win|vi|wi)$"
+)
+_ENGLISH_ORDINAL = re.compile(r"^(?P<n>\d+)(?:st|nd|rd|th)$", re.IGNORECASE)
+
+# Roman number words that are read as a number even on their own in running text,
+# as ایک is. The rest - do (give), so (sleep), no, sat, tin, char, arab - are ordinary
+# words far more often, and count only next to another number word.
+UNAMBIGUOUS_ROMAN = frozenset(
+    {"ek", "aik", "teen", "chaar", "paanch", "panch", "saat", "aath", "das", "dus",
+     "bees", "pachas", "pachaas", "sau", "hazar", "hazaar", "lakh", "laakh", "crore",
+     "karor", "dedh", "derh", "dhai", "dhaai", "adhai"}
+)  # fmt: skip
+
+
+def _roman_ordinal(token: str) -> str | None:
+    """The Urdu ordinal word, or cardinal numeral, a Roman ordinal stands for."""
+    lowered = token.lower()
+    if lowered in ROMAN_ORDINAL_WORDS:
+        return ROMAN_ORDINAL_WORDS[lowered]
+    english = _ENGLISH_ORDINAL.match(lowered)
+    if english:
+        return english["n"]
+    match = _ROMAN_ORDINAL_SUFFIX.match(lowered)
+    if match and match["base"] in ROMAN_NUMBER_WORDS:
+        base = ROMAN_NUMBER_WORDS[match["base"]]
+        if base not in _MODIFIERS and base not in _FRACTION_WORDS:
+            return base
+    return None
+
+
 # A numeral (digits in any script, with Latin or Arabic grouping and decimal marks),
 # or a run of anything that is not space, digit or punctuation - a word.
 _TOKEN = re.compile(r"\d+(?:[.,٫٬]\d+)*|[^\s\d.,،٫٬؟۔!?:;\"'()\[\]]+")
@@ -413,13 +454,27 @@ def parse_ordinal(text: str) -> int:
     3
     >>> parse_ordinal("ایک سو پانچواں")
     105
+    >>> parse_ordinal("pehla"), parse_ordinal("paanchwan"), parse_ordinal("21st")
+    (1, 5, 21)
 
     Accepts the irregular ordinals (پہلا دوسرا تیسرا چوتھا چھٹا, and یکم for the
     first of a month), any cardinal plus واں or ویں, and a numeral followed by
-    either ending (5ویں). Only the last word may be ordinal. Raises ValueError for
+    either ending (5ویں). Roman Urdu works the same way: pehla, doosri, teesra,
+    chautha, chhata, any Roman cardinal plus -wan or -vi (paanchwan, dasvi), and
+    English 5th / 21st. Only the last word may be ordinal. Raises ValueError for
     anything else - including a plain cardinal, which is not an ordinal.
     """
     _require_str(text, "parse_ordinal")
+    raw = text.split()
+    last = _roman_ordinal(raw[-1]) if raw else None
+    if last is not None:
+        # pehla, teesri, paanchwan, ek sau paanchwan, 5th: the Roman last word is
+        # read as its Urdu ordinal (or, for -wan and 5th, as the cardinal).
+        before = _tokens(" ".join(raw[:-1]))
+        position = _evaluate([*before, _ordinal_as_cardinal(last) or last])
+        if position.denominator != 1:
+            raise ValueError(f"not a whole position: {text!r}")
+        return int(position)
     tokens = _tokens(text)
     if tokens and tokens[-1] in _ORDINAL_SUFFIXES and len(tokens) >= 2:
         tokens = tokens[:-1]  # 5 ویں: the ending written apart from a numeral
@@ -461,7 +516,9 @@ def find_numbers(text: str) -> list[NumberSpan]:
     is skipped: in running prose those are pronouns, adjectives and verbs far more
     often than numbers. Next to a unit or another number word they are read as
     numbers: دو لاکھ is 200,000. Roman Urdu amounts are found too (`15 lakh`,
-    `dedh crore`), but a single Roman word never is.
+    `dedh crore`), and so is a single Roman number word that is nothing else -
+    `ek`, `teen`, `paanch`, `hazar` - as ایک is; `do`, `so`, `no` and `sat` on their
+    own are words, not numbers.
     """
     _require_str(text, "find_numbers")
     spans: list[NumberSpan] = []
@@ -542,7 +599,10 @@ def find_numbers(text: str) -> list[NumberSpan]:
         # A lone ambiguous word is not a number: اسی is "that same", and in Roman
         # text so, no and do are English and Urdu words long before they are 100,
         # 9 and 2.
-        if len(words) == 1 and (words[0] in AMBIGUOUS or roman[i]):
+        if len(words) == 1 and (
+            words[0] in AMBIGUOUS
+            or (roman[i] and matches[i].group().lower() not in UNAMBIGUOUS_ROMAN)
+        ):
             i += 1
             continue
         start, end = matches[i].start(), matches[j].end()
