@@ -41,11 +41,13 @@ urdunlp = "urdunlp.cli:main"
 Homepage = "https://github.com/hammasbuilds/urdunlp"
 Issues = "https://github.com/hammasbuilds/urdunlp/issues"
 Source = "https://github.com/hammasbuilds/urdunlp"
-Changelog = "https://github.com/hammasbuilds/urdunlp/releases"
+Changelog = "https://github.com/hammasbuilds/urdunlp/blob/main/CHANGELOG.md"
 "Corpus measurements" = "https://github.com/hammasbuilds/urdunlp/blob/main/docs/CORPUS.md"
 
 [dependency-groups]
-dev = ["pytest>=8.3", "ruff>=0.8"]
+# The versions CI and the release gate run. Pinned, so a new ruff or mypy release
+# cannot turn a green tag red between one day and the next.
+dev = ["pytest==9.1.1", "ruff==0.16.7", "mypy==2.3.1"]
 
 [build-system]
 requires = ["hatchling"]

@@ -20,7 +20,7 @@ name: release
 #        Environment name:   pypi
 #
 # Then release with:
-#   git tag v0.1.0 && git push origin v0.1.0
+#   git tag v0.2.0 && git push origin v0.2.0
 
 on:
   push:
@@ -46,11 +46,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: pip install pytest ruff
-      - run: ruff check src tests scripts
-      - run: ruff format --check src tests scripts
+      # The same gate as ci.yml, with the same pinned versions.
+      - run: pip install pytest==9.1.1 ruff==0.16.7 mypy==2.3.1
+      - run: ruff check src tests scripts demo.py
+      - run: ruff format --check src tests scripts demo.py
+      - run: mypy --strict src/urdunlp
       - run: pip install -e .
       - run: pytest -q
+      - run: pytest -q --doctest-modules src/urdunlp
 
   build:
     needs: test
@@ -60,7 +63,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install build twine
+      # readme_renderer[md] is what lets `twine check` render Markdown; without it
+      # the check passes a README it never parsed.
+      - run: pip install build twine "readme_renderer[md]"
       - run: python -m build
 
       # The version in pyproject.toml must match the tag, or you publish 0.1.0
@@ -75,7 +80,7 @@ jobs:
 
       # Catches a README that will not render on PyPI, which cannot be fixed
       # after upload without burning a version number.
-      - run: twine check dist/*
+      - run: twine check --strict dist/*
 
       - name: py.typed and the models must be in the wheel
         run: |
