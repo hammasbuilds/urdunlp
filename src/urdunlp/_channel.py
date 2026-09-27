@@ -250,20 +250,63 @@ class Channel:
             found = self.emit_mid.get(key[:2]) or self.emit_letter.get(key[0], {})
         return found
 
+    @functools.lru_cache(maxsize=1 << 17)  # noqa: B019 - one Channel per process
+    def _tables(self, urdu: str) -> tuple[dict[str, float], ...]:
+        """Each letter's emission table in its context, looked up once per word."""
+        return tuple(self.table(_context(urdu, i)) for i in range(len(urdu)))
+
+    def _shared_emission(
+        self,
+        urdu: str,
+        roman: str,
+        rows: dict[tuple[str, str], dict[int, float]],
+        pieces: list[list[tuple[int, str]]],
+    ) -> float:
+        """log_emission, reusing forward rows of prefixes already computed in `rows`.
+
+        The row after letter i depends on the letters up to i and on the context
+        of letter i - whether it is final, and whether a vowel letter follows - so
+        that pair is the key.
+        """
+        n = len(urdu)
+        current: dict[int, float] = {0: 1.0}
+        tables = self._tables(urdu)
+        i = n
+        while i > 0:  # the longest prefix already computed
+            tail = "E" if i == n else ("V" if urdu[i] in _VOWEL_LETTERS else "C")
+            found = rows.get((urdu[:i], tail))
+            if found is not None:
+                current = found
+                break
+            i -= 1
+        for k in range(i, n):
+            row: dict[int, float] = {}
+            get = tables[k].get
+            for j, value in current.items():
+                for end, piece in pieces[j]:
+                    p = get(piece)
+                    if p:
+                        row[end] = row.get(end, 0.0) + value * p
+            current = row
+            tail = "E" if k == n - 1 else ("V" if urdu[k + 1] in _VOWEL_LETTERS else "C")
+            rows[(urdu[: k + 1], tail)] = row
+        z = current.get(len(roman), 0.0)
+        return math.log(z) if z > 0 else -math.inf
+
     def log_emission(self, urdu: str, roman: str) -> float:
         """log P(roman | urdu) under the letter model, over every monotone alignment."""
-        n, m = len(urdu), len(roman)
-        forward: list[dict[int, float]] = [{} for _ in range(n + 1)]
-        forward[0][0] = 1.0
-        for i in range(n):
-            table = self.table(_context(urdu, i))
-            row = forward[i + 1]
-            for j, value in forward[i].items():
-                for length in range(min(MAX_EMIT, m - j) + 1):
-                    p = table.get(roman[j : j + length])
+        m = len(roman)
+        current: dict[int, float] = {0: 1.0}
+        for table in self._tables(urdu):
+            row: dict[int, float] = {}
+            get = table.get
+            for j, value in current.items():
+                for end in range(j, min(j + MAX_EMIT, m) + 1):
+                    p = get(roman[j:end])
                     if p:
-                        row[j + length] = row.get(j + length, 0.0) + value * p
-        z = forward[n].get(m, 0.0)
+                        row[end] = row.get(end, 0.0) + value * p
+            current = row
+        z = current.get(m, 0.0)
         return math.log(z) if z > 0 else -math.inf
 
     def log_spelling(self, urdu: str, roman: str) -> float:
@@ -274,7 +317,9 @@ class Channel:
         spellings mixed in, کہ can be reached from `ke` - and the bigram model then
         decides between it and کے.
         """
-        letters = self.log_emission(urdu, roman)
+        return self._mix_attested(urdu, roman, self.log_emission(urdu, roman))
+
+    def _mix_attested(self, urdu: str, roman: str, letters: float) -> float:
         seen = self.attested_total.get(urdu)
         if not seen:
             return letters
@@ -282,7 +327,7 @@ class Channel:
         p = (self.attested[urdu].get(roman, 0) + self.kappa * p_letters) / (seen + self.kappa)
         return math.log(p) if p > 0 else -math.inf
 
-    @functools.lru_cache(maxsize=65536)  # noqa: B019 - one Channel per process
+    @functools.lru_cache(maxsize=1 << 18)  # noqa: B019 - one Channel per process
     def candidates(self, roman: str) -> tuple[tuple[str, float], ...]:
         """The k likeliest words for a lowercase Roman token, with log P(roman | word).
 
@@ -298,13 +343,25 @@ class Channel:
         for key in roman_keys(roman):
             pool.update(self.index.get(key, ()))
         scored = []
+        # Candidates share prefixes (دور, دورا, دوران ...), and the forward pass
+        # over a prefix is the same for all of them, so it is computed once per
+        # call: `rows` maps a prefix, with what follows its last letter, to its
+        # forward row. Same numbers, far fewer passes - scoring every candidate
+        # from scratch was nine tenths of the time Roman -> Urdu took on new text.
+        rows: dict[tuple[str, str], dict[int, float]] = {}
+        m = len(roman)
+        pieces = [
+            [(end, roman[j:end]) for end in range(j, min(j + MAX_EMIT, m) + 1)]
+            for j in range(m + 1)
+        ]
         for word in pool:
             # A word more than twice as long as the Roman string, or four times
             # shorter, cannot align under MAX_EMIT; skip the DP unless attested.
             too_far = len(word) > 2 * len(roman) + 1 or MAX_EMIT * len(word) < len(roman)
             if too_far and word not in attested:
                 continue
-            emission = self.log_spelling(word, roman)
+            letters = self._shared_emission(word, roman, rows, pieces)
+            emission = self._mix_attested(word, roman, letters)
             if emission == -math.inf:
                 continue
             scored.append((emission + self.prior_weight * self.log_prior[word], emission, word))
