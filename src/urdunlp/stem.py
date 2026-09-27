@@ -109,5 +109,5 @@ def stem(word: str, *, light: bool = False, min_stem: int = 3) -> str:
 
 def stem_tokens(tokens: list[str], *, light: bool = False, min_stem: int = 3) -> list[str]:
     """`stem` over a token list."""
-    _require_words(tokens, "stem_tokens")
-    return [stem(t, light=light, min_stem=min_stem) for t in tokens]
+    items = _require_words(tokens, "stem_tokens")
+    return [stem(t, light=light, min_stem=min_stem) for t in items]

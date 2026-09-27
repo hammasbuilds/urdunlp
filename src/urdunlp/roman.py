@@ -69,10 +69,10 @@ def group_roman_variants(words: list[str]) -> dict[str, list[str]]:
 
     Each distinct spelling appears once, in the group of the word it stands for.
     """
-    _require_words(words, "group_roman_variants")
+    items = _require_words(words, "group_roman_variants")
     groups: dict[str, list[str]] = defaultdict(list)
     seen: set[str] = set()
-    for word in words:
+    for word in items:
         if word in seen:
             continue
         seen.add(word)

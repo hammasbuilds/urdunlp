@@ -76,7 +76,9 @@ def sentence_words(split: str) -> tuple[list[list[tuple[str, str]]], int, int]:
         if urdu.strip() not in keep:
             continue
         total += 1
-        u = [w for w in words(urdu) if not w.isdigit()]
+        # A number is dropped from both sides. words() keeps 1,500 as one token since
+        # 0.2; the pattern drops exactly what isdigit() dropped when it split it.
+        u = [w for w in words(urdu) if not re.fullmatch(r"\d+(?:[.,:/٫٬-]\d+)*", w)]
         r = [w for w in re.findall(r"[A-Za-z]+|\d+", roman) if not w.isdigit()]
         if len(u) == len(r):
             used += 1

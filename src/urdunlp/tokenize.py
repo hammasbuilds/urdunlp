@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import re
 
-from .normalize import _require_str, normalize
+from .normalize import IDENTIFIER, _require_str, normalize
 
 # Urdu sentence terminators, plus their Latin equivalents for mixed text.
 SENTENCE_END = "۔؟!?."
@@ -48,6 +48,16 @@ _URDU_LETTERS = (
 )
 _WORD = re.compile(rf"[\w{_URDU_LETTERS}]+")
 _PUNCT = re.compile(rf"[^\w\s{_URDU_LETTERS}]")
+
+# URLs, emails, @mentions and #hashtags (IDENTIFIER, shared with the transliterator
+# and remove_urls_and_mentions), and numbers written with separators (2.5,
+# 12,34,567, 3:30, ۱۲٫۵) are one token whatever punctuation they contain. `words`
+# used to split `test@x.com` into test, x, com and 2.5 into 2 and 5, while the
+# transliterator kept both whole - two parts of one library disagreeing about what
+# a token is.
+NUMBER = r"\d+(?:[.,:/٫٬-]\d+)+"
+_TOKEN = re.compile(rf"{IDENTIFIER}|{NUMBER}|{_WORD.pattern}")
+_TOKEN_OR_PUNCT = re.compile(rf"{IDENTIFIER}|{NUMBER}|{_WORD.pattern}|{_PUNCT.pattern}")
 
 # Very common compounds written both ways. Split them, because the two-token form is
 # what a tagger, a stemmer and an embedding model all expect.
@@ -90,16 +100,21 @@ def sentences(text: str) -> list[str]:
 def words(text: str, *, keep_punctuation: bool = False) -> list[str]:
     """Split into word tokens.
 
-    ZWNJ is kept inside tokens, because in Urdu it marks a real internal boundary in
-    compounds rather than separating two words.
+    >>> words("رابطہ: test@x.com یا 0300-1234567")
+    ['رابطہ', 'test@x.com', 'یا', '0300-1234567']
+
+    URLs, emails, @mentions, #hashtags and numbers with separators (2.5, 1,500,
+    3:30, ۱۲٫۵) are one token each, as they are to the transliterator. ZWNJ is kept
+    inside tokens, because in Urdu it marks a real internal boundary in compounds
+    rather than separating two words.
     """
     _require_str(text, "words")
     text = normalize(text)
     if not text:
         return []
     if keep_punctuation:
-        return re.findall(rf"{_WORD.pattern}|{_PUNCT.pattern}", text)
-    return _WORD.findall(text)
+        return _TOKEN_OR_PUNCT.findall(text)
+    return _TOKEN.findall(text)
 
 
 def fix_spacing(text: str) -> str:

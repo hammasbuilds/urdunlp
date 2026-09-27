@@ -48,5 +48,5 @@ def remove_stopwords(tokens: list[str], *, include_negation: bool = False) -> li
     `include_negation=True` removes negation too. Do that only for topic modelling
     or retrieval - never for sentiment, where it inverts the label.
     """
-    _require_words(tokens, "remove_stopwords")
-    return [t for t in tokens if not is_stopword(t, include_negation=include_negation)]
+    items = _require_words(tokens, "remove_stopwords")
+    return [t for t in items if not is_stopword(t, include_negation=include_negation)]

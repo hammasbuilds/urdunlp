@@ -95,6 +95,20 @@ _ZERO_WIDTH_OTHER = re.compile("[​‎‏﻿⁠]")
 _SPACES = re.compile(r"[ \t  -   　]+")
 _NEWLINES = re.compile(r"\s*\n\s*")
 
+# A URL, an email, an @mention or a #hashtag: spans that are one token and must never
+# be transliterated, split or half-removed. Shared by `words`, the transliterator and
+# `remove_urls_and_mentions`, which used to have three different ideas of it - the
+# last removed `@x` from `test@x.com` as a mention and left `test .com` behind. A
+# URL stops before punctuation that ends the sentence around it: in `see
+# http://x.co.` the full stop is not part of the address.
+IDENTIFIER = (
+    r"https?://\S+?(?=[.,;:!?؟،۔)\]}'\"]*(?:\s|$))"
+    r"|www\.\S+?(?=[.,;:!?؟،۔)\]}'\"]*(?:\s|$))"
+    r"|[\w.+-]+@[\w-]+\.[\w.-]*\w"
+    r"|[@#]\w+"
+)
+_IDENTIFIER = re.compile(IDENTIFIER)
+
 _ARABIC_TRANSLATION = str.maketrans(ARABIC_TO_URDU)
 _DIGIT_TRANSLATION = str.maketrans({**ARABIC_INDIC_DIGITS, **URDU_DIGITS})
 _PUNCT_TRANSLATION = str.maketrans(URDU_PUNCTUATION)
@@ -114,24 +128,38 @@ def _require_str(value: object, function: str) -> None:
         raise TypeError(f"{function}() expects a str, got {type(value).__name__}")
 
 
-def _require_words(value: object, function: str) -> None:
-    """Reject a single string where a list of words is expected.
+def _require_words(value: object, function: str) -> list[str]:
+    """Check a list of words and return it as a list, naming the caller on failure.
 
     A string is iterable, so stem_tokens("کتابوں سے") would quietly stem each
-    *character* and return a list of letters - no error, just wrong output. Each
-    item is checked by the per-word function the list is handed to.
+    *character* and return a list of letters - no error, just wrong output. Bytes are
+    iterable too, as ints, so remove_stopwords(b"x") used to fail inside the per-word
+    function with "is_stopword() expects a str, got int", naming neither the function
+    that was called nor the type that was passed.
     """
     if isinstance(value, str):
         raise TypeError(
             f"{function}() expects a list of words, got a str - split it first, "
             "for example with words(text)"
         )
+    if isinstance(value, (bytes, bytearray)):
+        raise TypeError(
+            f"{function}() expects a list of words, got {type(value).__name__} - "
+            "decode it and split it first"
+        )
     try:
-        iter(value)  # type: ignore[call-overload]
+        iterator = iter(value)  # type: ignore[call-overload]
     except TypeError:
         raise TypeError(
             f"{function}() expects a list of words, got {type(value).__name__}"
         ) from None
+    items: list[str] = []
+    for position, item in enumerate(iterator):
+        if not isinstance(item, str):
+            kind = type(item).__name__
+            raise TypeError(f"{function}() expects a list of str, but item {position} is {kind}")
+        items.append(item)
+    return items
 
 
 def resolve_arabic_heh(text: str) -> str:
@@ -233,8 +261,25 @@ def is_urdu(text: str, *, threshold: float = 0.5) -> bool:
 
 
 def remove_urls_and_mentions(text: str) -> str:
-    """Strip URLs, @mentions and #hashtags. Common first step on scraped Urdu text."""
+    """Strip URLs, emails, @mentions and #hashtags. A common first step on scraped text.
+
+    >>> remove_urls_and_mentions("رابطہ test@x.com یا @ali پر")
+    'رابطہ یا پر'
+    """
     _require_str(text, "remove_urls_and_mentions")
-    text = re.sub(r"https?://\S+|www\.\S+", " ", text)
-    text = re.sub(r"[@#]\w+", " ", text)
-    return _SPACES.sub(" ", text).strip()
+    # Punctuation straight after a removed URL closes up onto the word before it:
+    # `dekho http://x.co.` gives `dekho.`, not `dekho .`.
+    pieces: list[str] = []
+    end = 0
+    for match in _IDENTIFIER.finditer(text):
+        before = text[end : match.start()]
+        after = text[match.end() : match.end() + 1]
+        if after and not after.isspace() and not after.isalnum():
+            pieces.append(before.rstrip(" 	"))
+        elif before[-1:].isspace() or after.isspace():
+            pieces.append(before)
+        else:
+            pieces.append(before + " ")
+        end = match.end()
+    pieces.append(text[end:])
+    return _SPACES.sub(" ", "".join(pieces)).strip()
