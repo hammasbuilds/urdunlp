@@ -23,14 +23,11 @@ Accuracy, measured on held-out data, is in docs/CORPUS.md.
 from __future__ import annotations
 
 import functools
-import gzip
-import json
 import math
 import re
 import unicodedata
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from importlib import resources
 from typing import Any
 
 from .normalize import _require_str
@@ -49,11 +46,21 @@ LANGUAGES: dict[str, str] = {
     "azb": "South Azerbaijani",
 }
 
+# Below this many Perso-Arabic letters a guess is flagged `short`. Held-out accuracy
+# by window length: 97.9% on a paragraph, 96.6% on 50 characters, 91.0% on 20, 81.5%
+# on 10 (docs/CORPUS.md, section 10).
+SHORT_TEXT = 20
+
 _ARABIC_RUNS = re.compile("[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿‌]+")
 _ROMAN_WORD = re.compile(r"[A-Za-z]+")
 
 
 def _load(name: str) -> dict[str, Any]:
+    # Imported here, not at the top: `import urdunlp` should not pay for them.
+    import gzip
+    import json
+    from importlib import resources
+
     blob = resources.files("urdunlp").joinpath("data").joinpath(name).read_bytes()
     data: dict[str, Any] = json.loads(gzip.decompress(blob))
     return data
@@ -109,6 +116,11 @@ class LanguageGuess:
     is length, not margin; see the accuracy by length below. `evidence` lists
     letters in the text that only a few of the eleven languages use, keyed by those
     languages.
+
+    `short` is True when the text had fewer than 20 Perso-Arabic letters - one or
+    two words. Held-out accuracy there is 91% at best and 81.5% at ten characters,
+    and a single word is often a word several of the languages share, so treat a
+    short guess as a guess. It is the flag to check; `margin` is not.
     """
 
     language: str | None
@@ -116,6 +128,7 @@ class LanguageGuess:
     margin: float
     ranking: list[tuple[str, float]] = field(repr=False)
     evidence: dict[str, list[str]] = field(default_factory=dict)
+    short: bool = False
 
 
 def identify_language(text: str) -> LanguageGuess:
@@ -131,12 +144,13 @@ def identify_language(text: str) -> LanguageGuess:
     the three closest languages - Urdu, Punjabi and Saraiki share most of their
     letters and much of their vocabulary. On held-out Wikipedia paragraphs it is
     right 97.9% of the time; on 50 characters 96.6%, on 20 91.0%, on ten 81.5%.
-    Urdu itself: 98.7%, 98.0%, 93.3% and 84.0%.
+    Urdu itself: 98.7%, 98.0%, 93.3% and 84.0%. Under 20 letters the result has
+    `short=True`: on one word, expect a neighbouring language about as often as not.
     """
     _require_str(text, "identify_language")
     runs = " ".join(_ARABIC_RUNS.findall(unicodedata.normalize("NFC", text)))
     if not runs.strip():
-        return LanguageGuess(None, None, 0.0, [])
+        return LanguageGuess(None, None, 0.0, [], short=True)
     model = _script_model()
     scores = model.log_likelihoods(runs)
     ranking = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
@@ -154,6 +168,7 @@ def identify_language(text: str) -> LanguageGuess:
         margin=round(margin, 4),
         ranking=ranking,
         evidence=evidence,
+        short=sum(c.isalpha() for c in runs) < SHORT_TEXT,
     )
 
 

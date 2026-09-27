@@ -31,7 +31,7 @@ Two refinements, each measured on Dakshina's dev sentences:
     discounting) in place of the plain frequency prior. That is what separates کہ
     (*that*) from کے (*of*): after کہا (*said*) it is almost always کہ.
 
-Word by word, held-out test accuracy is 88.4%; decoding the sentence, 91.2%.
+Word by word, held-out test accuracy is 88.5%; decoding the sentence, 91.2%.
 
 Everything is plain Python over a bundled table; there is no model download.
 """
@@ -39,12 +39,10 @@ Everything is plain Python over a bundled table; there is no model download.
 from __future__ import annotations
 
 import functools
-import gzip
 import itertools
-import json
 import math
 import re
-from importlib import resources
+import string
 from typing import Any
 
 from .normalize import normalize
@@ -69,6 +67,7 @@ for _letters, _cls in (
 ):
     for _ch in _letters:
         _URDU_CLASS[_ch] = _cls
+_CLASSES = frozenset(_URDU_CLASS.values())
 
 # Roman letter -> the classes it can stand for. The first is the usual one. Each
 # second class was kept only if removing it cost accuracy on the dev sentences:
@@ -97,14 +96,25 @@ _ROMAN_CLASSES: dict[str, tuple[str, ...]] = {
 _MAX_KEYS = 32
 
 
+# str.translate does the per-letter work in C: every letter outside a class is
+# deleted, and a regex collapses runs of one class. The Python loop this replaced
+# was a third of the time it took to load the model (60,638 words).
+_KEY_TABLE = str.maketrans(
+    {
+        **{chr(c): None for c in range(0x0600, 0x0700)},
+        **{c: None for c in string.ascii_letters},
+        **_URDU_CLASS,
+    }
+)
+_REPEATED = re.compile(r"(.)\1+")
+
+
 def urdu_key(word: str) -> str:
     """The coarse consonant key of an Urdu word."""
-    out: list[str] = []
-    for ch in word:
-        cls = _URDU_CLASS.get(ch)
-        if cls and (not out or out[-1] != cls):
-            out.append(cls)
-    return "".join(out)
+    key = word.translate(_KEY_TABLE)
+    if not _CLASSES.issuperset(key):  # a character from outside the Arabic block
+        key = "".join(ch for ch in key if ch in _CLASSES)
+    return _REPEATED.sub(r"\1", key)
 
 
 def roman_keys(word: str) -> frozenset[str]:
@@ -185,10 +195,11 @@ class Channel:
         self.k: int = data["candidates"]
         self.ids: dict[str, int] = {w: i for i, w in enumerate(data["words"])}
         self.context = {int(k): v for k, v in data["context"].items()}
-        self.bigrams: dict[int, dict[int, int]] = {
-            int(k): dict(zip(flat[0::2], flat[1::2], strict=True))
-            for k, flat in data["bigrams"].items()
-        }
+        # Each context's row stays a flat [word, count, word, count, ...] list until
+        # a sentence needs it: building all 344,258 entries as dicts up front was a
+        # quarter of the load time, and a short text touches a few hundred rows.
+        self._flat_bigrams: dict[str, list[int]] = data["bigrams"]
+        self.bigrams: dict[int, dict[int, int]] = {}
         denominator = total + 0.5 * len(counts)
         self.unigram = {w: (c + 0.5) / denominator for w, c in counts.items()}
         self.unigram_floor = 0.5 / denominator
@@ -237,6 +248,11 @@ class Channel:
 
         Ranked by P(roman | word) * P(word), best first.
         """
+        future = _future_split(roman) if roman not in self.by_spelling else None
+        if future is not None:
+            found = self._future_candidates(roman, *future)
+            if found:
+                return found
         attested = set(self.by_spelling.get(roman, ()))
         pool = set(attested)
         for key in roman_keys(roman):
@@ -265,6 +281,33 @@ class Channel:
             chosen = [(w, e) for w, e in chosen if w != word] + [(word, best)]
         return tuple(chosen)
 
+    def _future_candidates(
+        self, roman: str, stem: str, auxiliary: str
+    ) -> tuple[tuple[str, float], ...]:
+        """Candidates for a merged future (`karunga`): the verb form, then گا گی or گے.
+
+        Standard Urdu writes the future as two words - کروں گا, دیکھیں گے - and
+        Wikipedia, which the vocabulary is counted from, almost never uses the future
+        at all, so the merged Roman form had no real word to find: `karunga` came out
+        کرؤنگ and `dekhenge` fell through to the rules. The stem is resolved on its
+        own, and its candidates are re-ranked by how likely the auxiliary is after
+        them, so `milega` gives ملے گا and not مائل (mile) گا.
+        """
+        from .langid import _tagger  # deferred: loaded only for a word like this
+
+        if roman in _tagger().english.unigram:  # challenge, revenge, omega
+            return ()
+        aux = _FUTURE_AUXILIARY[auxiliary]
+        options = []
+        for word, emission in self.candidates(stem):
+            if " " in word:
+                continue
+            score = emission + self.prior_weight * self.log_prior.get(word, -30.0)
+            score += self.lm_weight * self.log_bigram(aux, word)
+            options.append((score, f"{word} {aux}", emission))
+        options.sort(reverse=True)
+        return tuple((word, emission) for _, word, emission in options)
+
     def best(self, roman: str) -> str | None:
         """The most probable vocabulary word for a lowercase Roman token, or None."""
         found = self.candidates(roman)
@@ -280,13 +323,24 @@ class Channel:
             return math.log(p_word)
         total, types = row
         w = self.ids.get(word)
-        count = self.bigrams.get(v, {}).get(w, 0) if w is not None else 0
+        count = self._bigram_row(v).get(w, 0) if w is not None else 0
         p = max(count - self.discount, 0) / total + self.discount * types / total * p_word
         return math.log(p)
 
+    def _bigram_row(self, v: int) -> dict[int, int]:
+        row = self.bigrams.get(v)
+        if row is None:
+            flat = self._flat_bigrams.get(str(v), [])
+            row = self.bigrams[v] = dict(zip(flat[0::2], flat[1::2], strict=True))
+        return row
+
     def _best_score(self, roman: str, prefix: str = "") -> float:
         """Best word-by-word log P(roman | w) P(w), over words starting with `prefix`."""
-        scores = [e + self.log_prior[w] for w, e in self.candidates(roman) if w.startswith(prefix)]
+        scores = [
+            e + self.log_prior.get(w, -math.inf)
+            for w, e in self.candidates(roman)
+            if w.startswith(prefix)
+        ]
         return max(scores, default=-math.inf)
 
     def move_articles(self, romans: list[str], lexicon: dict[str, str]) -> list[str]:
@@ -421,6 +475,28 @@ _HOMOGRAPHS: dict[str, tuple[str, ...]] = {
     "keh": ("کہ",),
 }
 
+# The merged Roman future: `karunga` is کروں گا, `karega` کرے گا, `dekhenge` دیکھیں
+# گے, `jaoge` جاؤ گے. Each ending is split into the verb form it contains and the
+# auxiliary. A word annotators spelled that way in the training lexicon is left to
+# the ordinary lookup (jungi جنگی, adayegi ادائیگی), and so is an English word.
+_FUTURE_ENDING = re.compile(r"^(?P<base>[a-z]{2,}?)(?P<vowel>un|en|e|o)(?P<aux>ga|gi|ge)$")
+_FUTURE_AUXILIARY = {"ga": "گا", "gi": "گی", "ge": "گے"}
+
+
+def _future_split(roman: str) -> tuple[str, str] | None:
+    """(verb form, auxiliary) for a merged future like `karunga`, or None."""
+    match = _FUTURE_ENDING.match(roman)
+    if match is None:
+        return None
+    vowel, aux = match["vowel"], match["aux"]
+    # -unga/-ungi and -enge/-oge/-ogi agree; -unge, -enga, -oga do not occur.
+    if (vowel == "un" and aux == "ge") or (vowel in ("en", "o") and aux == "ga"):
+        return None
+    if vowel == "e" and aux == "ge":
+        return None  # kare-ge is not a form; -enge is
+    return match["base"] + vowel, aux
+
+
 # The article forms: -ul, and the assimilated -ur -us -ud -ut -un -ush -uz before
 # a "sun letter" (abdur rehman, abdus sattar). The margin was chosen on dev
 # sentences: -2 -> +0.50 points, 0 -> +0.53, 2 -> +0.54, 4 -> +0.54, 8 -> +0.45.
@@ -437,8 +513,25 @@ _ROMAN_LM_WEIGHT = 0.3
 
 @functools.lru_cache(maxsize=1)
 def channel() -> Channel:
+    # Imported here, not at the top: `import urdunlp` should not pay for them.
+    import gzip
+    import json
+    from importlib import resources
+
+    from .translit import LEXICON  # deferred: translit imports this module
+
     blob = resources.files("urdunlp").joinpath("data").joinpath("translit.json.gz").read_bytes()
-    return Channel(json.loads(gzip.decompress(blob)))
+    model = Channel(json.loads(gzip.decompress(blob)))
+    # A curated word the vocabulary never counted (پرسوں, the day after tomorrow,
+    # does not occur three times in the Wikipedia sample) got the unseen-word floor,
+    # so in any sentence the decoder threw the lexicon's answer away: `kal parso`
+    # gave کل پرشو. It is given the median word's frequency instead - the lexicon
+    # vouches that it is a word, not that it is a common one.
+    median = sorted(model.unigram.values())[len(model.unigram) // 2]
+    for value in LEXICON.values():
+        for part in normalize(value).split():
+            model.unigram.setdefault(part, median)
+    return model
 
 
 def resolve(roman: str) -> str | None:

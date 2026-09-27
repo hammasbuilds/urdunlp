@@ -31,7 +31,7 @@ and reports which one produced each answer:
 Scored against 52,087 words of hand-romanised Urdu Wikipedia sentences held out
 from everything the model was built from (Dakshina's test split), the first and
 last stages alone - lexicon, then rules - get 43.1% of words exactly right. With
-the vocabulary stage choosing each word on its own, 88.4%; choosing the sentence
+the vocabulary stage choosing each word on its own, 88.5%; choosing the sentence
 as a whole, 91.2%. The numbers, and how they were measured, are in docs/CORPUS.md.
 
 `transliterate_to_urdu` returns the text; `transliterate_with_confidence` returns the
@@ -42,10 +42,11 @@ trust it. Hiding that distinction would be the dishonest design.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 
 from . import _channel
-from .normalize import _require_str, normalize
+from .normalize import IDENTIFIER, ZWJ, ZWNJ, _is_urdu_letter, _require_str, normalize
 
 # --- Stage 1: lexicon -------------------------------------------------------------
 # High-frequency Roman Urdu, mapped to correct Urdu script. Deliberately weighted
@@ -81,6 +82,7 @@ LEXICON: dict[str, str] = {
     # auxiliaries and copulas
     "hai": "ہے",
     "hay": "ہے",
+    "h": "ہے",  # chat: `kya hal h`
     "he": "ہے",
     "hain": "ہیں",
     "hn": "ہیں",
@@ -118,6 +120,7 @@ LEXICON: dict[str, str] = {
     "kyu": "کیوں",
     "kiyun": "کیوں",
     "kaise": "کیسے",
+    "kse": "کیسے",
     "kaisa": "کیسا",
     "kaisi": "کیسی",
     "kahan": "کہاں",
@@ -212,6 +215,7 @@ LEXICON: dict[str, str] = {
     "bahut": "بہت",
     "buhat": "بہت",
     "bht": "بہت",
+    "bhot": "بہت",
     "thora": "تھوڑا",
     "thori": "تھوڑی",
     "zyada": "زیادہ",
@@ -275,6 +279,13 @@ LEXICON: dict[str, str] = {
     "university": "یونیورسٹی",
     "sarak": "سڑک",
     "gari": "گاڑی",
+    # Chat spellings. Each was checked on Dakshina's dev sentences before it went in:
+    # none of them changed a single dev word except `pata` (+5), and without them
+    # `meri gaari` gave میری غار - annotators once wrote غار (cave) as `gaari`.
+    "gaari": "گاڑی",
+    "gaadi": "گاڑی",
+    "gadi": "گاڑی",
+    "pata": "پتہ",
     "shehar": "شہر",
     "gaon": "گاؤں",
     "mulk": "ملک",
@@ -452,14 +463,9 @@ _SORTED_RULES = sorted(RULES, key=lambda r: -len(r[0]))
 # function working. Only spans whose *syntax* marks them as identifiers, numbers or
 # codes are protected.
 _TOKEN = re.compile(
-    r"""
+    rf"""
       (?P<space>\s+)
-    | (?P<identifier>
-          https?://\S+                       # http(s) URL
-        | www\.\S+                           # bare www URL
-        | [\w.+-]+@[\w-]+\.[\w.-]*\w         # email
-        | [@#]\w+                            # mention or hashtag
-      )
+    | (?P<identifier>{IDENTIFIER})           # URL, email, @mention, #hashtag
     | (?P<dotted>(?:[A-Z]\.)+[A-Z]\b\.?)    # U.S.A, U.N. - an acronym, spelled
     | (?P<mixed>[A-Za-z0-9]*(?:[A-Za-z][0-9]|[0-9][A-Za-z])[A-Za-z0-9]*)  # 5th, mp3, A1
     | (?P<number>\d+(?:[.,:/-]\d+)*%?)      # 2.5  12,34,567  3:30  25-12-2024  10%
@@ -491,7 +497,7 @@ def _ends_context(token: str, kind: str) -> bool:
         return False
     if kind == "space":
         return "\n" in token
-    if kind == "passthrough":
+    if kind in ("passthrough", "punctuation"):
         return any(c in _SENTENCE_END for c in token)
     return True
 
@@ -511,6 +517,28 @@ _IS_URDU_SCRIPT = re.compile(r"[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]")
 _SENTENCE_END = frozenset(".?!۔؟")
 
 
+# Latin punctuation -> the Urdu mark, for `urdu_punctuation`. The inverse of what
+# transliterate_to_roman does with ؟ ، ؛ ۔.
+_ASCII_TO_URDU_PUNCT = {"?": "؟", ",": "،", ";": "؛", ".": "۔"}
+
+# What may stand before a converted mark: a word that was, or already is, Urdu.
+_WORD_KINDS = frozenset({"roman", "already-urdu", "title", "acronym"})
+
+
+def _is_urdu_punctuation_slot(text: str, match: re.Match[str], plan: list[tuple[str, str]]) -> bool:
+    """Whether a punctuation token ends a word and so belongs in Urdu script.
+
+    Converting every `.` would turn `...` into ۔۔۔ and an emoticon's `;)` into ؛),
+    so a mark is converted only straight after a word, and only when a space, a
+    closing quote or bracket, or the end of the text follows it.
+    """
+    token = match.group()
+    if token not in _ASCII_TO_URDU_PUNCT or not plan or plan[-1][1] not in _WORD_KINDS:
+        return False
+    after = text[match.end() : match.end() + 1]
+    return after == "" or after.isspace() or after in "\"')]}"
+
+
 @dataclass
 class Transliteration:
     text: str
@@ -518,8 +546,9 @@ class Transliteration:
     # noisy channel), "rules" (best effort), "acronym" (spelled by letter names),
     # "english" (kept in Latin script because `keep_english` was set and the token
     # was tagged English), "passthrough" (numbers, punctuation, codes like `5th`,
-    # other scripts - emitted unchanged), "identifier" (a URL, email, @mention or
-    # #hashtag, emitted verbatim) or "already-urdu" (the token was not Roman at all).
+    # other scripts - emitted unchanged), "punctuation" (`?` `,` `;` `.` after a word,
+    # written ؟ ، ؛ ۔), "identifier" (a URL, email, @mention or #hashtag, emitted
+    # verbatim) or "already-urdu" (the token was not Roman at all).
     # Whitespace is kept in the output and not listed here.
     sources: list[tuple[str, str]]
 
@@ -541,8 +570,8 @@ class Transliteration:
     def rule_share(self) -> float:
         """Share of Roman words that neither the lexicon nor the vocabulary resolved.
 
-        These are the guesses. On held-out hand-romanised Wikipedia sentences 0.4%
-        of words end up here, and 3.5% of those come out right, so a high value
+        These are the guesses. On held-out hand-romanised Wikipedia sentences 0.3%
+        of words end up here, and 3.9% of those come out right, so a high value
         means the text is full of names or words this library has never seen.
         """
         words = [s for t, s in self.sources if t.isalpha() and s != "already-urdu"]
@@ -585,6 +614,7 @@ def transliterate_with_confidence(
     use_vocabulary: bool = True,
     use_context: bool = True,
     keep_english: bool = False,
+    urdu_punctuation: bool = True,
 ) -> Transliteration:
     """Roman Urdu to Urdu script, reporting how each token was resolved.
 
@@ -592,8 +622,8 @@ def transliterate_with_confidence(
     lexicon, then rules. It is faster and far less accurate.
 
     `use_context=False` resolves each word on its own instead of decoding the
-    sentence with a word-bigram model. Faster, and 2.3 points less accurate on
-    held-out sentences (88.4% against 91.2%); the curated lexicon then always wins,
+    sentence with a word-bigram model. Faster, and 2.7 points less accurate on
+    held-out sentences (88.5% against 91.2%); the curated lexicon then always wins,
     so `ke` is always کے, never کہ. A single word on its own is always resolved
     this way - with no neighbours there is no context to use.
 
@@ -601,6 +631,12 @@ def transliterate_with_confidence(
     script instead of transliterating them, and reports them as `english`. Off by
     default: Urdu writes English loanwords in Urdu script (کالج, اسٹیشن), and the
     vocabulary stage usually finds that spelling.
+
+    `urdu_punctuation=True` writes `?` `,` `;` and a full stop that follows a word
+    as ؟ ، ؛ and ۔, which is how Urdu is punctuated - `ye kitab hai?` gives
+    یہ کتاب ہے؟. Only a mark that ends a word and is followed by a space or the
+    end of the text is converted, so `2.5`, `3:30`, `...` and `:)` are untouched.
+    Reported as `punctuation`. `False` leaves every mark as typed.
     """
     # First decide what every token is, then transliterate. Two passes, because
     # `keep_english` has to tag the Roman words *as this function sees them*: tagging
@@ -643,6 +679,8 @@ def transliterate_with_confidence(
             if plan[-1][1] == "roman":
                 plan[-1] = (plan[-1][0], "title")
             plan.append((token, "abbreviation-dot"))
+        elif urdu_punctuation and _is_urdu_punctuation_slot(text, match, plan):
+            plan.append((token, "punctuation"))
         else:
             # Numbers, codes like 5th, punctuation, and letters of any script this
             # function does not convert (é, Devanagari): emitted unchanged.
@@ -700,6 +738,10 @@ def transliterate_with_confidence(
             pieces.append(LEXICON[token.lower()])
             sources.append((token, "lexicon"))
             continue
+        if kind == "punctuation":
+            pieces.append(_ASCII_TO_URDU_PUNCT[token])
+            sources.append((token, "punctuation"))
+            continue
         if kind == "acronym":
             pieces.append(" ".join(LETTER_NAMES[c] for c in token if c in LETTER_NAMES))
             sources.append((token, "acronym"))
@@ -741,6 +783,7 @@ def transliterate_to_urdu(
     use_vocabulary: bool = True,
     use_context: bool = True,
     keep_english: bool = False,
+    urdu_punctuation: bool = True,
 ) -> str:
     """Roman Urdu to Urdu script.
 
@@ -750,14 +793,18 @@ def transliterate_to_urdu(
     """
     _require_str(text, "transliterate_to_urdu")
     return transliterate_with_confidence(
-        text, use_vocabulary=use_vocabulary, use_context=use_context, keep_english=keep_english
+        text,
+        use_vocabulary=use_vocabulary,
+        use_context=use_context,
+        keep_english=keep_english,
+        urdu_punctuation=urdu_punctuation,
     ).text
 
 
 _ROMAN_VOWELS = set("aeiou")
 # Letters that attach to the preceding consonant rather than standing alone.
 _ASPIRATION = {"ھ", "ء"}
-_URDU_PUNCT_TO_ASCII = {"،": ",", "؛": ";", "؟": "?", "۔": "."}
+_URDU_PUNCT_TO_ASCII = {"،": ",", "؛": ";", "؟": "?", "۔": ".", "٪": "%", "٭": "*"}
 
 
 def transliterate_to_roman(
@@ -782,8 +829,11 @@ def transliterate_to_roman(
     `insert_short_vowels=False` always means the literal mapping.
 
     Either way it is lossy (س ص ث are all `s`), digits come out as ASCII, Urdu
-    punctuation as its ASCII equivalent, whitespace is kept, and characters with no
-    Roman form - emoji, stray marks - are dropped, so the result is always ASCII.
+    punctuation as its ASCII equivalent and whitespace is kept. Anything with no
+    Roman form - emoji, symbols, letters of other scripts - is kept unchanged:
+    `میں خوش ہوں 😀` gives `main khush hoon 😀`. Only what belongs to an Urdu
+    word and cannot be written in Roman - a stray diacritic, a zero-width
+    non-joiner - is dropped.
     """
     _require_str(text, "transliterate_to_roman")
     if method not in ("learned", "rules"):
@@ -800,7 +850,8 @@ def transliterate_to_roman(
             spelled = _CURATED_ROMAN.get(token) or model.romanize(token)
             out.append(spelled or _rules_to_roman(token, True))
         else:
-            out.append(_rules_to_roman(token, True))
+            previous = text[match.start() - 1] if match.start() else ""
+            out.append(_rules_to_roman(token, True, previous))
     return "".join(out)
 
 
@@ -816,10 +867,14 @@ for _roman, _urdu in LEXICON.items():
         _CURATED_ROMAN[_key] = _roman
 
 
-def _rules_to_roman(text: str, insert_short_vowels: bool) -> str:
-    """The 0.1 letter-by-letter mapping, over already-normalised text."""
+def _rules_to_roman(text: str, insert_short_vowels: bool, previous: str = "") -> str:
+    """The 0.1 letter-by-letter mapping, over already-normalised text.
+
+    `previous` is the character before `text`, when it is a piece of a longer string.
+    """
     out: list[str] = []
     for char in text:
+        before, previous = previous, char
         if char in URDU_TO_ROMAN:
             piece = URDU_TO_ROMAN[char]
             if (
@@ -842,8 +897,26 @@ def _rules_to_roman(text: str, insert_short_vowels: bool) -> str:
             out.append(char)
         elif char.isspace():
             out.append(" ")  # a non-ASCII space (U+00A0, U+3000) keeps its place
-        # Anything else - a stray mark, an emoji - is dropped rather than emitted
-        # as noise. Urdu digits are not in this branch: normalize made them ASCII.
-        # Before it did, ۱۲۳ was silently dropped here.
+        elif not _is_urdu_mark(char, before):
+            # An emoji, a symbol (★ ✓ © ₨), a letter of another script: kept as it
+            # is. This branch used to drop everything, so `میں خوش ہوں 😀` came out
+            # `main khush hoon ` - a deleted emoji is lost meaning in the very text
+            # (chat, reviews) that Roman Urdu is written in.
+            out.append(char)
 
     return "".join(out)
+
+
+def _is_urdu_mark(char: str, previous: str) -> bool:
+    """A character with no Roman form that belongs to the Urdu word around it.
+
+    Arabic-script combining marks (a diacritic normalize did not strip, the
+    takhallus sign) and the zero-width non-joiner Urdu uses inside compounds. A
+    zero-width joiner is dropped after an Urdu letter and kept anywhere else,
+    because between two emoji it is part of the emoji (👨‍👩‍👧).
+    """
+    if char == ZWNJ:
+        return True
+    if char == ZWJ:
+        return _is_urdu_letter(previous)
+    return unicodedata.category(char).startswith("M") and _is_urdu_letter(char)

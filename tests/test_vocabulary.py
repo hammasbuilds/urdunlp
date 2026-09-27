@@ -75,7 +75,7 @@ class TestContext:
     def test_a_sentence_end_resets_the_context(self):
         """A full stop ends the sentence the next word is chosen in."""
         result = transliterate_with_confidence("kuch nahi hua. us ke ghar gaye")
-        assert result.text == "کچھ نہیں ہوا. اس کے گھر گئے"
+        assert result.text == "کچھ نہیں ہوا۔ اس کے گھر گئے"
 
     def test_attested_spellings_reach_words_the_letter_model_misses(self):
         """The letter model gave `ke` as کہ a log-probability of -6.6; annotators
@@ -145,10 +145,10 @@ class TestLearnedRoman:
         assert "123" in transliterate_to_roman("قیمت ۱۲۳ روپے")
         assert "123" in transliterate_to_roman("قیمت ۱۲۳ روپے", method="rules")
 
-    def test_whitespace_is_kept_and_the_output_is_ascii(self):
+    def test_whitespace_is_kept(self):
         out = transliterate_to_roman("یہ  کتاب\nمیری ہے 😀")
-        assert out.isascii()
         assert "  " in out and "\n" in out
+        assert out.replace("😀", "").isascii()
 
     def test_learned_spellings_convert_back(self):
         """Readable and reversible stopped being a trade-off: on held-out tokens the
