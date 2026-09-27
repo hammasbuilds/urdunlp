@@ -5,15 +5,25 @@
     urdunlp langid "هي ڪتاب منهنجو آهي"        # sd  Sindhi ...
     urdunlp normalize "كتاب"                 # کتاب
     echo "kal milte hain" | urdunlp to-urdu  # reads standard input, line by line
+    urdunlp to-roman -i news.txt -o news-roman.txt
 
 Also `python -m urdunlp`.
+
+Files and standard input are read as UTF-8, with or without a byte-order mark, or as
+UTF-16 when they start with one - which is what Windows PowerShell 5.1 writes with
+`>` - and anything else stops with one line saying so, not a traceback. Output is
+UTF-8; `--bom` adds the mark Excel and old Notepad look for.
 """
 
 from __future__ import annotations
 
 import argparse
+import codecs
+import io
+import os
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterator
+from typing import BinaryIO, TextIO
 
 from . import __version__
 from .langid import identify_language
@@ -62,18 +72,53 @@ def _words(args: argparse.Namespace) -> Callable[[str], str]:
     return lambda line: " | ".join(words(line, keep_punctuation=args.punctuation))
 
 
+_POWERSHELL_HELP = """\
+Windows PowerShell 5.1 passes text to programs as ASCII by default, which turns
+every Urdu letter into '?' before urdunlp sees it, and reads their output in the
+console's code page. Either run this once in the session:
+    $OutputEncoding = [Text.UTF8Encoding]::new()
+    [Console]::InputEncoding = [Console]::OutputEncoding = $OutputEncoding
+or skip the pipe and let urdunlp read and write the files itself:
+    urdunlp to-roman -i input.txt -o output.txt"""
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="urdunlp",
         description="Urdu and Roman Urdu text processing. Each command takes TEXT as an "
-        "argument, or reads standard input one line at a time.",
+        "argument, or reads a file (-i) or standard input one line at a time.",
+        epilog="On Windows PowerShell 5.1, see `urdunlp COMMAND --help` for the encoding "
+        "setup, or use -i and -o.",
     )
     parser.add_argument("--version", action="version", version=f"urdunlp {__version__}")
     commands = parser.add_subparsers(dest="command", metavar="COMMAND", required=True)
 
     def command(name: str, summary: str, make: _Factory) -> argparse.ArgumentParser:
-        sub = commands.add_parser(name, help=summary, description=summary)
-        sub.add_argument("text", nargs="*", help="text to process (default: standard input)")
+        sub = commands.add_parser(
+            name,
+            help=summary,
+            description=summary,
+            epilog=_POWERSHELL_HELP,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        sub.add_argument("text", nargs="*", help="text to process (default: -i FILE or stdin)")
+        sub.add_argument(
+            "-i", "--input", metavar="FILE", help="read FILE, one line at a time, instead of TEXT"
+        )
+        sub.add_argument(
+            "-o", "--output", metavar="FILE", help="write to FILE (UTF-8) instead of stdout"
+        )
+        sub.add_argument(
+            "--encoding",
+            metavar="NAME",
+            help="encoding of the input, when it is neither UTF-8 nor UTF-16 with a "
+            "byte-order mark (for example cp1252)",
+        )
+        sub.add_argument(
+            "--bom",
+            action="store_true",
+            help="start the output with a UTF-8 byte-order mark, for Excel and old Notepad",
+        )
         sub.set_defaults(make=make)
         return sub
 
@@ -100,34 +145,137 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _lines(text: list[str]) -> Iterable[str]:
-    if text:
-        yield " ".join(text)
+class InputError(Exception):
+    """Input that cannot be read as text: reported in one line, not as a traceback."""
+
+
+def _sniff(head: bytes) -> str:
+    """The encoding of a byte stream from its first bytes: a BOM, or UTF-16 by its NULs."""
+    if head.startswith(codecs.BOM_UTF32_LE) or head.startswith(codecs.BOM_UTF32_BE):
+        return "utf-32"
+    if head.startswith(codecs.BOM_UTF16_LE) or head.startswith(codecs.BOM_UTF16_BE):
+        return "utf-16"  # PowerShell 5.1's `>` and Out-File write this
+    # UTF-16 without a mark: ASCII text has a NUL in every other byte.
+    even, odd = head[0:64:2], head[1:64:2]
+    if len(head) >= 4 and odd.count(0) > len(odd) * 0.6 and not even.count(0):
+        return "utf-16-le"
+    if len(head) >= 4 and even.count(0) > len(even) * 0.6 and not odd.count(0):
+        return "utf-16-be"
+    return "utf-8-sig"  # UTF-8, and a BOM is removed rather than leaked into the output
+
+
+def _decoded_lines(binary: BinaryIO, name: str, encoding: str | None) -> Iterator[str]:
+    peek = getattr(binary, "peek", None)
+    head = peek(64)[:64] if peek is not None else b""
+    chosen = encoding or _sniff(head)
+    if chosen.lower().replace("_", "-") in ("utf-8", "utf8"):
+        chosen = "utf-8-sig"
+    try:
+        stream = io.TextIOWrapper(binary, encoding=chosen, errors="strict", newline=None)
+    except LookupError:
+        raise InputError(f"unknown encoding {encoding!r}") from None
+    number = 0
+    try:
+        for line in stream:
+            number += 1
+            yield line.rstrip("\n")
+    except UnicodeDecodeError as error:
+        byte = error.object[error.start : error.start + 1].hex().upper()
+        hint = (
+            "save it as UTF-8, or name its encoding with --encoding (for example cp1252)"
+            if encoding is None
+            else f"it is not {encoding}"
+        )
+        raise InputError(
+            f"{name}, line {number + 1}: byte 0x{byte} is not {chosen.replace('-sig', '')}; {hint}"
+        ) from None
+    finally:
+        stream.detach()
+
+
+def _lines(args: argparse.Namespace) -> Iterator[str]:
+    if args.text:
+        yield " ".join(args.text)
         return
-    for line in sys.stdin:
-        yield line.rstrip("\r\n")
+    if args.input:
+        try:
+            handle = open(args.input, "rb")  # noqa: SIM115 - closed below, lines are lazy
+        except OSError as error:
+            raise InputError(f"cannot read {args.input}: {error.strerror}") from None
+        with handle:
+            yield from _decoded_lines(handle, args.input, args.encoding)
+        return
+    binary = getattr(sys.stdin, "buffer", None)
+    if binary is None:  # stdin replaced by a text stream, as an embedding app may do
+        for line in sys.stdin:
+            yield line.rstrip("\r\n").lstrip("﻿")
+        return
+    yield from _decoded_lines(binary, "standard input", args.encoding)
+
+
+def _looks_mangled(line: str) -> bool:
+    """Whether a line looks like text a shell already replaced with question marks."""
+    stripped = line.replace(" ", "")
+    return stripped.count("?") >= 3 and not stripped.strip("?.,!؟۔0123456789")
+
+
+def _output(args: argparse.Namespace) -> TextIO:
+    if args.output:
+        try:
+            return open(  # noqa: SIM115 - closed by main
+                args.output, "w", encoding="utf-8-sig" if args.bom else "utf-8", newline="\n"
+            )
+        except OSError as error:
+            raise InputError(f"cannot write {args.output}: {error.strerror}") from None
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        # Urdu on a Windows console or a redirect: the default code page cannot
+        # encode it, and print() would raise UnicodeEncodeError on the first letter.
+        reconfigure(encoding="utf-8")
+    if args.bom:
+        sys.stdout.write("﻿")
+    return sys.stdout
 
 
 def main(argv: list[str] | None = None) -> int:
-    # Urdu on a Windows console: the default code page cannot encode it, and print()
-    # would raise UnicodeEncodeError on the first letter.
-    for stream in (sys.stdin, sys.stdout):
-        reconfigure = getattr(stream, "reconfigure", None)
-        if reconfigure is not None:
-            reconfigure(encoding="utf-8")
     parser = _parser()
     args = parser.parse_args(argv)
-    if not args.text and sys.stdin.isatty():
+    if args.text and args.input:
+        parser.error("give TEXT or -i FILE, not both")
+    if not args.text and not args.input and sys.stdin.isatty():
         # Waiting silently on a terminal looks like a hang.
-        parser.error(f"give TEXT, or pipe it in: echo TEXT | urdunlp {args.command}")
+        parser.error(f"give TEXT, -i FILE, or pipe it in: echo TEXT | urdunlp {args.command}")
+    if len(args.text) == 1 and os.path.isfile(args.text[0]):
+        print(
+            f"urdunlp: note: processing the text {args.text[0]!r}, which is also a file "
+            f"name; to read the file, use -i {args.text[0]}",
+            file=sys.stderr,
+        )
     run = args.make(args)
+    out: TextIO | None = None
+    warned = False
     try:
-        for line in _lines(args.text):
-            print(run(line), flush=True)
+        out = _output(args)
+        for line in _lines(args):
+            if not warned and _looks_mangled(line):
+                warned = True
+                print(
+                    "urdunlp: warning: the input arrived as question marks - the shell "
+                    "replaced the text before urdunlp saw it.\n" + _POWERSHELL_HELP,
+                    file=sys.stderr,
+                )
+            out.write(run(line) + "\n")
+            out.flush()
+    except InputError as error:
+        print(f"urdunlp: error: {error}", file=sys.stderr)
+        return 1
     except KeyboardInterrupt:
         return 130
     except BrokenPipeError:  # `urdunlp to-urdu < big.txt | head`
         return 0
+    finally:
+        if out is not None and out is not sys.stdout:
+            out.close()
     return 0
 
 
