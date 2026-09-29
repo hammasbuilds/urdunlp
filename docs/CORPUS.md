@@ -260,7 +260,7 @@ a side effect of inserting one.
 
 ---
 
-## 7. Transliteration, scored against people: 43.1% → 91.2%
+## 7. Transliteration, scored against people: 43.1% → 91.3%
 
 The section below this one used to say that measuring transliteration correctness "needs
 human-checked pairs, which do not exist for Urdu at any useful scale". They exist.
@@ -282,7 +282,7 @@ sentences); the rest cannot be aligned without guessing. Correct means equal aft
 |---|---:|---:|
 | 0.1: lexicon, then rules | 43.4% | **43.1%** |
 | 0.2, each word on its own (`use_context=False`) | 88.9% | **88.5%** |
-| 0.2, each sentence decoded as a whole (default) | 92.0% | **91.2%** |
+| 0.2, each sentence decoded as a whole (default) | 92.0% | **91.3%** |
 
 Where the 0.2 answers come from, on test:
 
@@ -391,7 +391,7 @@ reverse with an Urdu character model generated the right spelling for 18.1% of t
 it cost 0.31 points overall: an invented word that looks plausible wins against real
 ones too often, and there were not enough out-of-vocabulary words for it to pay that back.
 
-**What is left** — 8.8% of test words. On dev, of the words still wrong after context was
+**What is left** — 8.7% of test words. On dev, of the words still wrong after context was
 added (measured before the attested spellings, at 90.0%):
 2,053 had the right word among the five candidates and context chose another, 2,049 had
 it in the vocabulary but outside the five, and 1,095 had it outside the vocabulary
@@ -610,13 +610,13 @@ question: a spelling is right if an annotator wrote exactly it.
 | **lexicon words** (10,424 / 10,517) spelled as some annotator spelled them | | |
 | 0.1 rules, short vowels inserted | 33.1% | **33.4%** |
 | 0.1 rules, literal | 22.2% | 23.7% |
-| 0.2 learned | 53.9% | **54.1%** |
+| 0.2 learned | 54.5% | **54.3%** |
 | **sentence words** (51,764 / 52,087) spelled exactly as that annotator did | | |
 | 0.1 rules, short vowels inserted | 29.1% | **28.6%** |
-| 0.2 learned | 55.0% | **54.7%** |
+| 0.2 learned | 55.0% | **54.5%** |
 | **sentence words** spelled as any annotator spelled that word | | |
 | 0.1 rules, short vowels inserted | 41.5% | **41.4%** |
-| 0.2 learned | 77.2% | **77.9%** |
+| 0.2 learned | 77.6% | **78.2%** |
 
 The learned speller takes, in order: the curated lexicon's spelling (میں is `main`, not
 the rules' `min`); the commonest spelling annotators wrote, for the ~24,000 words of the
@@ -643,6 +643,14 @@ sample changed its Roman spelling (پتہ is now `pata`). The token count moved 
 to 15,088, because `words` now keeps a number like `2.5` whole, and every eleventh token
 is sampled.
 
+**A second small drift, from the same cause.** The word-accuracy, spelled-exactly and
+spelled-as-any figures above moved by 0.1-0.6 points between drafts of this page (test
+word accuracy 91.2% → 91.3%, sentence-exact 54.7% → 54.5%, sentence-any 77.9% → 78.2%,
+lexicon 54.1% → 54.3%) when `python scripts/measure_translit.py` was re-run for this
+release against the current candidate-scoring code. None of it changes a conclusion this
+page draws - the ordering of every comparison and every "X points" delta in the prose
+above still holds - so the numbers were updated in place rather than argued over.
+
 0.1 documented a trade-off: insert short vowels for a reader, leave them out for a
 machine. The learned spelling beats both at both, because it is the spelling the
 Roman → Urdu model was trained to read.
@@ -659,7 +667,7 @@ measured in professional copy.
 
 **Roman Urdu from Wikipedia, not from chat.** Dakshina's romanisations were written by
 annotators transcribing encyclopaedia sentences. People texting write shorter words,
-drop more vowels and switch to English more often. Section 7's 91.2% is a figure for
+drop more vowels and switch to English more often. Section 7's 91.3% is a figure for
 careful romanisation; typed chat will score lower, by an amount nobody has measured.
 
 **Every language model trained and tested on Wikipedia.** Section 10's accuracies are

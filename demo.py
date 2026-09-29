@@ -28,9 +28,11 @@ from urdunlp import (  # noqa: E402
     words,
 )
 
-# Deliberately messy: Arabic kaf and yeh rather than Urdu, doubled spaces, a URL,
-# an English mention.
-RAW = "میں  کل  لاہور  سے  آیا  ہوں۔ http://x.co @ali"
+# Deliberately messy: Arabic yeh (U+064A) and kaf (U+0643) where Urdu has its own
+# letters - identical on screen, and every lookup misses them - doubled spaces, a
+# URL and a mention.
+ARABIC = "يك"
+RAW = "ميں  كل  لاہور  سے  آيا  ہوں۔ http://x.co @ali"
 
 stages = []
 clean = remove_urls_and_mentions(RAW)
@@ -50,12 +52,14 @@ stages.append(("transliterate_to_roman", roman))
 
 print("INPUT")
 print(f"   {RAW}")
+print("   Arabic letters in it: " + " ".join(f"U+{ord(c):04X}" for c in RAW if c in ARABIC))
 print()
 print("OUTPUT")
 for name, value in stages:
     shown = " ".join(value) if isinstance(value, list) else value
     print(f"   {name:24} {shown}")
 print()
+print(f"   Arabic letters left after normalize: {sum(c in ARABIC for c in norm)}")
 print(
     f"   {len(toks)} tokens in, {len(content)} content words out "
     f"({len(toks) - len(content)} stopwords removed)"
@@ -104,5 +108,7 @@ print(f"      {' '.join(forms):36} -> {' '.join(stem_tokens(forms))}")
 
 print()
 print("   Numbers, with the fractions English has no word for:")
-for span in find_numbers("اس نے ڈیڑھ لاکھ روپے اور سوا دو کروڑ کا قرض لیا، aur 15 lakh baqi"):
-    print(f"      {span.text:14} = {format_number(span.value)}")
+PRICES = "اس نے ڈیڑھ لاکھ روپے اور سوا دو کروڑ کا قرض لیا، aur 15 lakh baqi"
+PRICES += ", final sawa baara lakh"
+for span in find_numbers(PRICES):
+    print(f"      {span.text:16} = {format_number(span.value)}")

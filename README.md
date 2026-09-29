@@ -138,14 +138,14 @@ and every number: [docs/CORPUS.md](https://github.com/hammasbuilds/urdunlp/blob/
 
 | | 0.1 | **0.2** | measured on |
 |---|---:|---:|---|
-| Roman → Urdu, word accuracy | 43.1% | **@@RU_TEST@@** | 52,087 words of hand-romanised test sentences ([Dakshina](https://github.com/google-research-datasets/dakshina)) |
-| Urdu → Roman, spelled exactly as the annotator did | 28.6% | **@@UR_EXACT@@** | the same sentences |
-| Urdu → Roman, spelled as some annotator spelled that word | 41.4% | **@@UR_ANY@@** | the same sentences |
-| Urdu → Roman → Urdu round trip | 42.0% | **@@RT@@** | @@RT_N@@ tokens of held-out sentences |
-| Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **@@BC@@** | 10,517 test-lexicon spellings |
-| Which of 11 Perso-Arabic languages, whole paragraph | — | **@@LID_P@@** | 1,254 test paragraphs |
-| ... on 20 characters | — | **@@LID_20@@** | |
-| English words found inside Roman Urdu (recall) | — | **@@EN_REC@@** | synthetic code-mixed test sentences |
+| Roman → Urdu, word accuracy | 43.1% | **91.3%** | 52,087 words of hand-romanised test sentences ([Dakshina](https://github.com/google-research-datasets/dakshina)) |
+| Urdu → Roman, spelled exactly as the annotator did | 28.6% | **54.5%** | the same sentences |
+| Urdu → Roman, spelled as some annotator spelled that word | 41.4% | **78.2%** | the same sentences |
+| Urdu → Roman → Urdu round trip | 42.0% | **93.9%** | 15,088 tokens of held-out sentences |
+| Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
+| Which of 11 Perso-Arabic languages, whole paragraph | — | **97.9%** | 1,254 test paragraphs |
+| ... on 20 characters | — | **91.0%** | |
+| English words found inside Roman Urdu (recall) | — | **87.3%** | synthetic code-mixed test sentences |
 | Stemming, retrieval recall@10 | — | **+0.008** | 2,583 test queries, sign test p = 0.019 |
 
 The weak numbers are in the table on purpose: the stemmer helps a little, language
@@ -153,9 +153,9 @@ identification guesses between neighbours on a single word, and `is_urdu` - a sc
 check - says yes to 99.9% of Persian.
 
 **Speed.** `import urdunlp` loads nothing (about 0.1 s). Each model loads on the first
-call that needs it: about @@LOAD@@ s of CPU for transliteration, 0.2 s for
+call that needs it: about 0.6 s of CPU for transliteration, 0.2 s for
 `identify_language`, 0.1 s for `tag_roman_tokens`. Roman → Urdu then runs at about
-@@SPEED_DEV@@ words a second of CPU on 51,764 words of held-out Wikipedia sentences,
+1,700 words a second of CPU on 51,764 words of held-out Wikipedia sentences,
 and faster on text that repeats its words (chat does); Urdu → Roman and
 `identify_language` are much faster. For a large corpus, split it across processes
 with `multiprocessing.Pool` - each process loads the model once. In a web server,
@@ -175,7 +175,48 @@ spaces, a URL and a mention.
 `python demo.py`
 
 ```
-@@DEMO@@
+INPUT
+   ميں  كل  لاہور  سے  آيا  ہوں۔ http://x.co @ali
+   Arabic letters in it: U+064A U+0643 U+064A
+
+OUTPUT
+   remove_urls_and_mentions ميں كل لاہور سے آيا ہوں۔
+   normalize                میں کل لاہور سے آیا ہوں۔
+   words                    میں کل لاہور سے آیا ہوں
+   remove_stopwords         کل لاہور آیا
+   transliterate_to_roman   main kal lahore se aaya hoon.
+
+   Arabic letters left after normalize: 0
+   6 tokens in, 3 content words out (3 stopwords removed)
+
+   Roman -> Urdu, and which stage answered:
+      mera naam Ali hai            -> میرا نام علی ہے    [lexicon vocabulary vocabulary lexicon]
+      is ke baad taur par haasil   -> اس کے بعد طور پر حاصل    [vocabulary lexicon vocabulary vocabulary lexicon vocabulary]
+      dekho http://x.co par        -> دیکھو http://x.co پر    [vocabulary identifier lexicon]
+
+   Spelling variants, grouped by the Urdu word they spell:
+      نہیں     nahi, nhi, naheen
+      اچھا     acha, accha, achha
+
+   English inside Roman Urdu:
+      kal meeting cancel ho gayi   -> kal/ur meeting/en cancel/en ho/ur gayi/ur
+      keep_english=True            -> کل meeting cancel ہو گئی
+
+   Script is not language - every one of these passes is_urdu():
+      یہ کتاب میری ہے اور میں اسے پڑھتا ہوں    -> Urdu     right  
+      هذا الكتاب لي وأنا أقرأه                 -> Arabic   right  
+      هي ڪتاب منهنجو آهي                       -> Sindhi   right  sd:ڪ
+      دا کتاب زما دی او زه یې هره ماښام لولم   -> Pashto   right  ps:ښې ug:ې
+      دا کتاب زما دی                           -> Punjabi (Shahmukhi) WRONG, it is Pashto - four words is too few  
+
+   Inflected forms, stemmed to one retrieval key:
+      کتاب کتابیں کتابوں لڑکا لڑکے لڑکیاں  -> کتاب کتاب کتاب لڑک لڑک لڑک
+
+   Numbers, with the fractions English has no word for:
+      ڈیڑھ لاکھ        = 1,50,000
+      سوا دو کروڑ      = 2,25,00,000
+      15 lakh          = 15,00,000
+      sawa baara lakh  = 12,25,000
 ```
 
 *Shown as text, not a screenshot: Urdu is a joining right-to-left script, and an image
@@ -185,7 +226,7 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 
 - **Roman → Urdu is ambiguous by nature.** `ke` is کے (*of*) or کہ (*that*); a bigram
   model gets it right after کہا, not where the deciding word is further back. On
-  held-out sentences @@RU_WRONG@@ of words still come out wrong.
+  held-out sentences 8.7% of words still come out wrong.
 - **The accuracy figures are for careful romanisation of encyclopaedia text.** Chat is
   shorter, drops more vowels and switches to English more; nobody has measured how much
   lower it scores. The word statistics are Wikipedia's, so a chat phrase can be read as
@@ -194,11 +235,11 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 - **English inside Roman Urdu.** By default an English word is written the way Urdu
   writes it (`station` → اسٹیشن), and a word the vocabulary does not hold may be matched
   to the wrong Urdu word (`exam` → اقسام, `late` → لاتے). `keep_english=True` leaves the
-  words `tag_roman_tokens` calls English in Latin; that tagger finds @@EN_REC@@ of
+  words `tag_roman_tokens` calls English in Latin; that tagger finds 87.3% of
   English words on synthetic test sentences and misses some in real chat
   (`kal meeting hai` tags `meeting` as Urdu). Unknown words that are clearly English
   (`recharge`) and mixed-case names (`iPhone`) are kept in Latin either way.
-- **Language identification needs a sentence**: @@LID_P@@ on a paragraph, @@LID_20@@ on 20
+- **Language identification needs a sentence**: 97.9% on a paragraph, 91.0% on 20
   characters, 81.5% on ten, with the errors between Urdu, Punjabi and Saraiki. A guess
   on fewer than 20 letters has `short=True`; `margin` is not a confidence score.
 - **Urdu → Roman is lossy.** س ص ث all give `s`. The round trip recovers most of it for
@@ -214,7 +255,7 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py                                  # nothing to install
-pip install pytest && python -m pytest -q       # @@TESTS@@ tests
+pip install pytest && python -m pytest -q       # 576 tests
 ```
 
 The tests use only what ships in the package. To reproduce the measurements, fetch the
