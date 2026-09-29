@@ -355,8 +355,47 @@ CHAT_LEXICON: dict[str, str] = {
     "alhamdulillah": "الحمد للہ",
     "inshaallah": "ان شاء اللہ",
     "mashaallah": "ماشاء اللہ",
+    # the same phrases written as two or three words: `Jazak Allah khair` came out
+    # جھجک اللہ خیر (*hesitation*), because only the joined `jazakallah` was here
+    "jazak": "جزاک",
+    "insha": "ان شاء",
+    "masha": "ماشاء",
+    "subhan": "سبحان",
+    "paindabad": "پائندہ باد",
+    # one- and two-letter chat forms: `acha g` is اچھا جی, `yr` is یار (the decoder
+    # read it as ایئر, *air*). `h` for ہے and `k` for کہ are resolved by context.
+    "g": "جی",
+    "yr": "یار",
+    "yar": "یار",
 }
+# English words chat uses every day, spelled the way Urdu writes them. The Wikipedia
+# vocabulary matched each to a different real word - `charger` کارگر (*effective*),
+# `number` نومبر (*November*), `email` عمیل, `late` لاتی - or had no spelling for it
+# (`laptop` لاپتوپ). With `keep_english=True` these are left in Latin script.
+CHAT_ENGLISH: dict[str, str] = {
+    "please": "پلیز",
+    "sorry": "سوری",
+    "laptop": "لیپ ٹاپ",
+    "charger": "چارجر",
+    "email": "ای میل",
+    "wifi": "وائی فائی",
+    "exam": "ایگزام",
+    "late": "لیٹ",
+    "boss": "باس",
+    "number": "نمبر",
+    "bike": "بائیک",
+    "gift": "گفٹ",
+    "hang": "ہینگ",
+    "job": "جاب",
+    "salary": "سیلری",
+    "busy": "بزی",
+}
+CHAT_LEXICON.update(CHAT_ENGLISH)
 LEXICON.update(CHAT_LEXICON)
+# Chat shorthand looked up as the word it abbreviates. `k` is `ke` - کے or کہ, left
+# to context like `ke` itself (کہ after کہا or کیوں); on its own the vocabulary read
+# it as ایک.
+_CHAT_ALIASES: dict[str, str] = {"k": "ke"}
 # `pata` is in the curated lexicon above; in a sentence the decoder read it as
 # پاتا (*finds*), which Wikipedia uses and chat almost never means.
 _FIXED = frozenset(CHAT_LEXICON) | {"pata"}
@@ -585,7 +624,7 @@ _SENTENCE_END = frozenset(".?!۔؟")
 _ASCII_TO_URDU_PUNCT = {"?": "؟", ",": "،", ";": "؛", ".": "۔"}
 
 # What may stand before a converted mark: a word that was, or already is, Urdu.
-_WORD_KINDS = frozenset({"roman", "already-urdu", "title", "acronym"})
+_WORD_KINDS = frozenset({"roman", "already-urdu", "title", "acronym", "greeting"})
 
 
 def _is_urdu_punctuation_slot(text: str, match: re.Match[str], plan: list[tuple[str, str]]) -> bool:
@@ -593,7 +632,9 @@ def _is_urdu_punctuation_slot(text: str, match: re.Match[str], plan: list[tuple[
 
     Converting every `.` would turn `...` into ۔۔۔ and an emoticon's `;)` into ؛),
     so a mark is converted only straight after a word, and only when a space, a
-    closing quote or bracket, or the end of the text follows it.
+    closing quote or bracket, or the end of the text follows it - or, for `,` `?`
+    and `;`, another Latin word typed with no space: `ghar gaya,phir aaya`. A glued
+    `.` is left alone, as in `x.com`.
     """
     token = match.group()
     if match.lastgroup != "marks" and token not in _ASCII_TO_URDU_PUNCT:
@@ -602,7 +643,8 @@ def _is_urdu_punctuation_slot(text: str, match: re.Match[str], plan: list[tuple[
         return False
     after = text[match.end() : match.end() + 1]
     return (
-        after == ""
+        (token in ",?;" and after.isascii() and after.isalpha())
+        or after == ""
         or after.isspace()
         or after in "\"')]}!"
         # an emoji straight after the mark: `hai?😂`
@@ -846,6 +888,8 @@ def _render(
         ]
         tags = _tagger().tag([plan[i][0] for i in tagged])
         english = {i for i, tag in zip(tagged, tags, strict=True) if tag == "en"}
+        # The tagger calls `email` and `hang` Urdu; the chat English list knows better.
+        english |= {i for i in tagged if lookup.get(i) in CHAT_ENGLISH}
 
     # With context, each run of Roman words is decoded as a sequence, so a word can
     # be chosen for the word before it: کہ after کہا, کے before بعد. A run ends at
@@ -977,6 +1021,8 @@ def _write_izafat(rendered: list[tuple[str, str, str]], use_vocabulary: bool) ->
 
 def _lookup_form(token: str) -> str:
     lowered = token.lower()
+    if lowered in _CHAT_ALIASES:
+        return _CHAT_ALIASES[lowered]
     if _STRETCHED.search(lowered):
         from .langid import _tagger
 
@@ -1123,6 +1169,20 @@ for _roman, _urdu in LEXICON.items():
         and _key not in _CURATED_ROMAN
     ):
         _CURATED_ROMAN[_key] = _roman
+
+# Number words the learned model spells in a way nobody reads as that number: 71
+# came out `akhtar` (a name), 77 `sattar` (which is 70) and 51 `akiyon`. Each is the
+# spelling `parse_number` reads back; tests/test_numbers.py round-trips 0-99.
+_CURATED_ROMAN.update(
+    {
+        "اکیاون": "ikyavan",
+        "باون": "baavan",
+        "ترسٹھ": "tresath",
+        "تیئس": "teis",
+        "اکہتر": "ikhattar",
+        "ستتر": "sathattar",
+    }
+)
 
 # Fixed expressions and compounds, spelled the way Pakistani news and chat spell
 # them. Word by word they came out as nobody writes them: زندہ باد as `jinda baad`,
