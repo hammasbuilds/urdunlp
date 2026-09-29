@@ -235,24 +235,118 @@ def _numeral_value(token: str) -> Fraction | None:
     return Fraction(token.replace(",", ""))
 
 
-# Roman spellings of the words that carry most of the value in a Roman Urdu amount.
+# Roman spellings of every number word, 1-99, and of the units and fractions.
 # Explicit rather than left to `roman_key`, because these are the words an amount
-# cannot afford to get wrong, and several of them are also ordinary Roman Urdu
-# words (`do` is "two" and "give"). Every other Latin word is resolved with
-# `roman_key` and accepted only if the Urdu word it resolves to is a number word.
+# cannot afford to get wrong: `roman_key` picks the nearest Urdu word, and for
+# `sattar` (70) that was ستتر (77). Several are also ordinary Roman Urdu words
+# (`do` is "two" and "give", `tera` "thirteen" and "your", `saath` "sixty" and
+# "with"); `find_numbers` reads those only next to another number word. Every other
+# Latin word is resolved by `parse_number` with `roman_key`, and accepted only if the
+# Urdu word it resolves to is a number word.
+_ROMAN_UNITS: dict[int, tuple[str, ...]] = {
+    1: ("ek", "aik", "ik", "ekk"),
+    2: ("do", "doh"),
+    3: ("teen", "tin"),
+    4: ("char", "chaar"),
+    5: ("panch", "paanch", "panj"),
+    6: ("chay", "chhe", "chhay", "che", "chh", "chhah", "chha", "cheh"),
+    7: ("saat", "sat"),
+    8: ("aath", "ath", "aat", "aathh"),
+    9: ("nau", "no", "naw", "nou"),
+    10: ("das", "dus", "dass"),
+    11: ("gyarah", "gyara", "gyaara", "gyaarah", "giyara", "giyarah", "gyarha"),
+    12: ("barah", "bara", "baara", "baarah", "barha", "baraa"),
+    13: ("terah", "tera", "tehra", "teraa", "tehrah"),
+    14: ("chaudah", "chauda", "chodah", "choda", "chaudha", "chodha"),
+    15: ("pandrah", "pandra", "pundra", "pandara", "pandarah"),
+    16: ("solah", "sola", "solha"),
+    17: ("satrah", "satra", "sattrah", "sattra", "satarah"),
+    18: ("atharah", "athara", "athaara", "attharah", "atthara", "atharha"),
+    19: ("unnees", "unees", "unnis", "unis"),
+    20: ("bees", "bis"),
+    21: ("ikkees", "ikees", "ikkis", "ikis"),
+    22: ("baees", "bais", "baais", "baaees", "baies"),
+    23: ("teis", "tais", "taees", "teyis", "taeis", "teees"),
+    24: ("chaubees", "chobees", "chaubis", "chobis"),
+    25: ("pachees", "pachchees", "pachis", "pachchis"),
+    26: ("chhabbees", "chabbees", "chabees", "chhabis", "chabbis", "chabis"),
+    27: ("sattaees", "sattais", "satais", "sataees", "sattayis"),
+    28: ("atthaees", "athaees", "athais", "atthais", "athayis"),
+    29: ("untees", "untis", "unatees", "unattis"),
+    30: ("tees", "tis"),
+    31: ("ikattees", "iktees", "ikatis", "ikattis", "ikatees"),
+    32: ("battees", "batees", "batis", "battis"),
+    33: ("taintees", "tentees", "taintis", "tentis", "tetees", "tetis"),
+    34: ("chauntees", "chontees", "chontis", "chautis", "chautees"),
+    35: ("paintees", "pentees", "paintis", "pentis"),
+    36: ("chhattees", "chattees", "chhatis", "chattis", "chhattis"),
+    37: ("saintees", "sentees", "saintis", "sentis"),
+    38: ("artees", "adtees", "artis", "adtis", "arrtees"),
+    39: ("untaalees", "untalees", "untalis", "antalees"),
+    40: ("chalees", "chaalees", "chalis", "chaalis"),
+    41: ("iktaalees", "iktalees", "iktalis", "iktaalis"),
+    42: ("bayalees", "bialees", "bayalis", "byalis", "biyalees", "bayaalees"),
+    43: ("taintaalees", "tentalees", "taintalis", "tentalis", "tetalees", "taitalis"),
+    44: ("chawalees", "chawaalees", "chaualis", "chawalis", "chauvalees"),
+    45: ("paintaalees", "pentalees", "paintalis", "pentalis", "paintalees"),
+    46: ("chhiyalees", "chiyalees", "chhiyalis", "chiyalis", "chhayalees"),
+    47: ("saintaalees", "sentalees", "saintalis", "sentalis", "saintalees"),
+    48: ("artaalees", "artalees", "artalis", "adtalis", "adtalees"),
+    49: ("unchaas", "unchas", "unanchas"),
+    50: ("pachaas", "pachas"),
+    51: ("ikyavan", "ikyawan", "ikkyawan", "ekawan", "ikiyawan", "ikyaavan"),
+    52: ("baavan", "bawan", "baawan", "bavan"),
+    53: ("tirpan", "tirepan", "trepan", "tarpan"),
+    54: ("chavvan", "chawan", "chauwan", "chavan"),
+    55: ("pachpan", "pachpun"),
+    56: ("chhappan", "chappan", "chhapan", "chapan"),
+    57: ("sattavan", "sattawan", "satawan", "satavan"),
+    58: ("atthavan", "athawan", "atthawan", "athavan"),
+    59: ("unsath", "unsaath", "unsatth"),
+    60: ("saath", "sath"),
+    61: ("iksath", "ikasath", "iksaath", "ikasaath"),
+    62: ("baasath", "basath", "baasaath", "basaath"),
+    63: ("tresath", "tirsath", "tresaath", "tirsaath"),
+    64: ("chaunsath", "chonsath", "chaunsaath", "chonsaath"),
+    65: ("painsath", "pensath", "painsaath", "pensaath"),
+    66: ("chhiyasath", "chiyasath", "chhiyasaath", "chiyasaath"),
+    67: ("sarsath", "sadsath", "sarsaath", "sadsaath"),
+    68: ("arsath", "adsath", "arsaath", "adsaath"),
+    69: ("unhattar", "unhatar"),
+    70: ("sattar", "satar", "sattur"),
+    71: ("ikhattar", "ikahattar", "ikhatar"),
+    72: ("bahattar", "behattar", "bahatar"),
+    73: ("tihattar", "tehattar", "tihatar"),
+    74: ("chauhattar", "chohattar", "chauhatar"),
+    75: ("pachhattar", "pachattar", "pachhatar", "pichattar"),
+    76: ("chhihattar", "chihattar", "chhihatar"),
+    77: ("sathattar", "satattar", "sathatar", "satahattar"),
+    78: ("athhattar", "athattar", "athhatar", "athahattar"),
+    79: ("unasi", "unaasi", "unnasi", "unasee"),
+    80: ("assi", "asi", "assee", "assy"),
+    81: ("ikyasi", "ikiyasi", "ikasi", "ikyaasi"),
+    82: ("bayasi", "biyasi", "bayaasi"),
+    83: ("tirasi", "tiraasi"),
+    84: ("chaurasi", "chorasi", "chauraasi"),
+    85: ("pachasi", "pachaasi"),
+    86: ("chhiyasi", "chiyasi", "chhiyaasi"),
+    87: ("sattasi", "satasi", "sattaasi"),
+    88: ("atthasi", "athasi", "atthaasi"),
+    89: ("navasi", "nawasi", "nawaasi"),
+    90: ("nabbe", "navve", "nawway", "nawe", "navay", "nabbay", "nabe", "nave"),
+    91: ("ikyanave", "ikanway", "ikyanve", "ikyanway", "ikkyanve"),
+    92: ("banave", "banway", "baanway", "baanve", "baanave"),
+    93: ("tiranve", "tiranway", "tiranave"),
+    94: ("chauranve", "choranway", "chauranway", "chauranave"),
+    95: ("pachanve", "pachanway", "pachanvay", "pachanave"),
+    96: ("chhiyanve", "chiyanway", "chhiyanway", "chhiyanave"),
+    97: ("sattanve", "sattanway", "sattanave"),
+    98: ("atthanve", "athanway", "atthanway", "atthanave"),
+    99: ("ninnanve", "ninanway", "ninyanve", "ninnanway", "ninnanave"),
+}
+
 ROMAN_NUMBER_WORDS: dict[str, str] = {
-    **dict.fromkeys(("ek", "aik", "ik"), "ایک"),
-    **dict.fromkeys(("do", "doh"), "دو"),
-    **dict.fromkeys(("teen", "tin"), "تین"),
-    **dict.fromkeys(("char", "chaar"), "چار"),
-    **dict.fromkeys(("panch", "paanch", "panj"), "پانچ"),
-    **dict.fromkeys(("chay", "chhe", "chhay", "che", "chh"), "چھ"),
-    **dict.fromkeys(("saat", "sat"), "سات"),
-    **dict.fromkeys(("aath", "ath", "aat"), "آٹھ"),
-    **dict.fromkeys(("nau", "no", "naw"), "نو"),
-    **dict.fromkeys(("das", "dus"), "دس"),
-    **dict.fromkeys(("bees", "bis"), "بیس"),
-    **dict.fromkeys(("pachas", "pachaas"), "پچاس"),
+    **{spelling: _UNITS[n][0] for n, spellings in _ROMAN_UNITS.items() for spelling in spellings},
     **dict.fromkeys(("sau", "so", "sou", "sao"), "سو"),
     **dict.fromkeys(("hazar", "hazaar", "hajar", "hzar"), "ہزار"),
     **dict.fromkeys(("lakh", "lac", "lakhs", "lacs", "laakh"), "لاکھ"),
@@ -535,6 +629,18 @@ def find_numbers(text: str) -> list[NumberSpan]:
         """Whether tokens a and b belong to one phrase - only whitespace between."""
         return not text[matches[a].end() : matches[b].start()].strip()
 
+    # Straight before a unit, a Latin word the table does not know is read with
+    # `roman_key` too, as `parse_number` reads every word: `pandhra lakh` and
+    # `barrah hazar` are amounts, and there a number word is what the writer meant.
+    for k in range(len(matches) - 1):
+        if (
+            roman[k]
+            and not _is_number_token(canonical[k])
+            and (canonical[k + 1] in _SCALE_VALUE or canonical[k + 1] == HUNDRED)
+            and joined(k, k + 1)
+        ):
+            canonical[k] = _from_roman(canonical[k])
+
     def ordinal_at(k: int) -> str | None:
         """What token k contributes as an ordinal: a cardinal word, "" for a bare
         ویں/واں ending glued to the numeral before it (5ویں), or None."""
@@ -596,12 +702,31 @@ def find_numbers(text: str) -> list[NumberSpan]:
                 i = j + 2
                 continue
         words = canonical[i : j + 1]
+        # lakh, crore, arab or kharab with no number before it, straight after a Latin
+        # word that is not a number word even by `roman_key`: `sawa baara lakh`, read
+        # before `baara` was in the table, gave a bare `lakh` = 100,000 for 1,225,000.
+        # The word before is then a number spelled some way nothing here knows, so
+        # the amount is left out rather than reported wrong. A bare `sau` or `hazar`
+        # after a word is kept: `mere paas sau rupay` is a hundred rupees.
+        if (
+            words[0] in _SCALE_VALUE
+            and words[0] != "ہزار"
+            and i > 0
+            and roman[i - 1]
+            and joined(i - 1, i)
+            and not _is_number_token(canonical[i - 1])
+        ):
+            i = j + 1
+            continue
         # A lone ambiguous word is not a number: اسی is "that same", and in Roman
         # text so, no and do are English and Urdu words long before they are 100,
         # 9 and 2.
+        # A Roman word is judged by its spelling, not by the Urdu word it stands for:
+        # `sau` is only ever a hundred, though سو is also "so".
         if len(words) == 1 and (
-            words[0] in AMBIGUOUS
-            or (roman[i] and matches[i].group().lower() not in UNAMBIGUOUS_ROMAN)
+            matches[i].group().lower() not in UNAMBIGUOUS_ROMAN
+            if roman[i]
+            else words[0] in AMBIGUOUS
         ):
             i += 1
             continue
