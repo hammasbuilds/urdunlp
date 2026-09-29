@@ -10,6 +10,11 @@ description = "Urdu and Roman Urdu text processing: normalisation, transliterati
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
+# The code is MIT; the data files bundled in the wheel (src/urdunlp/data/) are
+# CC BY-SA 4.0, derived from Dakshina, Wikipedia and HotpotQA - see LICENSE-DATA.
+# Both ship in the wheel's dist-info so a user auditing metadata sees the second
+# license without having to read the README.
+license-files = ["LICENSE", "LICENSE-DATA"]
 keywords = ["urdu", "roman-urdu", "nlp", "transliteration", "normalization", "language-identification", "code-mixing", "stemmer", "pakistan"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -77,6 +82,7 @@ include = [
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
+    "LICENSE-DATA",
     "pyproject.toml",
 ]
 

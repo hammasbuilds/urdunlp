@@ -1,0 +1,9 @@
+The code in this package is MIT-licensed (see LICENSE).
+
+The data files under src/urdunlp/data/ that ship inside the wheel are derived
+from Dakshina (Roark et al., LREC 2020), Wikipedia, and HotpotQA, and are
+licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/
+
+This is a separate license from the code. A user of the *code* is bound by
+MIT; a user who redistributes the *bundled data* (or a work derived from it)
+must comply with CC BY-SA 4.0, including attribution and share-alike.
