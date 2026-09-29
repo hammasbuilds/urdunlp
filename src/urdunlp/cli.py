@@ -19,11 +19,14 @@ from __future__ import annotations
 
 import argparse
 import codecs
+import contextlib
 import io
+import json
 import os
 import sys
+import tempfile
 from collections.abc import Callable, Iterator
-from typing import BinaryIO, TextIO
+from typing import Any, BinaryIO, TextIO
 
 from . import __version__
 from .langid import identify_language
@@ -34,6 +37,13 @@ from .translit import transliterate_to_roman, transliterate_with_confidence
 _Factory = Callable[[argparse.Namespace], Callable[[str], str]]
 
 
+def _emit(args: argparse.Namespace, line: str, text: str, record: dict[str, Any]) -> str:
+    """The output line: `text`, or with --json one JSON object for the input line."""
+    if not args.json:
+        return text
+    return json.dumps({"input": line, **record}, ensure_ascii=False)
+
+
 def _to_urdu(args: argparse.Namespace) -> Callable[[str], str]:
     def run(line: str) -> str:
         result = transliterate_with_confidence(
@@ -41,35 +51,61 @@ def _to_urdu(args: argparse.Namespace) -> Callable[[str], str]:
             keep_english=args.keep_english,
             urdu_punctuation=not args.latin_punctuation,
         )
-        if not args.sources:
-            return result.text
-        detail = " ".join(f"{token}/{source}" for token, source in result.sources)
-        return f"{result.text}\t{detail}"
+        text = result.text
+        if args.sources:
+            detail = " ".join(f"{token}/{source}" for token, source in result.sources)
+            text = f"{text}\t{detail}"
+        record = {
+            "text": result.text,
+            "sources": [list(pair) for pair in result.sources],
+            "rule_share": result.rule_share,
+        }
+        return _emit(args, line, text, record)
 
     return run
 
 
 def _to_roman(args: argparse.Namespace) -> Callable[[str], str]:
-    return lambda line: transliterate_to_roman(line, method=args.method)
+    def run(line: str) -> str:
+        text = transliterate_to_roman(line, method=args.method)
+        return _emit(args, line, text, {"text": text})
+
+    return run
 
 
 def _langid(args: argparse.Namespace) -> Callable[[str], str]:
     def run(line: str) -> str:
         guess = identify_language(line)
         if guess.language is None:
-            return "-\tno Perso-Arabic letters"
-        note = "\tshort text, a guess" if guess.short else ""
-        return f"{guess.language}\t{guess.name}\tmargin {guess.margin}{note}"
+            text = "-\tno Perso-Arabic letters"
+        else:
+            note = "\tshort text, a guess" if guess.short else ""
+            text = f"{guess.language}\t{guess.name}\tmargin {guess.margin}{note}"
+        record = {
+            "language": guess.language,
+            "name": guess.name,
+            "margin": guess.margin,
+            "short": guess.short,
+        }
+        return _emit(args, line, text, record)
 
     return run
 
 
 def _normalize(args: argparse.Namespace) -> Callable[[str], str]:
-    return lambda line: normalize(line, normalize_digits=args.digits)
+    def run(line: str) -> str:
+        text = normalize(line, normalize_digits=args.digits)
+        return _emit(args, line, text, {"text": text})
+
+    return run
 
 
 def _words(args: argparse.Namespace) -> Callable[[str], str]:
-    return lambda line: " | ".join(words(line, keep_punctuation=args.punctuation))
+    def run(line: str) -> str:
+        tokens = words(line, keep_punctuation=args.punctuation)
+        return _emit(args, line, " | ".join(tokens), {"words": tokens})
+
+    return run
 
 
 _POWERSHELL_HELP = """\
@@ -118,6 +154,11 @@ def _parser() -> argparse.ArgumentParser:
             "--bom",
             action="store_true",
             help="start the output with a UTF-8 byte-order mark, for Excel and old Notepad",
+        )
+        sub.add_argument(
+            "--json",
+            action="store_true",
+            help="one JSON object per input line (JSON Lines), with the input and every field",
         )
         sub.set_defaults(make=make)
         return sub
@@ -198,6 +239,8 @@ def _lines(args: argparse.Namespace) -> Iterator[str]:
         yield " ".join(args.text)
         return
     if args.input:
+        if os.path.isdir(args.input):
+            raise InputError(f"cannot read {args.input}: it is a directory")
         try:
             handle = open(args.input, "rb")  # noqa: SIM115 - closed below, lines are lazy
         except OSError as error:
@@ -219,30 +262,105 @@ def _looks_mangled(line: str) -> bool:
     return stripped.count("?") >= 3 and not stripped.strip("?.,!؟۔0123456789")
 
 
-def _output(args: argparse.Namespace) -> TextIO:
-    if args.output:
+class _Output:
+    """Where the results go: standard output, or -o FILE written in full, then moved.
+
+    The file is written beside its destination under a temporary name and moved over
+    it only once every line is done. Opening FILE for writing straight away, as the
+    first version did, truncated it before a single line was read - so
+    `urdunlp normalize -i f.txt -o f.txt` left f.txt empty and exited 0. It also
+    means an error half way through leaves the old FILE as it was.
+    """
+
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.path: str | None = args.output
+        self.temporary: str | None = None
+        if self.path is None:
+            if args.bom:
+                sys.stdout.write("\ufeff")
+            self.stream: TextIO = sys.stdout
+            return
+        if os.path.isdir(self.path):
+            raise InputError(f"cannot write {self.path}: it is a directory")
+        folder = os.path.dirname(os.path.abspath(self.path))
         try:
-            return open(  # noqa: SIM115 - closed by main
-                args.output, "w", encoding="utf-8-sig" if args.bom else "utf-8", newline="\n"
-            )
+            handle, self.temporary = tempfile.mkstemp(prefix=".urdunlp-", suffix=".tmp", dir=folder)
         except OSError as error:
-            raise InputError(f"cannot write {args.output}: {error.strerror}") from None
-    reconfigure = getattr(sys.stdout, "reconfigure", None)
+            raise InputError(f"cannot write {self.path}: {error.strerror}") from None
+        self.stream = open(  # noqa: SIM115 - closed in finish/abandon
+            handle, "w", encoding="utf-8-sig" if args.bom else "utf-8", newline="\n"
+        )
+
+    def finish(self) -> None:
+        if self.temporary is None or self.path is None:
+            return
+        self.stream.close()
+        try:
+            os.replace(self.temporary, self.path)
+        except OSError as error:
+            self.abandon()
+            raise InputError(f"cannot write {self.path}: {error.strerror}") from None
+        self.temporary = None
+
+    def abandon(self) -> None:
+        if self.temporary is None:
+            return
+        self.stream.close()
+        with contextlib.suppress(OSError):
+            os.remove(self.temporary)
+        self.temporary = None
+
+
+def _use_utf8(stream: TextIO) -> None:
+    """Write Urdu whatever the console or redirect's code page.
+
+    Done before the arguments are parsed, because `--help` prints ؟ ، ؛ ۔ too: with
+    output redirected on Windows the stream is cp1252, and `urdunlp to-urdu --help >
+    help.txt` ended in UnicodeEncodeError.
+    """
+    reconfigure = getattr(stream, "reconfigure", None)
     if reconfigure is not None:
-        # Urdu on a Windows console or a redirect: the default code page cannot
-        # encode it, and print() would raise UnicodeEncodeError on the first letter.
-        reconfigure(encoding="utf-8")
-    if args.bom:
-        sys.stdout.write("﻿")
-    return sys.stdout
+        with contextlib.suppress(ValueError, OSError):
+            reconfigure(encoding="utf-8", errors="replace")
+
+
+def _stdin_is_terminal() -> bool:
+    """Whether standard input is a person at a keyboard rather than a pipe or file.
+
+    On Windows `isatty()` is also true for the NUL device, so `urdunlp to-urdu < NUL`
+    was told to pipe something in. There a console is told apart by asking for its
+    console mode, which only a real console has.
+    """
+    try:
+        if not sys.stdin.isatty():
+            return False
+    except (AttributeError, ValueError):
+        return False
+    # A `sys.platform` comparison, not `os.name`: mypy narrows on the former (and
+    # so skips `ctypes.windll` entirely when checking this file for a non-Windows
+    # target) but not the latter, where the attribute would need an ignore that is
+    # wrong on exactly one of the two platforms CI runs on.
+    if sys.platform != "win32":
+        return True
+    try:
+        import ctypes
+        import msvcrt
+
+        handle = msvcrt.get_osfhandle(sys.stdin.fileno())
+        mode = ctypes.c_uint32()
+        return bool(ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode)))
+    except (OSError, ValueError, AttributeError, io.UnsupportedOperation):
+        return True
 
 
 def main(argv: list[str] | None = None) -> int:
+    _use_utf8(sys.stdout)
+    _use_utf8(sys.stderr)
     parser = _parser()
     args = parser.parse_args(argv)
     if args.text and args.input:
         parser.error("give TEXT or -i FILE, not both")
-    if not args.text and not args.input and sys.stdin.isatty():
+    if not args.text and not args.input and _stdin_is_terminal():
         # Waiting silently on a terminal looks like a hang.
         parser.error(f"give TEXT, -i FILE, or pipe it in: echo TEXT | urdunlp {args.command}")
     if len(args.text) == 1 and os.path.isfile(args.text[0]):
@@ -252,10 +370,10 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
     run = args.make(args)
-    out: TextIO | None = None
+    out: _Output | None = None
     warned = False
     try:
-        out = _output(args)
+        out = _Output(args)
         for line in _lines(args):
             if not warned and _looks_mangled(line):
                 warned = True
@@ -264,8 +382,10 @@ def main(argv: list[str] | None = None) -> int:
                     "replaced the text before urdunlp saw it.\n" + _POWERSHELL_HELP,
                     file=sys.stderr,
                 )
-            out.write(run(line) + "\n")
-            out.flush()
+            out.stream.write(run(line) + "\n")
+            if out.temporary is None:
+                out.stream.flush()  # a pipe reader sees each line as it is done
+        out.finish()
     except InputError as error:
         print(f"urdunlp: error: {error}", file=sys.stderr)
         return 1
@@ -274,8 +394,8 @@ def main(argv: list[str] | None = None) -> int:
     except BrokenPipeError:  # `urdunlp to-urdu < big.txt | head`
         return 0
     finally:
-        if out is not None and out is not sys.stdout:
-            out.close()
+        if out is not None:
+            out.abandon()
     return 0
 
 
