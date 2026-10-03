@@ -75,6 +75,7 @@ include = [
     "src/urdunlp",
     "tests",
     "scripts",
+    "eval",
     "docs",
     "conftest.py",
     "demo.py",

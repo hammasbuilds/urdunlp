@@ -298,6 +298,10 @@ def test_the_quick_check_sample_aligns_as_the_readme_says():
     from pathlib import Path
 
     root = Path(__file__).resolve().parent.parent
+    if not (root / "scripts/measure_translit.py").exists() or not (root / "eval").exists():
+        # The installed-wheel CI job copies only tests/; the sample and the aligner
+        # live in the source tree.
+        pytest.skip("scripts/ and eval/ are not next to the tests (installed-wheel run)")
     sys.path.insert(0, str(root / "scripts"))
     try:
         from measure_translit import align
