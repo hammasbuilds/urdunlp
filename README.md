@@ -21,29 +21,42 @@ was measured on data the library was not built from.
 pip install urdunlp
 ```
 
+Until 0.2.0 is on PyPI, install from source:
+`pip install git+https://github.com/hammasbuilds/urdunlp`.
+
 Python 3.10 or newer, any OS. No dependencies, and the three small statistical tables
 it needs (3.4 MB) ship inside the wheel - nothing is downloaded at runtime. The package
 is typed (`py.typed`), so mypy and pyright see every annotation.
 
+On a Windows console that is not UTF-8 (cp1252 and friends), `print()` of Urdu text
+from your own script raises `UnicodeEncodeError` - that is Python, not urdunlp. Set
+`PYTHONIOENCODING=utf-8` (or run `python -X utf8`); the `urdunlp` command does this itself.
+
 ## Quickstart
 
 ```python
-from urdunlp import (normalize, transliterate_to_urdu, transliterate_to_roman,
-                     transliterate_with_confidence, words, remove_stopwords)
+from urdunlp import (
+    normalize,
+    transliterate_to_urdu,
+    transliterate_to_roman,
+    transliterate_with_confidence,
+    words,
+    remove_stopwords,
+)
 
-normalize("كتاب") == normalize("کتاب")    # True: Arabic kaf/yeh unified with Urdu
-normalize("ﻛﺘﺎﺏ")                          # 'کتاب': presentation forms from a PDF
+normalize("كتاب") == normalize("کتاب")  # True: Arabic kaf/yeh unified with Urdu
+normalize("ﻛﺘﺎﺏ")  # 'کتاب': presentation forms from a PDF
 
-transliterate_to_urdu("main theek hoon")               # 'میں ٹھیک ہوں'
-transliterate_to_urdu("ye kitab hai?")                 # 'یہ کتاب ہے؟'
-transliterate_to_urdu("is ke baad taur par haasil")    # 'اس کے بعد طور پر حاصل'
+transliterate_to_urdu("main theek hoon")  # 'میں ٹھیک ہوں'
+transliterate_to_urdu("ye kitab hai?")  # 'یہ کتاب ہے؟'
+transliterate_to_urdu("is ke baad taur par haasil")  # 'اس کے بعد طور پر حاصل'
 transliterate_to_urdu("yaar aaj bohttt garmi hai 😭")  # 'یار آج بہت گرمی ہے 😭'
-transliterate_to_urdu("WhatsApp pe msg kr do")         # 'WhatsApp پے میسج کر دو'
+transliterate_to_urdu("WhatsApp pe msg kr do")  # 'WhatsApp پے میسج کر دو'
 transliterate_to_urdu("kal meeting cancel ho gayi", keep_english=True)
-                                                       # 'کل meeting cancel ہو گئی'
+# 'کل meeting cancel ہو گئی'
 
-transliterate_to_roman("میں خوش ہوں 😀")                 # 'main khush hoon 😀'
-transliterate_to_roman("وزیراعظم شہباز شریف")           # 'wazir-e-azam shahbaz sharif'
+transliterate_to_roman("میں خوش ہوں 😀")  # 'main khush hoon 😀'
+transliterate_to_roman("وزیراعظم شہباز شریف")  # 'wazir-e-azam shahbaz sharif'
 
 words("کیا، واقعی؟", keep_punctuation=True)  # ['کیا', '،', 'واقعی', '؟']
 remove_stopwords(words("یہ اچھا نہیں ہے"))  # ['اچھا', 'نہیں'] - negation is kept
@@ -54,8 +67,8 @@ library says how each word was resolved:
 
 ```python
 r = transliterate_with_confidence("mera naam Ali hai")
-r.text      # 'میرا نام علی ہے'
-r.sources   # [('mera', 'lexicon'), ('naam', 'vocabulary'), ('Ali', 'vocabulary'), ('hai', 'lexicon')]
+r.text  # 'میرا نام علی ہے'
+r.sources  # [('mera', 'lexicon'), ('naam', 'vocabulary'), ('Ali', 'vocabulary'), ('hai', 'lexicon')]
 ```
 
 `lexicon` is a curated word, `vocabulary` a real Urdu word chosen by a noisy-channel
@@ -65,22 +78,30 @@ model over 60,638 words (decoding the sentence as a whole, so `us ne kaha ke` gi
 them.
 
 ```python
-from urdunlp import (identify_language, tag_roman_tokens, roman_key, parse_number,
-                     parse_ordinal, find_numbers, format_number, stem)
+from urdunlp import (
+    identify_language,
+    tag_roman_tokens,
+    roman_key,
+    parse_number,
+    parse_ordinal,
+    find_numbers,
+    format_number,
+    stem,
+)
 
-identify_language("هي ڪتاب منهنجو آهي").name   # 'Sindhi' - same script, different language
-identify_language("کتاب").short                # True: one word is a guess, and says so
+identify_language("هي ڪتاب منهنجو آهي").name  # 'Sindhi' - same script, different language
+identify_language("کتاب").short  # True: one word is a guess, and says so
 tag_roman_tokens("kal meeting cancel ho gayi")
 # [('kal', 'ur'), ('meeting', 'en'), ('cancel', 'en'), ('ho', 'ur'), ('gayi', 'ur')]
-roman_key("nhi") == roman_key("naheen")        # True: both spell نہیں
+roman_key("nhi") == roman_key("naheen")  # True: both spell نہیں
 
-parse_number("ڈیڑھ لاکھ")                       # 150000
-parse_number("sawa do crore")                  # 22500000
-parse_ordinal("teesra")                        # 3
-format_number(1234567)                         # '12,34,567'
+parse_number("ڈیڑھ لاکھ")  # 150000
+parse_number("sawa do crore")  # 22500000
+parse_ordinal("teesra")  # 3
+format_number(1234567)  # '12,34,567'
 [(n.text, n.value) for n in find_numbers("mujhe 2 lakh chahiye aur paanch hazar bhi")]
 # [('2 lakh', 200000), ('paanch hazar', 5000)]
-stem("کتابوں")                                 # 'کتاب'
+stem("کتابوں")  # 'کتاب'
 ```
 
 ## What is in it
@@ -255,8 +276,13 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py                                  # nothing to install
-pip install pytest && python -m pytest -q       # 576 tests
+pip install pytest && python -m pytest -q       # 578 tests
 ```
+
+To check the headline number without downloading anything, run
+`python scripts/quick_check.py`: it scores Roman → Urdu on a tenth of the Dakshina test
+sentences, committed in `eval/` (364 sentences, 5,249 words), and prints 91.4% in about a
+minute against 91.3% on the full split.
 
 The tests use only what ships in the package. To reproduce the measurements, fetch the
 evaluation data first (none of it is needed to use the library or run the tests):

@@ -76,14 +76,22 @@ def sentence_words(split: str) -> tuple[list[list[tuple[str, str]]], int, int]:
         if urdu.strip() not in keep:
             continue
         total += 1
-        # A number is dropped from both sides. words() keeps 1,500 as one token since
-        # 0.2; the pattern drops exactly what isdigit() dropped when it split it.
-        u = [w for w in words(urdu) if not re.fullmatch(r"\d+(?:[.,:/٫٬-]\d+)*", w)]
-        r = [w for w in re.findall(r"[A-Za-z]+|\d+", roman) if not w.isdigit()]
-        if len(u) == len(r):
+        pairs = align(urdu, roman)
+        if pairs is not None:
             used += 1
-            sentences.append([(a, b.lower()) for a, b in zip(u, r, strict=True) if b.isalpha()])
+            sentences.append(pairs)
     return sentences, used, total
+
+
+def align(urdu: str, roman: str) -> list[tuple[str, str]] | None:
+    """(urdu, roman) word pairs of one sentence, or None when the counts disagree."""
+    # A number is dropped from both sides. words() keeps 1,500 as one token since
+    # 0.2; the pattern drops exactly what isdigit() dropped when it split it.
+    u = [w for w in words(urdu) if not re.fullmatch(r"\d+(?:[.,:/٫٬-]\d+)*", w)]
+    r = [w for w in re.findall(r"[A-Za-z]+|\d+", roman) if not w.isdigit()]
+    if len(u) != len(r):
+        return None
+    return [(a, b.lower()) for a, b in zip(u, r, strict=True) if b.isalpha()]
 
 
 class Scorer:

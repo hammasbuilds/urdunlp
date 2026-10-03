@@ -13,13 +13,16 @@ with its method, and the scripts that reproduce them are listed there.
 
 ### Added
 
+- `scripts/quick_check.py` and `eval/dakshina_test_sample.tsv`: the headline Roman → Urdu
+  figure re-measured on a committed tenth of the test sentences in about a minute, no
+  download (91.4% on the sample against 91.3% on the full split).
 - **A vocabulary stage in Roman → Urdu transliteration**, between the curated lexicon
   and the rules: a noisy-channel search over 60,638 Urdu words for the one most likely
   to have been typed as the Roman string. Letter emissions were trained with EM on
   106,260 attested romanisations from Google's Dakshina lexicon, and mixed with each
   word's own attested spellings. Sentences are decoded as a whole with a word-bigram
   model. On 52,087 words of held-out hand-romanised sentences, word accuracy goes from
-  **43.1% to 91.2%** (88.5% word by word, `use_context=False`). It finds the letters
+  **43.1% to 91.3%** (88.5% word by word, `use_context=False`). It finds the letters
   Roman cannot write — `baad` → بعد, `taur` → طور, `Ali` → علی — and reads `ke` as کہ
   after کہا. `use_vocabulary=False` restores the 0.1 pipeline. New source label
   `vocabulary`, new property `rule_share`.

@@ -3,6 +3,8 @@ The code in this package is MIT-licensed (see LICENSE).
 The data files under src/urdunlp/data/ that ship inside the wheel are derived
 from Dakshina (Roark et al., LREC 2020), Wikipedia, and HotpotQA, and are
 licensed CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/
+So is eval/dakshina_test_sample.tsv in the source repository (a tenth of
+Dakshina's Urdu test sentences, for scripts/quick_check.py); it is not in the wheel.
 
 This is a separate license from the code. A user of the *code* is bound by
 MIT; a user who redistributes the *bundled data* (or a work derived from it)

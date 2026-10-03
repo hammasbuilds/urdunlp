@@ -9,7 +9,7 @@ version = "0.2.0"
 description = "Urdu and Roman Urdu text processing: normalisation, transliteration scored against human romanisations, language identification, numbers, stemming. Pure Python, no dependencies."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT AND CC-BY-SA-4.0"
 # The code is MIT; the data files bundled in the wheel (src/urdunlp/data/) are
 # CC BY-SA 4.0, derived from Dakshina, Wikipedia and HotpotQA - see LICENSE-DATA.
 # Both ship in the wheel's dist-info so a user auditing metadata sees the second
@@ -19,7 +19,6 @@ keywords = ["urdu", "roman-urdu", "nlp", "transliteration", "normalization", "la
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: Urdu",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
@@ -55,7 +54,7 @@ Changelog = "https://github.com/hammasbuilds/urdunlp/blob/main/CHANGELOG.md"
 dev = ["pytest==9.1.1", "ruff==0.16.7", "mypy==2.3.1"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -89,6 +88,10 @@ include = [
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.format]
+# Code blocks in the docs keep their aligned output comments; ruff 0.16 would collapse them.
+exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

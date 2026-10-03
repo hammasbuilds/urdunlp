@@ -198,6 +198,13 @@ _ORDINAL_SUFFIXES = ("واں", "ویں")
 AMBIGUOUS_ORDINALS = frozenset({"پہلے", "دوسرے", "دوسری", "دوسرا"})
 
 
+def _show(text: str, limit: int = 80) -> str:
+    """repr() for an error message, cut down so a 100 kB input is not echoed whole."""
+    if len(text) <= limit:
+        return repr(text)
+    return f"{text[:limit]!r}... ({len(text):,} characters)"
+
+
 def _ordinal_as_cardinal(token: str) -> str | None:
     """The cardinal token an ordinal word stands for (پانچواں -> پانچ), or None."""
     if token in _ORDINAL_WORDS:
@@ -465,7 +472,7 @@ def _evaluate(tokens: list[str]) -> Fraction:
     for token in tokens:
         if token in _MODIFIERS:
             if modifier is not None or current is not None:
-                raise ValueError(f"unexpected {token!r}")
+                raise ValueError(f"unexpected {_show(token)}")
             modifier = _MODIFIERS[token]
             continue
         seen = True
@@ -478,7 +485,7 @@ def _evaluate(tokens: list[str]) -> Fraction:
                 value = _numeral_value(token)  # type: ignore[assignment]
             if current is not None:
                 if not (open_hundred and value < 100 and modifier is None):
-                    raise ValueError(f"two numbers in a row: {token!r}")
+                    raise ValueError(f"two numbers in a row: {_show(token)}")
                 current += value
                 open_hundred = False
                 continue
@@ -496,7 +503,7 @@ def _evaluate(tokens: list[str]) -> Fraction:
                 # کروڑ ہزار: a bare ہزار straight after a finished group has nothing
                 # to count. It was read as an implied "one thousand" and added, so
                 # "12,34,567 کروڑ ہزار" came out as 12,345,670,001,000.
-                raise ValueError(f"{token!r} has no number before it")
+                raise ValueError(f"{_show(token)} has no number before it")
             if scale > largest_scale and total:
                 # "ایک ہزار کروڑ": the scale applies to everything before it. The
                 # implied "one" of a bare scale word must not be added here - it
@@ -508,7 +515,7 @@ def _evaluate(tokens: list[str]) -> Fraction:
             largest_scale = max(largest_scale, scale)
             current = None
         else:
-            raise ValueError(f"not a number word: {token!r}")
+            raise ValueError(f"not a number word: {_show(token)}")
 
     if modifier is not None:
         raise ValueError("a fraction word with nothing to modify")
@@ -567,7 +574,7 @@ def parse_ordinal(text: str) -> int:
         before = _tokens(" ".join(raw[:-1]))
         position = _evaluate([*before, _ordinal_as_cardinal(last) or last])
         if position.denominator != 1:
-            raise ValueError(f"not a whole position: {text!r}")
+            raise ValueError(f"not a whole position: {_show(text)}")
         return int(position)
     tokens = _tokens(text)
     if tokens and tokens[-1] in _ORDINAL_SUFFIXES and len(tokens) >= 2:
@@ -576,10 +583,10 @@ def parse_ordinal(text: str) -> int:
     else:
         cardinal = _ordinal_as_cardinal(tokens[-1]) if tokens else None
     if cardinal is None:
-        raise ValueError(f"not an ordinal: {text!r}")
+        raise ValueError(f"not an ordinal: {_show(text)}")
     value = _evaluate([*tokens[:-1], cardinal])
     if value.denominator != 1:
-        raise ValueError(f"not a whole position: {text!r}")
+        raise ValueError(f"not a whole position: {_show(text)}")
     return int(value)
 
 

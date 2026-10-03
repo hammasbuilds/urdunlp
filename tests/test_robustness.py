@@ -282,3 +282,28 @@ assert langid._script_model.cache_info().currsize == 0
 assert langid._tagger.cache_info().currsize == 0
 """
     _run_fresh(script, timeout=120)
+
+
+def test_an_error_does_not_echo_a_huge_input_whole():
+    with pytest.raises(ValueError) as caught:
+        U.parse_number("x" * 100_000)
+    message = str(caught.value)
+    assert len(message) < 200 and "100,000 characters" in message
+    with pytest.raises(ValueError, match="not an ordinal: 'kuch'$"):
+        U.parse_ordinal("kuch")
+
+
+def test_the_quick_check_sample_aligns_as_the_readme_says():
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(root / "scripts"))
+    try:
+        from measure_translit import align
+    finally:
+        sys.path.remove(str(root / "scripts"))
+    rows = (root / "eval/dakshina_test_sample.tsv").read_text(encoding="utf-8").splitlines()
+    pairs = [align(*row.split("\t")) for row in rows]
+    assert len(rows) == 364 and all(p is not None for p in pairs)
+    assert sum(len(p) for p in pairs) == 5249

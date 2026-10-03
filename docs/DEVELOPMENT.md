@@ -35,12 +35,12 @@ Version 0.1 had no accuracy figure for transliteration, and its docs said the da
 measure one "does not exist for Urdu at any useful scale". It does: Google's
 [Dakshina](https://github.com/google-research-datasets/dakshina) dataset had native
 speakers romanise ~10,000 Urdu Wikipedia sentences by hand. Scored against them, 0.1 got
-**43.1%** of words right. 0.2 gets **91.2%**. Every row below is on held-out data:
+**43.1%** of words right. 0.2 gets **91.3%**. Every row below is on held-out data:
 
 | | 0.1 | **0.2** | measured on |
 |---|---:|---:|---|
-| Roman → Urdu, word accuracy | 43.1% | **91.2%** | 52,087 words of hand-romanised test sentences |
-| Urdu → Roman, spelled as a person spelled it | 28.6% | **54.7%** | 52,087 words of test sentences |
+| Roman → Urdu, word accuracy | 43.1% | **91.3%** | 52,087 words of hand-romanised test sentences |
+| Urdu → Roman, spelled as a person spelled it | 28.6% | **54.5%** | 52,087 words of test sentences |
 | Urdu → Roman → Urdu round trip | 42.0% | **93.9%** | 15,088 tokens of held-out sentences |
 | Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
 | Which of 11 Perso-Arabic languages (whole paragraph) | — | **97.9%** | 1,254 test paragraphs |
