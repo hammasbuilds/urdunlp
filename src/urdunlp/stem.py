@@ -20,12 +20,13 @@ shown to anyone. That is the right trade for search and the wrong one for displa
 inflectional endings, verbal endings (تا تی تے نا نی نے گا گی گے) and the Arabic
 plural ات, and never leaves fewer than three letters; `light=True` strips the
 inflectional endings only. Both levels and both minimum lengths were scored on
-title-to-body and lead-sentence retrieval over 5,016 Urdu Wikipedia articles
-(scripts/measure_stemmer.py), and this setting won on the validation queries of
-both tasks. On the held-out test queries it adds +0.008 recall@10 to title
-retrieval (sign test p = 0.019) and +0.005 to lead-sentence retrieval, which is
-not significant (p = 0.32). A stemmer is cheap and does no harm here; it is not
-the large win it is in English folklore, and docs/CORPUS.md says why.
+title-to-body and lead-sentence retrieval over 5,009 Urdu Wikipedia articles
+(scripts/measure_stemmer.py); this setting won the lead-sentence validation
+queries and tied `light=True` on the title ones. On the held-out test queries it
+adds +0.008 recall@10 to title retrieval (sign test p = 0.019) and +0.004 to
+lead-sentence retrieval, which is not significant (p = 0.47). A stemmer is cheap
+and does no harm here; it is not the large win it is in English folklore, and
+docs/CORPUS.md says why.
 """
 
 from __future__ import annotations

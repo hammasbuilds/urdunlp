@@ -6,7 +6,7 @@
   <a href="https://pypi.org/project/urdunlp/"><img src="https://img.shields.io/pypi/v/urdunlp" alt="pypi"></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/dependencies-zero-success" alt="deps">
-  <a href="https://github.com/hammasbuilds/urdunlp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
+  <a href="https://github.com/hammasbuilds/urdunlp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT%20code%20%2B%20CC%20BY--SA%20data-green" alt="license"></a>
 </p>
 
 Normalise Urdu text (including text copied out of PDFs), transliterate Roman Urdu to
@@ -162,12 +162,12 @@ and every number: [docs/CORPUS.md](https://github.com/hammasbuilds/urdunlp/blob/
 | Roman → Urdu, word accuracy | 43.1% | **91.3%** | 52,087 words of hand-romanised test sentences ([Dakshina](https://github.com/google-research-datasets/dakshina)) |
 | Urdu → Roman, spelled exactly as the annotator did | 28.6% | **54.5%** | the same sentences |
 | Urdu → Roman, spelled as some annotator spelled that word | 41.4% | **78.2%** | the same sentences |
-| Urdu → Roman → Urdu round trip | 42.0% | **93.9%** | 15,088 tokens of held-out sentences |
+| Urdu → Roman → Urdu round trip | 42.0% | **93.8%** | 15,088 tokens of Dakshina's dev and test sentences |
 | Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
 | Which of 11 Perso-Arabic languages, whole paragraph | — | **97.9%** | 1,254 test paragraphs |
 | ... on 20 characters | — | **91.0%** | |
-| English words found inside Roman Urdu (recall) | — | **87.3%** | synthetic code-mixed test sentences |
-| Stemming, retrieval recall@10 | — | **+0.008** | 2,583 test queries, sign test p = 0.019 |
+| English words found inside Roman Urdu (recall) | — | **87.0%** | synthetic code-mixed test sentences |
+| Stemming, retrieval recall@10 | — | **+0.008** | 2,582 test queries, sign test p = 0.019 |
 
 The weak numbers are in the table on purpose: the stemmer helps a little, language
 identification guesses between neighbours on a single word, and `is_urdu` - a script
@@ -175,8 +175,9 @@ check - says yes to 99.9% of Persian.
 
 **Speed.** `import urdunlp` loads nothing (about 0.1 s). Each model loads on the first
 call that needs it: about 0.6 s of CPU for transliteration, 0.2 s for
-`identify_language`, 0.1 s for `tag_roman_tokens`. Roman → Urdu then runs at about
-1,700 words a second of CPU on 51,764 words of held-out Wikipedia sentences,
+`identify_language`, 0.1 s for `tag_roman_tokens`. Roman → Urdu then runs at
+1,700-1,900 words a second of CPU on 51,764 words of held-out Wikipedia sentences
+(one ordinary laptop; `scripts/measure_translit.py` prints the figure for yours),
 and faster on text that repeats its words (chat does); Urdu → Roman and
 `identify_language` are much faster. For a large corpus, split it across processes
 with `multiprocessing.Pool` - each process loads the model once. In a web server,
@@ -188,7 +189,7 @@ One deliberately messy sentence: Arabic `ک` and `ی` rather than the Urdu forms
 spaces, a URL and a mention.
 
 ```
-میں  کل  لاہور  سے  آیا  ہوں۔ http://x.co @ali
+ميں  كل  لاہور  سے  آيا  ہوں۔ http://x.co @ali
 ```
 
 ## Output
@@ -256,7 +257,7 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 - **English inside Roman Urdu.** By default an English word is written the way Urdu
   writes it (`station` → اسٹیشن), and a word the vocabulary does not hold may be matched
   to the wrong Urdu word (`exam` → اقسام, `late` → لاتے). `keep_english=True` leaves the
-  words `tag_roman_tokens` calls English in Latin; that tagger finds 87.3% of
+  words `tag_roman_tokens` calls English in Latin; that tagger finds 87.0% of
   English words on synthetic test sentences and misses some in real chat
   (`kal meeting hai` tags `meeting` as Urdu). Unknown words that are clearly English
   (`recharge`) and mixed-case names (`iPhone`) are kept in Latin either way.
@@ -276,13 +277,15 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py                                  # nothing to install
-pip install pytest && python -m pytest -q       # 578 tests
+pip install pytest && python -m pytest -q       # 580 tests
 ```
 
 To check the headline number without downloading anything, run
 `python scripts/quick_check.py`: it scores Roman → Urdu on a tenth of the Dakshina test
-sentences, committed in `eval/` (364 sentences, 5,249 words), and prints 91.4% in about a
-minute against 91.3% on the full split.
+sentences, committed in `eval/` (364 sentences, 5,249 words), and prints 91.4% in about ten
+seconds against 91.3% on the full split. Once the full split is fetched (below),
+`python scripts/quick_check.py --rebuild` regenerates that sample from it, so you can
+check it is every tenth sentence and not a hand-picked one.
 
 The tests use only what ships in the package. To reproduce the measurements, fetch the
 evaluation data first (none of it is needed to use the library or run the tests):
@@ -291,8 +294,22 @@ evaluation data first (none of it is needed to use the library or run the tests)
 python scripts/fetch_dakshina.py            # Roman Urdu, 34 MB of a 2 GB archive
 python scripts/fetch_wikipedia_samples.py   # 1,500 paragraphs in each of 11 languages
 python scripts/measure_translit.py          # transliteration, docs/CORPUS.md sections 7, 9, 14
-python scripts/measure_langid.py            # sections 10 and 11 (needs extract_english.py)
+python scripts/measure_corpus.py data/dakshina/ur/romanized --every 11   # the round trip
+python scripts/extract_english.py DIR       # English for the tagger; DIR = HotpotQA distractor parquets
+python scripts/measure_langid.py            # sections 10 and 11
 ```
+
+`fetch_wikipedia_samples.py` draws random articles from the live Wikipedias, so a fresh
+fetch gives a different sample from the one the language-identification rows were
+measured on: expect figures close to those, not equal to the decimal. Paragraphs are
+split into train and test by a hash of their text, so a paragraph the bundled model was
+built from can never land in your test set. `extract_english.py` needs `pyarrow` and
+the `distractor` parquets of [`hotpotqa/hotpot_qa`](https://huggingface.co/datasets/hotpotqa/hotpot_qa).
+
+The stemming row needs the first six row groups (6,000 articles) of the public Urdu
+Wikipedia parquet, [`wikimedia/wikipedia`, `20231101.ur`](https://huggingface.co/datasets/wikimedia/wikipedia/tree/main/20231101.ur)
+(168 MB), and `pyarrow` to read it:
+`python scripts/measure_stemmer.py train-00000-of-00001.parquet --row-groups 6`.
 
 How each part was built, and every problem found on the way:
 [docs/DEVELOPMENT.md](https://github.com/hammasbuilds/urdunlp/blob/main/docs/DEVELOPMENT.md).

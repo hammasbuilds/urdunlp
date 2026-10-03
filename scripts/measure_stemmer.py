@@ -1,6 +1,17 @@
 """Does stemming help Urdu retrieval? Measured, on a task with exact ground truth.
 
-    python scripts/measure_stemmer.py <urdu_articles.parquet> [--json out.json]
+    python scripts/measure_stemmer.py <urdu_articles.parquet> [--row-groups N] [--json out.json]
+
+The published figures (docs/CORPUS.md section 12) are the first 6,000 articles of
+Hugging Face's `wikimedia/wikipedia`, config `20231101.ur` - the first six row groups
+of its one public parquet file (168 MB):
+
+    https://huggingface.co/datasets/wikimedia/wikipedia/resolve/main/20231101.ur/train-00000-of-00001.parquet
+    python scripts/measure_stemmer.py train-00000-of-00001.parquet --row-groups 6
+
+Of those 6,000, the 5,016 with at least 60 tokens of body are kept. The same six row
+groups were first cut out for nlp-lab project 23's benchmark; that file, passed without
+`--row-groups`, gives the same numbers.
 
 The task is title-to-body retrieval over Urdu Wikipedia, borrowed from nlp-lab
 project 23 so the numbers are comparable with its plain-word baseline: each article's
@@ -58,10 +69,20 @@ class BM25:
         return sorted(scores, key=scores.__getitem__, reverse=True)[:k]
 
 
-def load(path: Path, min_tokens: int = 60) -> tuple[list[str], list[str]]:
+def load(
+    path: Path, min_tokens: int = 60, row_groups: int | None = None
+) -> tuple[list[str], list[str]]:
+    import pyarrow as pa
     import pyarrow.parquet as pq
 
-    table = pq.read_table(path, columns=["title", "text"])
+    if row_groups is None:
+        table = pq.read_table(path, columns=["title", "text"])
+    else:
+        reader = pq.ParquetFile(path)
+        groups = range(min(row_groups, reader.num_row_groups))
+        table = pa.concat_tables(
+            reader.read_row_group(i, columns=["title", "text"]) for i in groups
+        )
     titles, bodies = [], []
     titles_raw, texts_raw = table.column("title").to_pylist(), table.column("text").to_pylist()
     for title, text in zip(titles_raw, texts_raw, strict=True):
@@ -71,6 +92,10 @@ def load(path: Path, min_tokens: int = 60) -> tuple[list[str], list[str]]:
             titles.append(title)
             bodies.append(body)
     return titles, bodies
+
+
+# stem()'s defaults: light=False, min_stem=3.
+DEFAULT = "full min3"
 
 
 def split_of(title: str) -> str:
@@ -110,11 +135,14 @@ def sign_test(helped: int, hurt: int) -> float:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("corpus", type=Path)
+    ap.add_argument(
+        "--row-groups", type=int, help="read only the first N row groups (6 = published run)"
+    )
     ap.add_argument("--json", type=Path)
     args = ap.parse_args()
     started = time.time()
 
-    titles, bodies = load(args.corpus)
+    titles, bodies = load(args.corpus, row_groups=args.row_groups)
     splits = [split_of(t) for t in titles]
     leads, rests = lead_task(bodies)
     tasks = {
@@ -183,7 +211,18 @@ def main() -> int:
             f"{best['test_recall@10']:.4f} ({best['test_recall@10'] - base['test_recall@10']:+.4f},"
             f" sign test p={best['sign_test_p']:.3g})"
         )
-        report[task] = {"rows": rows, "chosen": best["setting"]}
+        # What a user of `stem()` gets. Validation can tie to four places (it does on
+        # title -> body: light min3 and full min3 both 0.4454), and max() then takes
+        # the first in list order, so the chosen line alone can name a setting the
+        # package does not ship. The README reports this line.
+        default = next(r for r in rows if r["setting"] == DEFAULT)
+        print(
+            f"  shipped default ({DEFAULT}): test {base['test_recall@10']:.4f} -> "
+            f"{default['test_recall@10']:.4f} "
+            f"({default['test_recall@10'] - base['test_recall@10']:+.4f},"
+            f" sign test p={default['sign_test_p']:.3g})"
+        )
+        report[task] = {"rows": rows, "chosen": best["setting"], "default": DEFAULT}
 
     print(f"[{time.time() - started:.0f}s]")
     if args.json:

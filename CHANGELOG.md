@@ -37,27 +37,27 @@ with its method, and the scripts that reproduce them are listed there.
   version scored 96.4 / 89.8 / 81.5 on the same test set. Reports the distinctive letters it
   saw as evidence.
 - `tag_roman_tokens()` and `keep_english=True` — label each word of Roman Urdu as `ur`
-  or `en`, smoothed over the sentence. English recall 0.873 on synthetic code-mixed
-  sentences, 1.6% of English words mislabelled `ur`.
+  or `en`, smoothed over the sentence. English recall 0.870 on synthetic code-mixed
+  sentences, 1.8% of English words mislabelled `ur`.
 - `parse_number()`, `find_numbers()`, `number_to_words()`, `format_number()` — Urdu and
   Roman Urdu number words, including ڈیڑھ, ڈھائی, سوا, ساڑھے and پونے, lakh and crore
   scales, and 3-then-2 digit grouping (`12,34,567`). Round-trips every integer below
   200,000 and 20,000 random ones up to 10¹³.
 - **Urdu → Roman spelled the way people spell it** (`transliterate_to_roman`, now the
   default; `method="rules"` keeps the 0.1 letter mapping). On held-out Dakshina test
-  words, a spelling some annotator wrote 33.4% → **54.1%** of the time; in running text,
-  exactly the annotator's spelling 28.6% → **54.7%**; and the round trip back to Urdu
-  90.9% → **93.9%** - readable and reversible stopped being a trade-off.
+  words, a spelling some annotator wrote 33.4% → **54.3%** of the time; in running text,
+  exactly the annotator's spelling 28.6% → **54.5%**; and the round trip back to Urdu
+  90.9% → **93.8%** - readable and reversible stopped being a trade-off.
 - The Arabic article moves across the word boundary: `abdul rehman` → عبد الرحمن,
   `bainul aqwami` → بین الاقوامی, `darul uloom` → دار العلوم. Capital initials are
   spelled by letter name (`C. M.` → سی ایم), titles written in full without their dot
   (`Dr.` → ڈاکٹر, `Mr.` → مسٹر), lowercase `o` is و, and `ki`/`ke` may be کہ when the
-  sentence says so. Together: 90.7% → 91.2% on the test sentences.
+  sentence says so. Together: 90.7% → 91.3% on the test sentences.
 - `parse_ordinal()`, and ordinals in `find_numbers` with `ordinal=True`: پہلا دوسرا
   تیسرا چوتھا چھٹا, یکم, any cardinal + واں/ویں, and `5ویں`. پہلے ("before") and
   دوسرے ("other") are not read as ordinals on their own.
 - `stem()` / `stem_tokens()` — a rule-based suffix stripper. It helps, a little:
-  +0.008 recall@10 on title retrieval (p = 0.019), +0.005 on lead-sentence retrieval
+  +0.008 recall@10 on title retrieval (p = 0.019), +0.004 on lead-sentence retrieval
   (not significant). Both are reported.
 - Scripts that fetch the evaluation data and reproduce every number:
   `fetch_dakshina.py` (walks a 2 GB remote tar by byte range and takes the 34 MB it needs),
@@ -112,10 +112,11 @@ with its method, and the scripts that reproduce them are listed there.
 - Faster first load: `import urdunlp` no longer imports `gzip`/`json`, and the model
   builds its bigram rows on demand. The first transliteration still costs about 1 s of
   CPU; the README's "about 0.6 s" was never measured and is replaced by measured figures.
-- Two numbers corrected after re-running every measurement for the release: the learned
-  Urdu → Roman round trip is 93.9%, not 94.3%, and sentence words spelled exactly as the
-  annotator did are 54.7%, not 54.9%. Both earlier figures came from older runs and
-  had not been updated. The 91.2% headline was re-measured and did not move.
+- Numbers corrected after re-running every measurement for the release: the learned
+  Urdu → Roman round trip is 93.8%, not 94.3%; sentence words spelled exactly as the
+  annotator did are 54.5%, not 54.9%; `tag_roman_tokens` finds 87.0% of English words,
+  not 87.3%. The earlier figures came from older runs and had not been updated. The
+  headline is 91.3%.
 
 ### Fixed
 

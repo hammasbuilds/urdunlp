@@ -41,12 +41,12 @@ speakers romanise ~10,000 Urdu Wikipedia sentences by hand. Scored against them,
 |---|---:|---:|---|
 | Roman → Urdu, word accuracy | 43.1% | **91.3%** | 52,087 words of hand-romanised test sentences |
 | Urdu → Roman, spelled as a person spelled it | 28.6% | **54.5%** | 52,087 words of test sentences |
-| Urdu → Roman → Urdu round trip | 42.0% | **93.9%** | 15,088 tokens of held-out sentences |
+| Urdu → Roman → Urdu round trip | 42.0% | **93.8%** | 15,088 tokens of Dakshina's dev and test sentences |
 | Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
 | Which of 11 Perso-Arabic languages (whole paragraph) | — | **97.9%** | 1,254 test paragraphs |
 | ... on 20 characters | — | **91.0%** | |
-| English words found inside Roman Urdu (recall) | — | **87.3%** | synthetic code-mixed test sentences |
-| Stemming, retrieval recall@10 | — | **+0.008** | 2,583 test queries, sign test p = 0.019 |
+| English words found inside Roman Urdu (recall) | — | **87.0%** | synthetic code-mixed test sentences |
+| Stemming, retrieval recall@10 | — | **+0.008** | 2,582 test queries, sign test p = 0.019 |
 
 The numbers that did not come out well are in that table too, on purpose. The stemmer
 helps a little. `identify_language` is reliable on a sentence and guesses between
@@ -149,10 +149,10 @@ everything else a spelling generated from the same letter model that reads Roman
 
 | test split | 0.1 rules | **0.2 learned** |
 |---|---:|---:|
-| words spelled as some annotator spelled them (lexicon) | 33.4% | **54.1%** |
-| sentence words spelled exactly as that annotator did | 28.6% | **54.7%** |
-| sentence words spelled as any annotator spelled that word | 41.4% | **77.9%** |
-| Urdu → Roman → Urdu round trip | 90.9%* | **93.9%** |
+| words spelled as some annotator spelled them (lexicon) | 33.4% | **54.3%** |
+| sentence words spelled exactly as that annotator did | 28.6% | **54.5%** |
+| sentence words spelled as any annotator spelled that word | 41.4% | **78.2%** |
+| Urdu → Roman → Urdu round trip | 90.9%* | **93.8%** |
 
 *\*with the 0.2 Roman → Urdu stage. With 0.1's rules both ways, the round trip was
 44.7% on BBC news and 42.0% on these sentences.*
@@ -316,7 +316,7 @@ recovers.
 nlp-lab so the numbers compare, uses article titles as queries — and titles are mostly
 names, which do not inflect. A +0.008 gain there says little about the stemmer. *Added* a
 second task whose queries are ordinary prose (each article's lead sentence), and a sign
-test. It moved less (+0.005, p = 0.32). Both are reported; neither is dressed up.
+test. It moved less (+0.004, p = 0.47; +0.005, p = 0.32 before the last tokeniser changes). Both are reported; neither is dressed up.
 
 **A URL moved every English tag three words to the right.** `keep_english=True` first
 tagged the raw text, where `http://x.co` is three Latin words — `http`, `x`, `co` — and

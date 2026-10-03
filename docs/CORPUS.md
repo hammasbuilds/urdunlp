@@ -133,7 +133,7 @@ Every one is a function word. That is the claim, measured.
 *Written for 0.1, and the first half still describes 0.1: the letter-by-letter
 Urdu → Roman rules, and a Roman → Urdu direction with no vocabulary. The 0.2 box at the
 end of the section and section 14 have the current figures. In 0.2 the default setting
-is no longer the worse one, and the round trip is 93.9%.*
+is no longer the worse one, and the round trip is 93.8%.*
 
 Round-tripping Urdu → Roman → Urdu on **457,380 sampled tokens** (every 97th, spread across
 the whole corpus, 21,766 distinct types):
@@ -519,16 +519,20 @@ Test results (chosen on Dakshina dev and HotpotQA validation):
 
 | set | measure | test |
 |---|---|---:|
-| Dakshina romanised Urdu, 86,343 words | tagged `en` | 4.0% |
-| HotpotQA English, 188,522 words | tagged `ur` | 1.6% |
-| synthetic code-mix (1-3 English words spliced in) | token accuracy | 95.0% |
-| synthetic code-mix | English recall | 87.3% |
+| Dakshina romanised Urdu, 86,343 words | tagged `en` | 3.8% |
+| HotpotQA English, 188,522 words | tagged `ur` | 1.8% |
+| synthetic code-mix (1-3 English words spliced in) | token accuracy | 95.1% |
+| synthetic code-mix | English recall | 87.0% |
 
-**The 4.0% overstates the error, and by how much was checked by hand.** Dakshina's
+*Re-measured with `python scripts/measure_langid.py` after the last chat-lexicon fixes
+(single-letter chat words such as `h` and `g` are now Urdu); an earlier draft showed
+4.0%, 1.6%, 95.0% and 87.3%.*
+
+**The 3.8% overstates the error, and by how much was checked by hand.** Dakshina's
 annotators left names and English words in English spelling. Of the 40 most frequently
-flagged "Urdu" words: **26 are English** words or names spelled the English way (*the,
+flagged "Urdu" words: **27 are English** words or names spelled the English way (*the,
 of, county, website, degree, Germany, Robert, Scotland*), **6 are single-letter
-initials**, and **8 are real errors** on Urdu words — `o` (و), `is` (اس), `to` (تو), `ne`
+initials**, and **7 are real errors** on Urdu words — `is` (اس), `to` (تو), `ne`
 (نے), `masjid`, `markazi`, `abdul`, `hindustani`. The function words among those are the
 ones context could not rescue; the content words are Urdu words spelled in a way the
 estimated Roman frequency table never saw.
@@ -547,29 +551,43 @@ found, not how people switch.
 
 ## 12. Stemming helps Urdu retrieval — a little
 
-`scripts/measure_stemmer.py` scores `stem` on two retrieval tasks over 5,016 Urdu
-Wikipedia articles with BM25, queries split by hash into validation (2,433) and test
-(2,583). The setting was chosen on validation; test is reported with a sign test over the
-queries that changed.
+`scripts/measure_stemmer.py` scores `stem` on two retrieval tasks over 5,009 Urdu
+Wikipedia articles with BM25, queries split by hash into validation (2,427) and test
+(2,582). The articles are the first six row groups (6,000 articles, of which 5,009 have
+60 tokens of body) of the public `wikimedia/wikipedia` parquet, config `20231101.ur`:
+
+    python scripts/measure_stemmer.py train-00000-of-00001.parquet --row-groups 6
+
+Test is reported for the shipped default, `stem(word)` (full suffix list, minimum stem
+3), with a sign test over the queries that changed.
 
 | task | plain words | stemmed | change | sign test |
 |---|---:|---:|---:|---:|
-| title → body | 0.4553 | 0.4634 | **+0.008** | p = 0.019 |
-| lead sentence → rest of article | 0.6080 | 0.6128 | +0.005 | p = 0.32 |
+| title → body | 0.4566 | 0.4648 | **+0.008** | p = 0.019 |
+| lead sentence → rest of article | 0.6090 | 0.6126 | +0.004 | p = 0.47 |
+
+*Re-measured on the current tokeniser. An earlier draft (5,016 articles, 2,583 test
+queries) gave 0.4553 → 0.4634 and 0.6080 → 0.6128. The tokeniser changed after that run
+(`words` keeps numbers like `2.5` whole and merges more split verbs) and seven articles
+now fall under the 60-token floor; the gain from stemming on the title task is unchanged.*
 
 The first task is nlp-lab project 23's benchmark, reused so the numbers compare. It
 barely exercises a stemmer: titles are mostly names, and names do not inflect. The second
 task exists because of that — a lead sentence is ordinary prose, full of the endings a
-stemmer removes — and it moved less, not more. Stemming shrinks the index by 15% (126,502
-→ 107,303 types) and gains less than a point. Project 23 found subword tokenisation worth
+stemmer removes — and it moved less, not more. Stemming shrinks the index by 15% (127,284
+→ 108,066 types) and gains less than a point. Project 23 found subword tokenisation worth
 +0.039 on the same title task, five times as much.
 
-Both levels (`light=True` and the default) and both minimum stem lengths were tried; the
-default won validation on both tasks.
+Both levels (`light=True` and the default) and both minimum stem lengths were tried. The
+default won validation on the lead-sentence task and tied `light=True` on the title task
+(0.4454 each to four places); `light=True` would score +0.011 on title test (p = 0.002)
+and +0.001 on lead test. That is one tie on validation, not a reason to change the
+default, so the table reports what `stem()` does.
 
 **Tried and not kept: a vocabulary-checked stemmer**, which strips a suffix only when what
 is left - or it plus ا, ی, ہ or نا - is one of the 60,638 known words. The idea was that
-the small gain came from over-stripping. It did not: title retrieval 0.4447 validation /
+the small gain came from over-stripping. It did not (measured on the earlier tokeniser,
+against the earlier figures; the experiment is not in the scripts): title retrieval 0.4447 validation /
 0.4638 test against the plain stemmer's 0.4455 / 0.4634, lead sentence 0.5991 / 0.6124
 against 0.6004 / 0.6128. Stemming is simply worth little to this kind of retrieval.
 
@@ -633,10 +651,13 @@ measure the generator, not the lookup.
 |---|---:|
 | 0.1 rules, short vowels inserted | 90.9% |
 | 0.1 rules, literal | 92.7% |
-| **0.2 learned** | **93.9%** |
+| **0.2 learned** | **93.8%** |
 
 An earlier draft of this table said 94.3%, from an older run that was not repeated when
-the decoder changed afterwards. Re-measured for the release it is 93.9%. The last round
+the decoder changed afterwards. Re-measured for the release it was 93.9%, and after the
+last chat-lexicon fixes (`JazakAllah`, `acha g`, `yr`) it is 93.8% (0.9378). To re-run it:
+`python scripts/measure_corpus.py data/dakshina/ur/romanized --every 11` - that directory's
+two `.txt` files are Dakshina's dev and test sentences, 9,759 of them. The last round
 of changes (chat spellings, the merged future, punctuation) is not the cause: the code
 before them scores the same on the same tokens, and only one distinct token in the
 sample changed its Roman spelling (پتہ is now `pata`). The token count moved too, from 15,098

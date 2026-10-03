@@ -207,6 +207,24 @@ def main() -> int:
     started = time.time()
     report: dict = {}
 
+    # Speed, first, before any scoring warms a cache: the README's "words a second" is
+    # this line. The model loads on the first call, which is timed separately.
+    dev_sentences, _, _ = sentence_words("dev")
+    romans = [" ".join(r for _, r in sentence) for sentence in dev_sentences]
+    n_words = sum(len(sentence) for sentence in dev_sentences)
+    cpu = time.process_time()
+    transliterate_with_confidence("mera naam")
+    load = time.process_time() - cpu
+    cpu = time.process_time()
+    for roman in romans:
+        transliterate_with_confidence(roman)
+    cpu = time.process_time() - cpu
+    report["speed"] = {"load_cpu_s": round(load, 2), "words": n_words, "cpu_s": round(cpu, 1)}
+    print(
+        f"Speed: model load {load:.1f} s of CPU, then {n_words / cpu:,.0f} words a second "
+        f"of CPU on {n_words:,} words of dev sentences\n"
+    )
+
     old, new = Scorer(False), Scorer(True)
     print("Sentences (word accuracy, Dakshina's own split)")
     for split in ("dev", "test"):

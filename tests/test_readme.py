@@ -79,3 +79,37 @@ def test_the_readme_has_no_unfilled_placeholders():
     text = README.read_text(encoding="utf-8")
     assert re.findall(r"@@\w*@@", text) == []
     assert "TODO" not in text and "TBD" not in text
+
+
+DEMO = README.parent / "demo.py"
+
+
+def _readme_block_after(marker: str) -> str:
+    text = README.read_text(encoding="utf-8")
+    return text.split(marker, 1)[1].split("```", 2)[1].strip("\n")
+
+
+@pytest.mark.skipif(not DEMO.exists(), reason="demo.py is not shipped with the tests")
+def test_the_readme_input_is_the_demo_input():
+    """The README's Input block once said "Arabic ک and ی" while showing the Urdu
+    letters; demo.py had the Arabic ones. Both must be the same string."""
+    raw = re.search(r'^RAW = "(.*)"$', DEMO.read_text(encoding="utf-8"), re.M).group(1)
+    assert _readme_block_after("## Input") == raw
+    assert "ك" in raw and "ي" in raw  # Arabic kaf and yeh, as the README says
+
+
+@pytest.mark.skipif(not DEMO.exists(), reason="demo.py is not shipped with the tests")
+def test_the_readme_output_is_what_demo_py_prints():
+    import os
+    import subprocess
+    import sys
+
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    done = subprocess.run(
+        [sys.executable, str(DEMO)], capture_output=True, env=env, timeout=300, check=True
+    )
+    printed = done.stdout.decode("utf-8").replace("\r\n", "\n")
+    shown = _readme_block_after("`python demo.py`")
+    assert [line.rstrip() for line in shown.splitlines()] == [
+        line.rstrip() for line in printed.strip("\n").splitlines()
+    ]
