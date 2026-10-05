@@ -238,10 +238,28 @@ class _WordModel:
         return total
 
     def log_prob(self, word: str) -> float:
-        return math.log(
-            self.weight * self.unigram.get(word, 0.0)
-            + (1 - self.weight) * math.exp(self.char_log_prob(word))
-        )
+        """log P(word), mixing the unigram table with the character model.
+
+        Done in log space on purpose. Computing it as
+        `log(w * unigram + (1 - w) * exp(char_log_prob))` raised
+        `ValueError: expected a positive input, got 0.0` on any long out-of-vocabulary
+        token: `exp` underflowed to 0.0, the unigram term was already 0.0 for an unseen
+        word, and `log(0.0)` is undefined. A 136-character base64 run was enough, even
+        inside an ordinary sentence - and base64, JWTs, hashes and tracking URLs are
+        routine in the code-mixed text this model is for.
+
+        `char_log_prob` is a sum of logs of strictly positive probabilities, so it is
+        always finite however long the word is; only exponentiating it was lossy. The
+        log-sum-exp below is the same quantity as the old expression wherever the old
+        one did not underflow.
+        """
+        char_part = math.log(1.0 - self.weight) + self.char_log_prob(word)
+        unigram = self.unigram.get(word, 0.0)
+        if unigram <= 0.0:
+            return char_part
+        word_part = math.log(self.weight * unigram)
+        high, low = max(word_part, char_part), min(word_part, char_part)
+        return high + math.log1p(math.exp(low - high))
 
 
 class _Tagger:

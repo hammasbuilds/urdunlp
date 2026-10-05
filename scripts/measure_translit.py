@@ -204,6 +204,18 @@ def main() -> int:
     ap.add_argument("--json", type=Path)
     ap.add_argument("--skip-train", action="store_true", help="skip the 106k-pair train lexicon")
     args = ap.parse_args()
+
+    # Say what is missing and how to get it, the way build_langid_models.py does. This
+    # used to reach the user as a bare FileNotFoundError naming a path inside a
+    # gitignored directory, which reads like a broken script rather than a download
+    # nobody has run yet - and this script is named in the README.
+    if not DAKSHINA.is_dir():
+        raise SystemExit(
+            f"missing {DAKSHINA}: run scripts/fetch_dakshina.py first.\n"
+            "For the headline Roman->Urdu number with no download, use "
+            "scripts/quick_check.py instead - it scores the committed sample."
+        )
+
     started = time.time()
     report: dict = {}
 

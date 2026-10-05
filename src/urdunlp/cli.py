@@ -382,7 +382,12 @@ def main(argv: list[str] | None = None) -> int:
                 warned = True
                 print(
                     "urdunlp: warning: the input arrived as question marks - the shell "
-                    "replaced the text before urdunlp saw it.\n" + _POWERSHELL_HELP,
+                    "replaced the text before urdunlp saw it.\n"
+                    # .format is required: the template carries a {command} placeholder,
+                    # and this is the one path where a confused Windows user is handed a
+                    # command to copy. Emitting it unformatted printed a literal
+                    # "urdunlp {command} -i input.txt" at exactly the wrong moment.
+                    + _POWERSHELL_HELP.format(command=args.command),
                     file=sys.stderr,
                 )
             out.stream.write(run(line) + "\n")

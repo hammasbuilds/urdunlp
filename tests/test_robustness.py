@@ -348,3 +348,74 @@ def test_identifier_still_matches_real_addresses() -> None:
         ("no-at-sign here", []),
     ]:
         assert _IDENTIFIER.findall(text) == expected, text
+
+
+# The first version of these tests built a 40 KB base64 blob and then asserted only on
+# the private _IDENTIFIER regex and remove_urls_and_mentions. It never routed that blob
+# through the two functions that actually broke on it, so a commit named "fix the
+# quadratic identifier regex" shipped with two more super-linear paths and an underflow
+# still open. These tests call the public API, with the shapes a user really supplies.
+
+PATHOLOGICAL = {
+    "one long whitespace run": " " * 200_000,
+    "tabs": "\t" * 40_000,
+    "non-breaking spaces": " " * 40_000,
+    "one long Urdu token": "ک" * 20_000,
+    "merged Urdu, no spaces": "کردیا" * 2_000,
+    "base64 data URI": "<img src=data:image/png;base64," + "QUJD" * 10_000 + ">",
+    "one long Latin token": "a" * 40_000,
+    "hyphenated run": "a-e-" * 10_000,
+    "base64 token in a sentence": "mera naam ali hai " + "YWJh" * 500,
+}
+
+LINEAR_PUBLIC_FUNCTIONS = [
+    "normalize",
+    "words",
+    "sentences",
+    "roman_key",
+    "transliterate_to_urdu",
+    "transliterate_to_roman",
+    "identify_language",
+    "tag_roman_tokens",
+    "remove_urls_and_mentions",
+    "is_urdu",
+    "fix_spacing",
+]
+
+
+@pytest.mark.parametrize("name", LINEAR_PUBLIC_FUNCTIONS)
+@pytest.mark.parametrize("shape", sorted(PATHOLOGICAL))
+def test_public_functions_stay_fast_on_pathological_input(name: str, shape: str) -> None:
+    """No public function may take super-linear time on one unbroken token or run.
+
+    The bound is deliberately loose. Every one of these completes in milliseconds once
+    the models are warm; the defects this replaces took 153 seconds on 200k spaces, 28
+    minutes on a 5,000-character Urdu token, and 12.9 seconds on one scraped page. A
+    slow CI machine will not trip this, a returning quadratic will.
+    """
+    import time
+
+    function = getattr(U, name)
+    text = PATHOLOGICAL[shape]
+    function("warm")  # pay the model load outside the clock
+    start = time.perf_counter()
+    function(text)
+    elapsed = time.perf_counter() - start
+    assert elapsed < 5.0, f"{name} took {elapsed:.1f}s on {shape} ({len(text)} chars)"
+
+
+@pytest.mark.parametrize("shape", sorted(PATHOLOGICAL))
+def test_no_public_function_raises_on_pathological_input(shape: str) -> None:
+    """Pathological input may be useless to process, but it must not raise.
+
+    tag_roman_tokens used to raise ValueError("expected a positive input, got 0.0") from
+    math.log(0.0) once exp() of the character log-probability underflowed, which a
+    136-character base64 token was enough to cause - including in the middle of an
+    ordinary sentence.
+    """
+    text = PATHOLOGICAL[shape]
+    for name in LINEAR_PUBLIC_FUNCTIONS:
+        try:
+            getattr(U, name)(text)
+        except Exception as exc:  # noqa: BLE001 - that is the assertion
+            raise AssertionError(f"{name} raised {type(exc).__name__} on {shape}: {exc}") from None

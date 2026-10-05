@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Mapping
 
 # --- Character-level equivalences ------------------------------------------------
 # Arabic codepoint -> the Urdu one that is actually correct.
@@ -119,7 +120,15 @@ ZWJ = "‍"
 _ZERO_WIDTH_OTHER = re.compile("[​‎‏﻿⁠]")
 
 _SPACES = re.compile(r"[ \t  -   　]+")
-_NEWLINES = re.compile(r"\s*\n\s*")
+# The lookbehind is load-bearing, exactly as in IDENTIFIER below. Without it the leading
+# \s* matched a whole whitespace run, failed to find the \n, and backtracked one
+# character at a time from every start position in that run - quadratic in the run's
+# length. Two hundred thousand spaces took 153 seconds, and it is reachable from any
+# untrusted string through normalize, words, sentences, stem and roman_key, in a
+# zero-dependency library meant to sit underneath other people's services. Refusing to
+# start mid-run makes it linear (64k spaces: 15.78 s -> 0.002 s), and the output is
+# identical on every case tested, including tabs, NBSP and runs of bare newlines.
+_NEWLINES = re.compile(r"(?<!\s)\s*\n\s*")
 
 # A URL, an email, an @mention or a #hashtag: spans that are one token and must never
 # be transliterated, split or half-removed. Shared by `words`, the transliterator and
@@ -178,6 +187,15 @@ def _require_words(value: object, function: str) -> list[str]:
         raise TypeError(
             f"{function}() expects a list of words, got {type(value).__name__} - "
             "decode it and split it first"
+        )
+    # A mapping is iterable over its KEYS, so remove_stopwords({"a": 1}) silently
+    # returned ["a"] - the values were dropped and no error was raised. Iterating a dict
+    # is almost never what the caller meant here, so say so rather than guess.
+    if isinstance(value, Mapping):
+        raise TypeError(
+            f"{function}() expects a list of words, got {type(value).__name__} - "
+            "iterating it would use only its keys; pass list(mapping) if that is "
+            "what you meant"
         )
     try:
         iterator = iter(value)  # type: ignore[call-overload]

@@ -407,27 +407,57 @@ def test_the_ergative_ne_is_a_stopword():
     assert not is_stopword("نہیں")  # negation still kept
 
 
-def test_source_tags_are_exhaustive() -> None:
-    """Every tag the transliterator can emit must be named in SOURCE_TAGS.
+def test_source_tags_matches_what_is_emitted_in_both_directions() -> None:
+    """SOURCE_TAGS must equal the set of tags callers can actually receive.
 
-    `sources` is a public contract that callers switch on. Four of its values were
-    documented and the rest were only discoverable by reading the module, so a caller
-    could not tell a complete match from a partial one. This test reads the tag literals
-    straight out of the source and fails if a new one appears without a description,
-    which is the drift this constant exists to prevent.
+    The first version of this test only checked that everything emitted was declared.
+    That half passes happily while the constant over-declares, and it did: four plan
+    kinds that the render pass rewrites before anyone sees them were listed as if they
+    were source tags, so a caller dispatching over the dict got four dead branches. A
+    one-directional check on a contract is not a check on the contract. Equality in
+    both directions is the assertion that means something.
     """
-    import re
-    from pathlib import Path
-
     import urdunlp
     from urdunlp import SOURCE_TAGS
 
-    path = Path(urdunlp.__file__).parent / "translit.py"
-    src = path.read_text(encoding="utf-8")
-    literals = set(re.findall(r'(?:plan|rendered)\.append\(\([^)]*?"([a-z-]+)"\)\)', src))
-    literals.discard("space")  # filtered out of sources by construction
-    undocumented = sorted(literals - set(SOURCE_TAGS))
-    assert not undocumented, f"tags emitted but not described in SOURCE_TAGS: {undocumented}"
+    texts = [
+        "mera naam Ali hai",
+        "kal meeting cancel ho gayi",
+        "tehreek-e-insaf ka jalsa",
+        "mail test@x.com aur http://x.co dekho",
+        "assalam o alaikum",
+        "walaikum assalam",
+        "PIA aur NADRA ka record",
+        # An acronym only gets the "acronym" tag when it cannot be read as a word:
+        # FBR, PTI and BBC do, while NADRA, NASA, ISI and USA are pronounceable and come
+        # back as "vocabulary". The first version of this corpus had only the readable
+        # kind, so the bidirectional check failed on a tag that is in fact reachable.
+        "FBR ka notice",
+        "PTI aur PMLN",
+        "BBC news dekho",
+        "yeh 125 rupay hai",
+        "lol plz bhej do",
+        "Dr. Ahmed sahab aur Prof. Khan",
+        "کتاب aur book",
+        "kya?, haan. theek",
+        "iPhone 15 kharida",
+        "e.g. ASAP bhejo",
+        "zzxqv blah",
+    ]
+    observed = set()
+    for text in texts:
+        for keep_english in (False, True):
+            result = urdunlp.transliterate_with_confidence(text, keep_english=keep_english)
+            observed.update(tag for _token, tag in result.sources)
+
+    declared = set(SOURCE_TAGS)
+    assert observed, "no sources were produced at all"
+    assert not observed - declared, (
+        f"tags reached a caller without being described: {sorted(observed - declared)}"
+    )
+    assert not declared - observed, (
+        f"SOURCE_TAGS declares tags that nothing can emit: {sorted(declared - observed)}"
+    )
 
 
 def test_observed_source_tags_are_all_documented() -> None:

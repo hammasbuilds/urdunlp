@@ -89,6 +89,7 @@ from urdunlp import (
 
 identify_language("هي ڪتاب منهنجو آهي").name  # 'Sindhi' - same script, different language
 identify_language("کتاب").short  # True: one word is a guess, and says so
+identify_language("hello world").name  # None - not a Perso-Arabic script at all
 tag_roman_tokens("kal meeting cancel ho gayi")
 # [('kal', 'ur'), ('meeting', 'en'), ('cancel', 'en'), ('ho', 'ur'), ('gayi', 'ur')]
 roman_key("nhi") == roman_key("naheen")  # True: both spell نہیں
@@ -174,9 +175,14 @@ check - says yes to 99.9% of Persian.
 **Speed.** `import urdunlp` loads nothing (about 0.1 s). Each model loads on the first
 call that needs it: about 0.6 s of CPU for transliteration, 0.2 s for
 `identify_language`, 0.1 s for `tag_roman_tokens`. Roman → Urdu then runs at
-1,700-1,900 words a second of CPU on 51,764 words of held-out Wikipedia sentences
-(one ordinary laptop; `scripts/measure_translit.py` prints the figure for yours),
-and faster on text that repeats its words (chat does); Urdu → Roman and
+**440-500 words a second** of CPU on words it has not seen before — measured on the
+5,289 words of `eval/dakshina_test_sample.tsv` that ship with the repo, so you can
+check it, and matching what `scripts/quick_check.py` prints. Throughput depends almost
+entirely on word repetition rather than on length: running the same text a second time
+gives about **90,000 words a second** from warm caches, and real chat sits between the
+two because it reuses a small vocabulary. An earlier figure of 1,700-1,900 here was
+measured on a different, more repetitive corpus and did not describe first-pass text.
+`scripts/measure_translit.py` prints the figure for your machine; Urdu → Roman and
 `identify_language` are much faster. For a large corpus, split it across processes
 with `multiprocessing.Pool` - each process loads the model once. In a web server,
 make one call at startup so the first request does not pay for the load.
@@ -278,7 +284,7 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py                                  # nothing to install
-pip install pytest && python -m pytest -q       # 580 tests
+pip install pytest && python -m pytest -q       # 694 tests
 ```
 
 To check the headline number without downloading anything, run

@@ -639,13 +639,14 @@ SOURCE_TAGS: dict[str, str] = {
     "identifier": "a URL, email, @mention or #hashtag, kept whole",
     "izafat": "the Persian linking vowel in a compound such as tehreek-e-insaf",
     "acronym": "read out as letters, such as PIA or NADRA",
-    "greeting": "a fixed salutation with a conventional spelling",
-    "title": "an honorific or title such as Dr or Prof",
-    "abbreviation-dot": "the full stop belonging to an abbreviation, not a sentence end",
     "punctuation": "rewritten to Urdu punctuation, so ? , . become ؟ ، ۔",
     "passthrough": "digits or symbols that transliterate to themselves",
-    "latin": "Latin-script text that is not a recognised English word",
 }
+# These ten are the whole domain. `greeting`, `title`, `abbreviation-dot` and `latin`
+# are internal PLAN kinds, not source tags: the render pass rewrites each of them
+# unconditionally - title and greeting to "lexicon", abbreviation-dot to "passthrough",
+# latin to "english" - so none can ever reach a caller. They were listed here briefly,
+# which gave anyone dispatching over this dict four permanently dead branches.
 
 _WORD_KINDS = frozenset({"roman", "already-urdu", "title", "acronym", "greeting"})
 
@@ -702,13 +703,17 @@ def _kept_in_latin(token: str) -> bool:
 @dataclass
 class Transliteration:
     text: str
-    # Per token: "lexicon" (trusted), "vocabulary" (a real Urdu word, chosen by the
-    # noisy channel), "rules" (best effort), "acronym" (spelled by letter names),
-    # "english" (kept in Latin script because `keep_english` was set and the token
-    # was tagged English), "passthrough" (numbers, punctuation, codes like `5th`,
-    # other scripts - emitted unchanged), "punctuation" (`?` `,` `;` `.` after a word,
-    # written ؟ ، ؛ ۔), "identifier" (a URL, email, @mention or #hashtag, emitted
-    # verbatim) or "already-urdu" (the token was not Roman at all).
+    # One (token, tag) pair per non-whitespace token. SOURCE_TAGS is the full domain
+    # and the single place it is described; `test_source_tags_matches_what_is_emitted_
+    # in_both_directions` asserts the two agree in both directions, so this comment
+    # cannot drift from the constant without a test failing.
+    #
+    # Two of these used to be described wrongly here. "english" does NOT require
+    # `keep_english` - a token tagged English is reported as "english" whatever that
+    # flag is, and the flag only decides whether it is also *written* in Latin, so
+    # `transliterate_with_confidence("recharge karwa do")` reports "english" by
+    # default. And "izafat", the Persian linking vowel in a compound such as
+    # tehreek-e-insaf, was missing from the list entirely.
     # Whitespace is kept in the output and not listed here.
     sources: list[tuple[str, str]]
 
@@ -1168,6 +1173,17 @@ def transliterate_to_roman(
         if match.lastgroup == "phrase":
             out.append(_ROMAN_PHRASES[" ".join(token.split())])
         elif _IS_URDU_SCRIPT.search(token) and token.isalpha():
+            if len(token) > _LONGEST_WORD_TO_MODEL:
+                # Not a word. The learned speller rescores each beam candidate against
+                # the whole token, which is quadratic in its length: one 400-character
+                # run cost 10 s and 5,000 characters took 28 minutes. Text copied out of
+                # a PDF loses spaces and produces exactly this shape, and that is a use
+                # the docstring advertises, so a run this long takes the letter rules
+                # instead - linear, and the only path that never drops a consonant.
+                # The bound is more than twice the longest of the 23,608 attested Urdu
+                # words (14 characters), so no real word reaches it.
+                out.append(_rules_to_roman(token, True))
+                continue
             spelled = _CURATED_ROMAN.get(token) or model.romanize(token)
             out.append(spelled or _rules_to_roman(token, True))
         else:
@@ -1175,6 +1191,11 @@ def transliterate_to_roman(
             out.append(_rules_to_roman(token, True, previous))
     return "".join(out)
 
+
+# The longest of the 23,608 attested Urdu words is 14 characters, and the longest
+# curated one is 9. A "word" longer than this is merged text, a hash or a URL fragment,
+# not something the learned speller should spend quadratic time on.
+_LONGEST_WORD_TO_MODEL = 32
 
 # Runs of letters, and everything else one character at a time.
 _URDU_OR_OTHER = re.compile(r"[^\W\d_]+|.", re.DOTALL)
