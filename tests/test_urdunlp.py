@@ -405,3 +405,53 @@ def test_the_ergative_ne_is_a_stopword():
         assert word in STOPWORDS
     assert remove_stopwords(words("علی نے کتاب پڑھی")) == ["علی", "کتاب", "پڑھی"]
     assert not is_stopword("نہیں")  # negation still kept
+
+
+def test_source_tags_are_exhaustive() -> None:
+    """Every tag the transliterator can emit must be named in SOURCE_TAGS.
+
+    `sources` is a public contract that callers switch on. Four of its values were
+    documented and the rest were only discoverable by reading the module, so a caller
+    could not tell a complete match from a partial one. This test reads the tag literals
+    straight out of the source and fails if a new one appears without a description,
+    which is the drift this constant exists to prevent.
+    """
+    import re
+    from pathlib import Path
+
+    import urdunlp
+    from urdunlp import SOURCE_TAGS
+
+    path = Path(urdunlp.__file__).parent / "translit.py"
+    src = path.read_text(encoding="utf-8")
+    literals = set(re.findall(r'(?:plan|rendered)\.append\(\([^)]*?"([a-z-]+)"\)\)', src))
+    literals.discard("space")  # filtered out of sources by construction
+    undocumented = sorted(literals - set(SOURCE_TAGS))
+    assert not undocumented, f"tags emitted but not described in SOURCE_TAGS: {undocumented}"
+
+
+def test_observed_source_tags_are_all_documented() -> None:
+    """The same check from the outside: run real text and inspect what comes back."""
+    import urdunlp
+    from urdunlp import SOURCE_TAGS
+
+    texts = [
+        "mera naam Ali hai",
+        "kal meeting cancel ho gayi",
+        "tehreek-e-insaf ka jalsa",
+        "mail test@x.com aur http://x.co dekho",
+        "assalam o alaikum",
+        "PIA aur NADRA",
+        "yeh 125 rupay hai",
+        "lol plz bhej do",
+        "Dr. Ahmed sahab",
+        "کتاب aur book",
+        "kya?, haan. theek",
+    ]
+    seen = set()
+    for text in texts:
+        for _token, tag in urdunlp.transliterate_with_confidence(text).sources:
+            seen.add(tag)
+    assert seen, "no sources were produced at all"
+    unknown = sorted(seen - set(SOURCE_TAGS))
+    assert not unknown, f"undocumented tags reached a caller: {unknown}"

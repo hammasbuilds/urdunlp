@@ -42,6 +42,24 @@ STOPWORDS = frozenset(normalize(w) for w in _BASE.split() if w.strip())
 
 
 def is_stopword(word: str, *, include_negation: bool = False) -> bool:
+    """Is this word a stopword?
+
+    Negation is the surprise here, so it is spelled out: نہیں and its variants are in
+    NEGATION, not STOPWORDS, and by default this returns **False** for them. The
+    default matches `remove_stopwords`, which also keeps negation unless asked - both
+    err towards keeping a word that inverts meaning, because dropping it silently
+    flips the label in sentiment work.
+
+        >>> is_stopword("یہ")
+        True
+        >>> is_stopword("نہیں")
+        False
+        >>> is_stopword("نہیں", include_negation=True)
+        True
+
+    Pass `include_negation=True` only where meaning does not depend on polarity, such
+    as topic modelling or retrieval.
+    """
     _require_str(word, "is_stopword")
     word = normalize(word)
     if word in NEGATION:

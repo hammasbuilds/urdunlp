@@ -113,3 +113,29 @@ def test_the_readme_output_is_what_demo_py_prints():
     assert [line.rstrip() for line in shown.splitlines()] == [
         line.rstrip() for line in printed.strip("\n").splitlines()
     ]
+
+
+def test_known_limits_examples_still_hold() -> None:
+    """The "Known limits" block must describe the code as it behaves now.
+
+    This block was not covered by any test and went stale in the direction that makes
+    the library look worse than it is: it claimed `exam` gave اقسام and `late` gave
+    لاتے, when both are now correct, and it blamed `hal` for an error that is actually
+    `hai` being pulled to ہی by the word after it. Documented limitations are claims
+    like any other, so they are pinned here.
+    """
+    import urdunlp
+
+    # the homophone pulled by the FOLLOWING word, not by how `hal` is spelled
+    assert urdunlp.transliterate_to_urdu("kya hal hai") == "کیا حال ہے"
+    assert urdunlp.transliterate_to_urdu("kya hal hai bhai") == "کیا حال ہی بھائی"
+    assert urdunlp.transliterate_to_urdu("hal") == urdunlp.transliterate_to_urdu("haal")
+
+    # the English-word example, and the escape hatch the block offers
+    assert urdunlp.transliterate_to_urdu("station") == "اسٹیشن"
+    assert urdunlp.transliterate_to_urdu("cancel") == "کونسل"
+    assert urdunlp.transliterate_to_urdu("cancel", keep_english=True) == "cancel"
+
+    # the two examples the block used to cite are fixed, and must not regress back
+    assert urdunlp.transliterate_to_urdu("exam") == "ایگزام"
+    assert urdunlp.transliterate_to_urdu("late") == "لیٹ"

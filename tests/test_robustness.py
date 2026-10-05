@@ -311,3 +311,40 @@ def test_the_quick_check_sample_aligns_as_the_readme_says():
     pairs = [align(*row.split("\t")) for row in rows]
     assert len(rows) == 364 and all(p is not None for p in pairs)
     assert sum(len(p) for p in pairs) == 5249
+
+
+def test_identifier_pattern_is_linear_on_one_long_token() -> None:
+    """A long whitespace-free run must not make the identifier pattern backtrack.
+
+    The email branch used to attempt its local part at every interior position of such a
+    run, which is quadratic: a single 40 KB base64 `data:` URI took 12.9 seconds, against
+    a docstring that advertises scraped text as the use case. The bound here is generous
+    - the fixed pattern does 40 KB in about a millisecond - so this fails only if the
+    quadratic behaviour comes back, not when CI is slow.
+    """
+    from urdunlp.normalize import _IDENTIFIER
+
+    blob = "<img src=data:image/png;base64," + "QUJD" * 10_000 + ">"
+    start = time.perf_counter()
+    _IDENTIFIER.findall(blob)
+    assert time.perf_counter() - start < 1.0
+
+    start = time.perf_counter()
+    U.remove_urls_and_mentions("a" * 40_000)
+    assert time.perf_counter() - start < 1.0
+
+
+def test_identifier_still_matches_real_addresses() -> None:
+    """The speed fix must not narrow what counts as an email, mention or URL."""
+    from urdunlp.normalize import _IDENTIFIER
+
+    for text, expected in [
+        ("mail me at test@x.com please", ["test@x.com"]),
+        ("a.b+c-d@sub.domain.co.uk", ["a.b+c-d@sub.domain.co.uk"]),
+        ("x@y.z", ["x@y.z"]),
+        ("two a@b.com and c@d.org", ["a@b.com", "c@d.org"]),
+        ("trailing test@x.com.", ["test@x.com"]),
+        ("UPPER.Case+tag@Example.COM", ["UPPER.Case+tag@Example.COM"]),
+        ("no-at-sign here", []),
+    ]:
+        assert _IDENTIFIER.findall(text) == expected, text

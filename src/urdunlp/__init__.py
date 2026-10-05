@@ -24,6 +24,7 @@ from .stem import stem, stem_tokens
 from .stopwords import NEGATION, STOPWORDS, is_stopword, remove_stopwords
 from .tokenize import character_ngrams, fix_spacing, sentences, words
 from .translit import (
+    SOURCE_TAGS,
     Transliteration,
     transliterate_to_roman,
     transliterate_to_urdu,
@@ -33,6 +34,7 @@ from .translit import (
 __version__ = "0.2.0"
 
 __all__ = [
+    "SOURCE_TAGS",
     "LANGUAGES",
     "NEGATION",
     "STOPWORDS",

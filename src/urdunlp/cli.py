@@ -115,7 +115,7 @@ console's code page. Either run this once in the session:
     $OutputEncoding = [Text.UTF8Encoding]::new()
     [Console]::InputEncoding = [Console]::OutputEncoding = $OutputEncoding
 or skip the pipe and let urdunlp read and write the files itself:
-    urdunlp to-roman -i input.txt -o output.txt"""
+    urdunlp {command} -i input.txt -o output.txt"""
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -134,7 +134,10 @@ def _parser() -> argparse.ArgumentParser:
             name,
             help=summary,
             description=summary,
-            epilog=_POWERSHELL_HELP,
+            # the worked example names the command being asked about; it used to say
+            # "to-roman" under every subcommand, which sends a reader of `normalize
+            # --help` to copy the wrong line
+            epilog=_POWERSHELL_HELP.format(command=name),
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         sub.add_argument("text", nargs="*", help="text to process (default: -i FILE or stdin)")

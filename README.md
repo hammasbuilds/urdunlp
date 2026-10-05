@@ -249,12 +249,15 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
   held-out sentences 8.7% of words still come out wrong.
 - **The accuracy figures are for careful romanisation of encyclopaedia text.** Chat is
   shorter, drops more vowels and switches to English more; nobody has measured how much
-  lower it scores. The word statistics are Wikipedia's, so a chat phrase can be read as
-  an encyclopaedia one: `kya hal hai bhai` gives کیا حال ہی بھائی (*recently*); `haal`
-  gets it right.
+  lower it scores. The word statistics are Wikipedia's, so the word that follows can pull
+  a token to the wrong homophone: `kya hal hai` is right (کیا حال ہے), but
+  `kya hal hai bhai` gives کیا حال ہی بھائی — `hai` becomes ہی (*only*) rather than
+  ہے (*is*), because of what comes after it. Spelling `hal` as `haal` changes nothing;
+  both give حال.
 - **English inside Roman Urdu.** By default an English word is written the way Urdu
   writes it (`station` → اسٹیشن), and a word the vocabulary does not hold may be matched
-  to the wrong Urdu word (`exam` → اقسام, `late` → لاتے). `keep_english=True` leaves the
+  to a different Urdu word that is spelled similarly (`cancel` → کونسل, which reads
+  *council*). `keep_english=True` leaves the
   words `tag_roman_tokens` calls English in Latin; that tagger finds 87.0% of
   English words on synthetic test sentences and misses some in real chat
   (`kal meeting hai` tags `meeting` as Urdu). Unknown words that are clearly English

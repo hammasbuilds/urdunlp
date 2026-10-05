@@ -624,6 +624,29 @@ _SENTENCE_END = frozenset(".?!۔؟")
 _ASCII_TO_URDU_PUNCT = {"?": "؟", ",": "،", ";": "؛", ".": "۔"}
 
 # What may stand before a converted mark: a word that was, or already is, Urdu.
+# Every value that can appear as the second element of a `Transliteration.sources`
+# pair, with what it means. This is a public contract: `sources` is the package's
+# distinguishing feature, and callers switch on these strings. Four of them used to be
+# described in the README and the rest were discoverable only by reading this module,
+# which made dispatching on the value guesswork. `test_source_tags_are_exhaustive`
+# fails if a new tag is emitted without being named here.
+SOURCE_TAGS: dict[str, str] = {
+    "lexicon": "a curated word with one trusted spelling",
+    "vocabulary": "a real Urdu word chosen by the noisy-channel model",
+    "rules": "spelled out by the letter rules, with no word-level evidence",
+    "english": "left in Latin script as an English or brand word",
+    "already-urdu": "the token was already in Urdu script and was passed through",
+    "identifier": "a URL, email, @mention or #hashtag, kept whole",
+    "izafat": "the Persian linking vowel in a compound such as tehreek-e-insaf",
+    "acronym": "read out as letters, such as PIA or NADRA",
+    "greeting": "a fixed salutation with a conventional spelling",
+    "title": "an honorific or title such as Dr or Prof",
+    "abbreviation-dot": "the full stop belonging to an abbreviation, not a sentence end",
+    "punctuation": "rewritten to Urdu punctuation, so ? , . become ؟ ، ۔",
+    "passthrough": "digits or symbols that transliterate to themselves",
+    "latin": "Latin-script text that is not a recognised English word",
+}
+
 _WORD_KINDS = frozenset({"roman", "already-urdu", "title", "acronym", "greeting"})
 
 

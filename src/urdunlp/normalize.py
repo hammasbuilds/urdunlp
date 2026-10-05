@@ -130,7 +130,13 @@ _NEWLINES = re.compile(r"\s*\n\s*")
 IDENTIFIER = (
     r"https?://\S+?(?=[.,;:!?؟،۔)\]}'\"]*(?:\s|$))"
     r"|www\.\S+?(?=[.,;:!?؟،۔)\]}'\"]*(?:\s|$))"
-    r"|[\w.+-]+@[\w-]+\.[\w.-]*\w"
+    # The lookbehind is load-bearing, not tidiness. Without it the engine attempted the
+    # local part at every interior position of a long whitespace-free run and backtracked,
+    # which is quadratic: one 40 KB base64 data: URI took 12.9 s, and scraped text is the
+    # documented use case for this pattern. Refusing to start mid-token makes it linear
+    # (40 KB: 8.157 s -> 0.001 s). The bounds are RFC 5321's 64-octet local part and
+    # 255-octet domain label, so nothing valid is lost.
+    r"|(?<![\w.+-])[\w.+-]{1,64}@[\w-]{1,255}\.[\w.-]*\w"
     r"|[@#]\w+"
 )
 _IDENTIFIER = re.compile(IDENTIFIER)
