@@ -38,3 +38,11 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local-only front end for personal checking and for showing the project on this
+# machine. Deliberately NOT part of the package or the repo: demo.py is the published
+# demonstration, this is the clickable self-check that lives on one desktop.
+_local/
+demo_report.html
+demo_results.json
+demo/
