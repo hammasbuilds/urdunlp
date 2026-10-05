@@ -3,7 +3,6 @@
 
 <p align="center">
   <a href="https://github.com/hammasbuilds/urdunlp/actions/workflows/ci.yml"><img src="https://github.com/hammasbuilds/urdunlp/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
-  <a href="https://pypi.org/project/urdunlp/"><img src="https://img.shields.io/pypi/v/urdunlp" alt="pypi"></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/dependencies-zero-success" alt="deps">
   <a href="https://github.com/hammasbuilds/urdunlp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT%20code%20%2B%20CC%20BY--SA%20data-green" alt="license"></a>
@@ -18,11 +17,10 @@ was measured on data the library was not built from.
 ## Install
 
 ```bash
-pip install urdunlp
+pip install git+https://github.com/hammasbuilds/urdunlp
 ```
 
-Until 0.2.0 is on PyPI, install from source:
-`pip install git+https://github.com/hammasbuilds/urdunlp`.
+PyPI release coming: `pip install urdunlp` will work once 0.2.0 is published.
 
 Python 3.10 or newer, any OS. No dependencies, and the three small statistical tables
 it needs (3.4 MB) ship inside the wheel - nothing is downloaded at runtime. The package
