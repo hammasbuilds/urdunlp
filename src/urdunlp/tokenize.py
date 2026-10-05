@@ -172,6 +172,11 @@ def character_ngrams(text: str, n: int = 3, *, pad: bool = True) -> list[str]:
     _require_str(text, "character_ngrams")
     if n < 1:
         raise ValueError("n must be >= 1")
+    # Empty text has no n-grams. Padding it produced ["<>"], a gram made entirely of
+    # padding, where every other function in the package returns an empty result for
+    # empty input - and "<>" as a feature says nothing about any document.
+    if not text:
+        return []
     token = f"<{text}>" if pad else text
     if len(token) < n:
         return [token] if token else []

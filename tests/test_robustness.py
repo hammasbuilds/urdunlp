@@ -366,8 +366,20 @@ PATHOLOGICAL = {
     "one long Latin token": "a" * 40_000,
     "hyphenated run": "a-e-" * 10_000,
     "base64 token in a sentence": "mera naam ali hai " + "YWJh" * 500,
+    # A digit run and an unspaced comma-number list were missing, and that is exactly
+    # how CPython's 4,300-digit int_max_str_digits ValueError escaped find_numbers,
+    # parse_number and parse_ordinal: no shape here had enough digits to reach it.
+    # One CSV row pasted into text is enough.
+    "long ASCII digit run": "9" * 20_000,
+    "long Urdu digit run": "۹" * 20_000,
+    "unspaced comma number list": "qeemat: " + ",".join(str(i) for i in range(1, 3000)),
+    "digits in a sentence": "mujhe " + "9" * 9_000 + " rupay chahiye",
 }
 
+# Every public function that takes a single string. The first version of this list held
+# 11 of them and left out the number parsers, which is why the shapes above could not
+# have caught the digit-limit defect even after they existed. A list of "the functions I
+# thought were risky" is not coverage of the public surface.
 LINEAR_PUBLIC_FUNCTIONS = [
     "normalize",
     "words",
@@ -375,12 +387,22 @@ LINEAR_PUBLIC_FUNCTIONS = [
     "roman_key",
     "transliterate_to_urdu",
     "transliterate_to_roman",
+    "transliterate_with_confidence",
     "identify_language",
     "tag_roman_tokens",
     "remove_urls_and_mentions",
+    "resolve_arabic_heh",
     "is_urdu",
     "fix_spacing",
+    "stem",
+    "find_numbers",
+    "parse_number",
+    "parse_ordinal",
 ]
+
+# These two raise a documented ValueError on text that is not a number. That is correct
+# behaviour, and distinct from the raw-internals leak the no-raise test looks for.
+MAY_RAISE_VALUE_ERROR = {"parse_number", "parse_ordinal"}
 
 
 @pytest.mark.parametrize("name", LINEAR_PUBLIC_FUNCTIONS)
@@ -397,9 +419,20 @@ def test_public_functions_stay_fast_on_pathological_input(name: str, shape: str)
 
     function = getattr(U, name)
     text = PATHOLOGICAL[shape]
-    function("warm")  # pay the model load outside the clock
+
+    # The number parsers reject non-numeric text by design, and a rejection still pays
+    # the model load and still has to be fast - refusing slowly is the defect this test
+    # exists to catch, so they are timed like everything else rather than skipped.
+    def call(value: str) -> None:
+        try:
+            function(value)
+        except ValueError:
+            if name not in MAY_RAISE_VALUE_ERROR:
+                raise
+
+    call("warm")  # pay the model load outside the clock
     start = time.perf_counter()
-    function(text)
+    call(text)
     elapsed = time.perf_counter() - start
     assert elapsed < 5.0, f"{name} took {elapsed:.1f}s on {shape} ({len(text)} chars)"
 
@@ -417,5 +450,15 @@ def test_no_public_function_raises_on_pathological_input(shape: str) -> None:
     for name in LINEAR_PUBLIC_FUNCTIONS:
         try:
             getattr(U, name)(text)
+        except ValueError as exc:
+            if name in MAY_RAISE_VALUE_ERROR:
+                # A documented "not a number word" is correct behaviour. What is not is
+                # CPython's own int_max_str_digits error, which escaped these functions
+                # telling the caller to go and raise the interpreter's digit limit.
+                assert "int_max_str_digits" not in str(exc), (
+                    f"{name} leaked a CPython internal error on {shape}: {exc}"
+                )
+                continue
+            raise AssertionError(f"{name} raised ValueError on {shape}: {exc}") from None
         except Exception as exc:  # noqa: BLE001 - that is the assertion
             raise AssertionError(f"{name} raised {type(exc).__name__} on {shape}: {exc}") from None

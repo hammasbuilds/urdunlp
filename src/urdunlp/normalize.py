@@ -314,6 +314,14 @@ def is_urdu(text: str, *, threshold: float = 0.5) -> bool:
     containing a number or a Latin brand name look less Urdu than it is.
     """
     _require_str(text, "is_urdu")
+    # The only argument in the package that was unvalidated: a str leaked a raw
+    # comparison TypeError from the last line, nan silently returned False whatever the
+    # text, and a negative threshold called English Urdu. Every other bad argument here
+    # gets a named message, so this one does too.
+    if isinstance(threshold, bool) or not isinstance(threshold, (int, float)):
+        raise TypeError(f"is_urdu() expects a number for threshold, got {type(threshold).__name__}")
+    if not 0.0 <= threshold <= 1.0:  # also rejects nan, which fails both sides
+        raise ValueError(f"is_urdu() threshold must be between 0 and 1, got {threshold!r}")
     letters = [c for c in text if c.isalpha()]
     if not letters:
         return False

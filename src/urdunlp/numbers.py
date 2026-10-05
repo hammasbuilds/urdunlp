@@ -232,12 +232,32 @@ _DIGITS = str.maketrans(
 )
 
 
+# CPython refuses to convert an integer string longer than 4,300 digits by default.
+# The largest amount this module names is 99 kharab (13 digits), so anything remotely
+# near this bound is not a quantity anyone wrote; staying under it keeps the limit from
+# surfacing as a ValueError from inside the standard library.
+_MAX_NUMERAL_DIGITS = 4_000
+
+
 def _numeral_value(token: str) -> Fraction | None:
-    """'15', '2.5', '12,34,567', '۱۵' -> value. Commas are grouping, a dot is decimal."""
+    """'15', '2.5', '12,34,567', '۱۵' -> value. Commas are grouping, a dot is decimal.
+
+    A token with more digits than CPython will convert is not a number here. Without
+    the guard, `int()` inside `Fraction` raised
+    `ValueError: Exceeds the limit (4300 digits) for integer string conversion … use
+    sys.set_int_max_str_digits()` straight out of `find_numbers`, `parse_number` and
+    `parse_ordinal`. That is CPython's internals reaching a caller, it suggests a fix
+    the caller should not have to make, and `parse_number` already raises ValueError
+    for "not a number word", so the two were indistinguishable. A comma-separated
+    number list pasted without spaces - one CSV row - is enough to trigger it.
+    """
     token = token.translate(_DIGITS)
     if not _NUMERAL.match(token):
         return None
     if token.count(".") > 1:
+        return None
+    digits = token.replace(",", "").replace(".", "").lstrip("0")
+    if len(digits) > _MAX_NUMERAL_DIGITS:
         return None
     return Fraction(token.replace(",", ""))
 

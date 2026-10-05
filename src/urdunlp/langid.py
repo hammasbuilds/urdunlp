@@ -27,13 +27,14 @@ import itertools
 import math
 import re
 import unicodedata
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any
 
 from .normalize import _PRESENTATION_FORMS, IDENTIFIER, _expand_presentation_forms, _require_str
 
-LANGUAGES: dict[str, str] = {
+_LANGUAGES: dict[str, str] = {
     "ur": "Urdu",
     "pnb": "Punjabi (Shahmukhi)",
     "skr": "Saraiki",
@@ -46,6 +47,11 @@ LANGUAGES: dict[str, str] = {
     "ug": "Uyghur",
     "azb": "South Azerbaijani",
 }
+
+# Exported read-only. A plain dict let a caller corrupt it for the whole
+# process, while STOPWORDS and NEGATION were already frozensets; this is the
+# same protection for the mappings.
+LANGUAGES: Mapping[str, str] = MappingProxyType(_LANGUAGES)
 
 # Below this many Perso-Arabic letters a guess is flagged `short`. Held-out accuracy
 # by window length: 97.9% on a paragraph, 96.6% on 50 characters, 91.0% on 20, 81.5%

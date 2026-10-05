@@ -45,7 +45,9 @@ import functools
 import math
 import re
 import unicodedata
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 
 from . import _channel
 from .normalize import IDENTIFIER, ZWJ, ZWNJ, _is_urdu_letter, _require_str, normalize
@@ -392,6 +394,10 @@ CHAT_ENGLISH: dict[str, str] = {
 }
 CHAT_LEXICON.update(CHAT_ENGLISH)
 LEXICON.update(CHAT_LEXICON)
+# Acronyms Urdu says as a word, where the vocabulary model picked the wrong ending:
+# NADRA came out نادرہ, which is a different word shape from the agency's own نادرا.
+# NASA ناسا and WAPDA واپڈا the model already gets right and are not listed.
+LEXICON.update({"nadra": "نادرا"})
 # Chat shorthand looked up as the word it abbreviates. `k` is `ke` - کے or کہ, left
 # to context like `ke` itself (کہ after کہا or کیوں); on its own the vocabulary read
 # it as ایک.
@@ -579,7 +585,54 @@ def _ends_context(token: str, kind: str) -> bool:
     return True
 
 
+# Acronyms read out letter by letter even though they carry two or more vowels, so the
+# vowel heuristic in `_is_acronym` would otherwise hand them to the word model.
+_LETTER_ACRONYMS = frozenset(
+    {
+        "PIA",
+        "ISI",
+        "USA",
+        "UAE",
+        "FIA",
+        "UK",
+        "EU",
+        "UN",
+        "USD",
+        "IBA",
+        "IBM",
+        "AI",
+        "API",
+        "CIA",
+        "FBI",
+        "IMF",
+        "WHO",
+        "ICC",
+        "IPO",
+        "SIM",
+        "ATM",
+        "CEO",
+        "CIO",
+        "CFO",
+        "HEC",
+        "ECP",
+        "NAB",
+        "SBP",
+        "FPSC",
+    }
+)
+
+
 def _is_acronym(word: str, shouting: bool = False) -> bool:
+    # Said as letters whatever the vowel count. The "at most one vowel" rule below
+    # reads a two-vowel acronym as a word, and for the ones Pakistani readers meet
+    # first that produced a real Urdu word rather than an unspelled acronym: PIA came
+    # out پایا (*paaya*, "found"), ISI and USA both اسی (*usi*, "eighty"), UAE ہوئے
+    # (*hue*, "were") and FIA فیہ. Those are wrong words, not rough spellings, so they
+    # are listed rather than left to the heuristic. Acronyms Urdu genuinely says as a
+    # word - NASA ناسا, WAPDA واپڈا - are not here and keep going through the model.
+    if word in _LETTER_ACRONYMS:
+        return not shouting
+
     # A single capital is an initial: Dakshina's annotators wrote C as سی 20 times,
     # L as ایل 18, A as اے 12 - letter names for about 115 of 127 capitals. A single
     # lowercase letter is not: `o` is the conjunction و, 123 times.
@@ -630,7 +683,7 @@ _ASCII_TO_URDU_PUNCT = {"?": "؟", ",": "،", ";": "؛", ".": "۔"}
 # described in the README and the rest were discoverable only by reading this module,
 # which made dispatching on the value guesswork. `test_source_tags_are_exhaustive`
 # fails if a new tag is emitted without being named here.
-SOURCE_TAGS: dict[str, str] = {
+_SOURCE_TAGS: dict[str, str] = {
     "lexicon": "a curated word with one trusted spelling",
     "vocabulary": "a real Urdu word chosen by the noisy-channel model",
     "rules": "spelled out by the letter rules, with no word-level evidence",
@@ -638,10 +691,14 @@ SOURCE_TAGS: dict[str, str] = {
     "already-urdu": "the token was already in Urdu script and was passed through",
     "identifier": "a URL, email, @mention or #hashtag, kept whole",
     "izafat": "the Persian linking vowel in a compound such as tehreek-e-insaf",
-    "acronym": "read out as letters, such as PIA or NADRA",
+    "acronym": "read out as letters, such as PIA or PTI",
     "punctuation": "rewritten to Urdu punctuation, so ? , . become ؟ ، ۔",
     "passthrough": "digits or symbols that transliterate to themselves",
 }
+
+# Exported read-only, for the same reason as LANGUAGES: a caller could otherwise
+# corrupt the description of a public contract for the whole process.
+SOURCE_TAGS: Mapping[str, str] = MappingProxyType(_SOURCE_TAGS)
 # These ten are the whole domain. `greeting`, `title`, `abbreviation-dot` and `latin`
 # are internal PLAN kinds, not source tags: the render pass rewrites each of them
 # unconditionally - title and greeting to "lexicon", abbreviation-dot to "passthrough",
