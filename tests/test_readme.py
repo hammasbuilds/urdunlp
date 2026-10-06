@@ -18,7 +18,8 @@ from pathlib import Path
 
 import pytest
 
-README = Path(__file__).resolve().parent.parent / "README.md"
+ROOT = Path(__file__).resolve().parent.parent
+README = ROOT / "README.md"
 BLOCK = re.compile(r"```python\n(.*?)```", re.DOTALL)
 
 
@@ -139,3 +140,72 @@ def test_known_limits_examples_still_hold() -> None:
     # the two examples the block used to cite are fixed, and must not regress back
     assert urdunlp.transliterate_to_urdu("exam") == "ایگزام"
     assert urdunlp.transliterate_to_urdu("late") == "لیٹ"
+
+
+def test_the_per_language_table_agrees_with_the_corpus_document() -> None:
+    """The README's per-language figures and CORPUS.md's prose are the same numbers.
+
+    They were published in one pooled figure (97.9%) that mixes an 8-way orthography
+    question - eight languages at exactly 100% on whole paragraphs, over 63-80 test
+    paragraphs each - with the Urdu/Punjabi/Saraiki three-way, which is 96.2%. Breaking it
+    out means two documents now carry the same figures, so they are checked against each
+    other: CORPUS.md states them in prose, the README in a table.
+
+    The first draft of that table took the FIRST n characters of each paragraph instead of
+    the centred slice `scripts/measure_langid.py` uses, which scored Saraiki 64.2% at 20
+    characters against the published 75.1%. A table that contradicts the number two rows
+    above it is the defect this test exists to prevent.
+    """
+    corpus = (ROOT / "docs" / "CORPUS.md").read_text(encoding="utf-8")
+    readme = README.read_text(encoding="utf-8")
+
+    # CORPUS.md: "At 20 characters, Saraiki is right 75.1% ... Punjabi 85.7% and Urdu 93.3%"
+    # Whitespace-tolerant: the sentence wraps across a newline between "Saraiki" and "is
+    # right", and a regex with literal spaces silently matched nothing.
+    stated = re.search(
+        r"At\s+20\s+characters,\s+Saraiki\s+is\s+right\s+([\d.]+)%[^.]*?,"
+        r"\s+Punjabi\s+([\d.]+)%\s+and\s+Urdu\s+([\d.]+)%",
+        corpus,
+        re.S,
+    )
+    assert stated, "CORPUS.md no longer states the 20-character figures in the known shape"
+    skr, pnb, urd = (float(g) for g in stated.groups())
+
+    rows = {}
+    for line in readme.splitlines():
+        match = re.match(
+            r"\|\s*(Urdu|Punjabi \(Shahmukhi\)|Saraiki)\s*\|\s*(\d+)\s*\|"
+            r"([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|",
+            line,
+        )
+        if match:
+            cells = [c.replace("*", "").strip().rstrip("%") for c in match.groups()[2:]]
+            rows[match.group(1)] = float(cells[2])  # the 20-character column
+
+    assert len(rows) == 3, f"expected three language rows in the README, found {sorted(rows)}"
+    assert rows["Saraiki"] == skr, f"README {rows['Saraiki']}% vs CORPUS.md {skr}%"
+    assert rows["Punjabi (Shahmukhi)"] == pnb, f"README {rows['Punjabi (Shahmukhi)']}% vs {pnb}%"
+    assert rows["Urdu"] == urd, f"README {rows['Urdu']}% vs CORPUS.md {urd}%"
+
+
+def test_the_word_accuracy_row_states_its_denominator() -> None:
+    """91.3% is over the sentences that can be ALIGNED, not over the test set.
+
+    CORPUS.md: "A sentence is scored word by word when its Urdu and Roman token counts
+    agree (3,632 of 4,945 test sentences); the rest cannot be aligned without guessing."
+    The README's table quoted 52,087 words and did not say that 1,313 sentences - 26.6% -
+    are excluded, and the exclusion is not random: counts disagree where compounds merge
+    or split and where English is inserted, which is where transliteration is hardest.
+    """
+    corpus = (ROOT / "docs" / "CORPUS.md").read_text(encoding="utf-8")
+    readme = README.read_text(encoding="utf-8")
+    stated = re.search(r"\((\d[\d,]*)\s+of\s+(\d[\d,]*)\s+test\s+sentences\)", corpus)
+    assert stated, "CORPUS.md no longer states the alignable-sentence counts"
+    scored, total = (g.replace(",", "") for g in stated.groups())
+
+    row = next((ln for ln in readme.splitlines() if "word accuracy" in ln), None)
+    assert row, "the README has no word-accuracy row"
+    assert f"{int(scored):,}" in row and f"{int(total):,}" in row, (
+        f"the word-accuracy row does not state its denominator "
+        f"({int(scored):,} of {int(total):,}): {row}"
+    )

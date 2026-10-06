@@ -158,14 +158,55 @@ and every number: [docs/CORPUS.md](https://github.com/hammasbuilds/urdunlp/blob/
 
 | | 0.1 | **0.2** | measured on |
 |---|---:|---:|---|
-| Roman → Urdu, word accuracy | 43.1% | **91.3%** | 52,087 words of hand-romanised test sentences ([Dakshina](https://github.com/google-research-datasets/dakshina)) |
+| Roman → Urdu, word accuracy | 43.1% | **91.3%** | 52,087 words of the 3,632 of 4,945 hand-romanised test sentences whose token counts align ([Dakshina](https://github.com/google-research-datasets/dakshina)) |
 | Urdu → Roman, spelled exactly as the annotator did | 28.6% | **54.5%** | the same sentences |
 | Urdu → Roman, spelled as some annotator spelled that word | 41.4% | **78.2%** | the same sentences |
 | Urdu → Roman → Urdu round trip | 42.0% | **93.8%** | 15,088 tokens of Dakshina's dev and test sentences |
 | Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
-| Which of 11 Perso-Arabic languages, whole paragraph | — | **97.9%** | 1,254 test paragraphs |
+| Which of 11 Perso-Arabic languages, whole paragraph | — | **97.9%** | 1,254 test paragraphs — but see the note below: this pools an easy 8-way task with a hard 3-way one |
 | ... on 20 characters | — | **91.0%** | |
 | English words found inside Roman Urdu (recall) | — | **87.0%** | synthetic code-mixed test sentences |
+
+**Two of these numbers have a denominator worth knowing.**
+
+**Word accuracy is over the 73% of test sentences that can be aligned.** A sentence is
+scored word by word only when its Urdu and Roman token counts agree, which is true of
+3,632 of 4,945; the other 1,313 cannot be aligned without guessing which Roman token
+belongs to which Urdu one. That exclusion is not random — counts disagree when an izafat
+compound is romanised as one token or three, when compounds merge or split, when English
+is inserted, or when an annotator joined words, which is to say on the sentences hardest
+to transliterate. Treat 91.3% as word accuracy *on alignable sentences*, not on the test
+set.
+
+**97.9% pools an easy task with the hard one.** Eight of the eleven languages are
+separable on orthography alone and score **exactly 100%** on whole paragraphs, over 63–80
+test paragraphs each. The informative part is Urdu, Punjabi (Shahmukhi) and Saraiki, which
+share nearly all their orthography:
+
+| | test paragraphs | whole | 50 chars | 20 chars | 10 chars |
+|---|---:|---:|---:|---:|---:|
+| Urdu | 225 | 98.7% | 98.0% | 93.3% | 84.0% |
+| Punjabi (Shahmukhi) | 224 | 97.3% | 94.2% | 85.7% | 70.1% |
+| Saraiki | 229 | 92.6% | 88.9% | **75.1%** | **59.4%** |
+| the other eight | 63–80 each | **100.0%** | 98.7–100% | 95.8–100% | 88.7–100% |
+
+**Pooled over all eleven: 97.9%. Over Urdu/Punjabi/Saraiki alone: 96.2%** (678
+paragraphs). So the headline is ~100% on an 8-way orthography question and 96.2% on the
+three-way one, and the three-way one is where length hurts — Saraiki falls to 75.1% at 20
+characters and 59.4% at 10, while seven of the other eight are still at 100% on 50. A rate
+of exactly 100% over 70 paragraphs means the test set holds no hard case for those
+languages, not that the model is perfect on them.
+
+(Windows are centred slices, as `scripts/measure_langid.py` takes them; the middle of a
+paragraph carries more signal than its opening. Taking the first N characters instead
+scores Saraiki 11 points lower at 20.)
+
+The gold labels are also *which Wikipedia edition a paragraph came from*. For Urdu,
+Arabic, Pashto, Sindhi and Uyghur that is close enough to a language label. For Punjabi
+(Shahmukhi) versus Saraiki it is not: whether Saraiki is a language or a Punjabi dialect
+group is a live sociolinguistic question, so for that pair the label itself is editorial —
+which is part of why it is the pair the model confuses.
+
 | Stemming, retrieval recall@10 | — | **+0.008** | 2,582 test queries, sign test p = 0.019 |
 
 The weak numbers are in the table on purpose: the stemmer helps a little, language
@@ -284,7 +325,7 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py                                  # nothing to install
-pip install pytest && python -m pytest -q       # 827 tests
+pip install pytest && python -m pytest -q       # 829 tests
 ```
 
 To check the headline number without downloading anything, run

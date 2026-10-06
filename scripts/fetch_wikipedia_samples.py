@@ -73,6 +73,15 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=Path, default=Path("data/wiki"))
     ap.add_argument("--paragraphs", type=int, default=1500)
+    # Characters, not paragraphs, because the n-gram counts are taken over characters and
+    # Wikipedia paragraph lengths differ by language: equal paragraph counts gave Saraiki
+    # 2.24x more training text than Urdu, and a 7.74x spread across all eleven.
+    ap.add_argument(
+        "--chars",
+        type=int,
+        help="stop when the language's file reaches this many characters "
+        "(use instead of --paragraphs to balance a corpus in the unit the model reads)",
+    )
     ap.add_argument("--max-requests", type=int, default=400)
     ap.add_argument("--only", nargs="*", help="language codes to fetch (default: all)")
     args = ap.parse_args()
@@ -86,7 +95,16 @@ def main() -> int:
         if target.exists():
             seen = dict.fromkeys(target.read_text(encoding="utf-8").splitlines())
         requests = stale = 0
-        while len(seen) < args.paragraphs and requests < args.max_requests and stale < 15:
+
+        # Inline rather than a closure over `seen`: the budget is re-read every turn of
+        # the loop, and a nested function capturing the loop variable is the kind of thing
+        # that keeps working until someone moves it.
+        while requests < args.max_requests and stale < 15:
+            if args.chars is not None:
+                if sum(len(line) for line in seen) >= args.chars:
+                    break
+            elif len(seen) >= args.paragraphs:
+                break
             requests += 1
             try:
                 batch = random_intros(code)
@@ -98,9 +116,27 @@ def main() -> int:
             seen.update(dict.fromkeys(batch))
             stale = stale + 1 if len(seen) == before else 0
             time.sleep(0.3)
-        lines = list(seen)[: args.paragraphs]
+        if args.chars is not None:
+            lines = []
+            used = 0
+            for line in seen:
+                if used >= args.chars:
+                    break
+                lines.append(line)
+                used += len(line)
+        else:
+            lines = list(seen)[: args.paragraphs]
         target.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        print(f"{code:<4} {name:<22} {len(lines):>5} paragraphs  ({requests} requests)", flush=True)
+        characters = sum(len(line) for line in lines)
+        # `stale` hitting its limit means this Wikipedia has no more distinct articles to
+        # offer, which is the normal outcome for the smaller ones and is not an error - but
+        # it is the difference between "budget met" and "this is all there is".
+        exhausted = " EXHAUSTED - no more distinct articles" if stale >= 15 else ""
+        print(
+            f"{code:<4} {name:<22} {len(lines):>5} paragraphs  {characters:>9,} chars  "
+            f"({requests} requests){exhausted}",
+            flush=True,
+        )
     return 0
 
 
