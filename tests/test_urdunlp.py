@@ -485,3 +485,45 @@ def test_observed_source_tags_are_all_documented() -> None:
     assert seen, "no sources were produced at all"
     unknown = sorted(seen - set(SOURCE_TAGS))
     assert not unknown, f"undocumented tags reached a caller: {unknown}"
+
+
+def test_the_future_is_written_as_two_words_consistently() -> None:
+    """The same construction must not come out two ways in one sentence.
+
+    Standard Urdu writes the future auxiliary separately - کروں گا, دیکھیں گے - and the
+    channel has a rule that splits the merged Roman form. The rule was skipped whenever
+    the merged Roman spelling happened to be attested, so `karunga` gave کروں گا while
+    `jayega` gave جائیگا, purely because one annotator romanised one of them merged.
+
+    The attestation is thin and the corpus contradicts it: by this model's own log_prior,
+    جائیگا is about 134x rarer than جائے, آئیگا about 1,100x rarer than آئے, and جاوگے
+    about 89x rarer than جاؤ. The headline accuracy cannot see any of this - the future
+    does not occur once in the 5,249-word evaluation sample, because encyclopaedia prose
+    does not use it - so the corpus frequencies are the evidence, not a rerun.
+    """
+    import urdunlp
+
+    for merged, expected in [
+        ("karunga", "کروں گا"),
+        ("karungi", "کروں گی"),
+        ("karega", "کرے گا"),
+        ("dekhenge", "دیکھیں گے"),
+        # The three that used to stay merged because a romanisation attested them.
+        ("jayega", "جائے گا"),
+        ("aayega", "آئے گا"),
+        ("jaoge", "جاؤ گے"),
+    ]:
+        assert urdunlp.transliterate_to_urdu(merged) == expected, merged
+
+
+def test_an_english_word_that_looks_like_a_future_is_left_alone() -> None:
+    """`challenge` ends in -enge and is not a future.
+
+    Attempting the split on attested words widened what the rule sees, so the guard that
+    checks the English vocabulary first is what keeps `challenge` from becoming a verb
+    plus an auxiliary. It is the only word in the model's vocabulary that both matches
+    the rule and is attested, so it is the whole blast radius of that widening.
+    """
+    import urdunlp
+
+    assert urdunlp.transliterate_to_urdu("challenge") == "چیلنج"

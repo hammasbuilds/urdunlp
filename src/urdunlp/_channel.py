@@ -333,7 +333,21 @@ class Channel:
 
         Ranked by P(roman | word) * P(word), best first.
         """
-        future = _future_split(roman) if roman not in self.by_spelling else None
+        # The split is tried whether or not the merged Roman form is attested. Skipping
+        # it when attested made the SAME construction come out two ways in one sentence:
+        # `karunga` gave کروں گا while `jayega` gave جائیگا, purely because an annotator
+        # happened to romanise one of them merged and not the other.
+        #
+        # The attestation is thin and the corpus disagrees with it. By this model's own
+        # log_prior, جائیگا is about 134 times rarer than جائے, آئیگا about 1,100 times
+        # rarer than آئے, and جاوگے about 89 times rarer than جاؤ - so a handful of
+        # romanisations were outvoting the way the language is overwhelmingly written.
+        #
+        # This is invisible to the headline accuracy: the future does not occur even once
+        # in the 5,249-word evaluation sample, because encyclopaedia prose does not use
+        # it. That makes "the number did not move" worth nothing as evidence either way,
+        # which is why the corpus frequencies above are the reason rather than a rerun.
+        future = _future_split(roman)
         if future is not None:
             found = self._future_candidates(roman, *future)
             if found:
