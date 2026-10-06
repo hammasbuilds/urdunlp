@@ -284,7 +284,7 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
 git clone https://github.com/hammasbuilds/urdunlp
 cd urdunlp
 python demo.py                                  # nothing to install
-pip install pytest && python -m pytest -q       # 822 tests
+pip install pytest && python -m pytest -q       # 827 tests
 ```
 
 To check the headline number without downloading anything, run

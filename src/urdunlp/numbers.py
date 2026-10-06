@@ -176,6 +176,18 @@ _MODIFIERS: dict[str, Fraction] = {
     "پون": Fraction(-1, 4),
 }
 
+# Denominators, which DIVIDE the number before them: تین چوتھائی is three quarters, دو
+# تہائی two thirds. Without these the denominator was simply not a number word, and
+# `find_numbers` returned the numerator on its own - three quarters of a kilo read as
+# THREE, which is a confidently wrong value rather than a refusal. پاؤ above is the
+# standalone quarter and keeps working; these are the counted form.
+_DENOMINATORS: dict[str, Fraction] = {
+    "چوتھائی": Fraction(1, 4),
+    "تہائی": Fraction(1, 3),
+    "نصف": Fraction(1, 2),
+    "دوتہائی": Fraction(2, 3),
+}
+
 _WORD_VALUE: dict[str, int] = {w: n for n, forms in _UNITS.items() for w in forms}
 _SCALE_VALUE = dict(SCALES)
 
@@ -425,7 +437,7 @@ def _roman_ordinal(token: str) -> str | None:
     match = _ROMAN_ORDINAL_SUFFIX.match(lowered)
     if match and match["base"] in ROMAN_NUMBER_WORDS:
         base = ROMAN_NUMBER_WORDS[match["base"]]
-        if base not in _MODIFIERS and base not in _FRACTION_WORDS:
+        if base not in _MODIFIERS and base not in _FRACTION_WORDS and base not in _DENOMINATORS:
             return base
     return None
 
@@ -466,6 +478,7 @@ def _is_number_token(token: str) -> bool:
         or token in _SCALE_VALUE
         or token in _FRACTION_WORDS
         or token in _MODIFIERS
+        or token in _DENOMINATORS
         or _numeral_value(token) is not None
     )
 
@@ -496,6 +509,16 @@ def _evaluate(tokens: list[str]) -> Fraction:
             modifier = _MODIFIERS[token]
             continue
         seen = True
+        if token in _DENOMINATORS:
+            # Divides what came before it. A bare denominator means one of them: نصف on
+            # its own is a half, as آدھا is.
+            share = _DENOMINATORS[token]
+            if current is None:
+                current = take_modifier(Fraction(1)) * share
+            else:
+                current = take_modifier(current) * share
+            open_hundred = False
+            continue
         if token in _WORD_VALUE or token in _FRACTION_WORDS or _numeral_value(token) is not None:
             if token in _WORD_VALUE:
                 value = Fraction(_WORD_VALUE[token])

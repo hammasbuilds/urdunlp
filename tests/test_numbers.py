@@ -238,3 +238,53 @@ def test_a_single_unambiguous_roman_number_word_is_found_as_urdu_is():
     # do (give), so (sleep) and no are words, not numbers, on their own
     assert find_numbers("do din baad so gaye, no problem") == []
     assert [n.value for n in find_numbers("do lakh")] == [200000]
+
+
+class TestCountedFractions:
+    """A denominator divides the number before it: تین چوتھائی is three quarters."""
+
+    def test_a_counted_fraction_is_not_read_as_its_numerator(self) -> None:
+        """This was the worst available failure: a confidently wrong value.
+
+        چوتھائی was not a number word, so it was dropped and the numerator was returned
+        on its own - three quarters of a kilo parsed as THREE. A refusal would have been
+        fine; a wrong number a caller acts on is not.
+        """
+        import urdunlp
+
+        assert urdunlp.parse_number("تین چوتھائی") == 0.75
+        assert urdunlp.parse_number("ایک چوتھائی") == 0.25
+        assert urdunlp.parse_number("دو تہائی") == pytest.approx(2 / 3)
+        assert urdunlp.parse_number("ایک تہائی") == pytest.approx(1 / 3)
+
+    def test_a_bare_denominator_means_one_of_them(self) -> None:
+        """نصف on its own is a half, the way آدھا already was."""
+        import urdunlp
+
+        assert urdunlp.parse_number("نصف") == 0.5
+        assert urdunlp.parse_number("چوتھائی") == 0.25
+
+    def test_a_counted_fraction_scales(self) -> None:
+        import urdunlp
+
+        assert urdunlp.parse_number("دو تہائی لاکھ") == pytest.approx(200000 / 3)
+
+    def test_find_numbers_takes_the_whole_span(self) -> None:
+        """The span has to include the denominator, or the text and the value disagree."""
+        import urdunlp
+
+        spans = urdunlp.find_numbers("تین چوتھائی کلو آٹا")
+        assert len(spans) == 1
+        assert spans[0].text == "تین چوتھائی"
+        assert spans[0].value == 0.75
+
+    def test_the_existing_fractions_are_untouched(self) -> None:
+        """ڈیڑھ, سوا, ساڑھے, پونے and پاؤ all predate this and must not move."""
+        import urdunlp
+
+        assert urdunlp.parse_number("ڈیڑھ لاکھ") == 150000
+        assert urdunlp.parse_number("سوا دو کروڑ") == 22500000
+        assert urdunlp.parse_number("ساڑھے تین ہزار") == 3500
+        assert urdunlp.parse_number("پونے چار لاکھ") == 375000
+        assert urdunlp.parse_number("آدھا") == 0.5
+        assert urdunlp.parse_number("پاؤ") == 0.25
