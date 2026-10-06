@@ -550,9 +550,38 @@ Test results (chosen on Dakshina dev and HotpotQA validation):
 | set | measure | test |
 |---|---|---:|
 | Dakshina romanised Urdu, 86,343 words | tagged `en` | 3.8% |
+| ...of those, the 68,902 the Roman Urdu lexicon attests | tagged `en` | **1.9%** |
 | HotpotQA English, 188,522 words | tagged `ur` | 1.8% |
 | synthetic code-mix (1-3 English words spliced in) | token accuracy | 95.1% |
 | synthetic code-mix | English recall | 87.0% |
+
+**Why there are two rows for the same measurement.** The 3.8% is an upper bound, and
+roughly half of it is the reference rather than the tagger. Decomposing the 3,314 tokens
+it counts on test, against the shipped unigram tables:
+
+| | share |
+|---|---:|
+| in the English table and **absent from the Roman Urdu lexicon** | 45.6% |
+| in both — a genuine homograph (`the`, `in`, `of`, `is`, `a`, `new`, `film`, `school`) | 36.8% |
+| in neither | 17.5% |
+
+Dakshina's romanised side comes from Wikipedia and really does contain `county` (61),
+`website` (36), `germany` (34), `carolina` (30), `scotland` (23) — and its gold label for
+every token on that side is `ur`, by construction. A token with no Roman-Urdu lexical
+evidence at all is a reference-label problem, so the first row includes cases where
+tagging `en` was *right*. The second row restricts the same count to tokens the lexicon
+attests, which is the closest thing here to the tagger's own precision. Both are
+published; neither alone is honest.
+
+**A real defect underneath, recorded and not fixed.** The two tables are not symmetric.
+`masjid` is in the English table (5) and absent from the Roman Urdu one, as are `markazi`
+(5), `abdul` (34), `ahmed` (62), `hyderabad` (32) and `afghanistan` (112). English
+frequencies come from HotpotQA's Wikipedia prose, which is full of South Asian proper
+nouns; the Roman Urdu side is capped at 30,000 Dakshina types that do not include them, and
+only 3,088 of the 30,000 English entries appear in it at all. So `masjid` *cannot* be
+tagged `ur` by the unigram term — it is not a word the model knows in Urdu. That is a
+directional modelling problem rather than the irreducible homograph one, and fixing it
+means changing what goes into the tables, not the inference.
 
 *Re-measured with `python scripts/measure_langid.py` after the last chat-lexicon fixes
 (single-letter chat words such as `h` and `g` are now Urdu); an earlier draft showed

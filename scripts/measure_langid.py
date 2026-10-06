@@ -150,13 +150,26 @@ def tagger_report() -> dict:
 
         flagged: collections.Counter = collections.Counter()
         false_en = urdu_words = 0
+        # The same count restricted to tokens the Roman Urdu lexicon attests. The
+        # unrestricted rate includes tokens with NO Urdu lexical evidence - county,
+        # website, afghanistan - which Dakshina's Wikipedia-derived romanised side really
+        # contains while labelling every token on it `ur`. Those are reference-label
+        # problems, and they are 45.6% of the unrestricted count, so a figure that calls
+        # itself the tagger's error rate has to separate them.
+        attested = attested_en = 0
+        lexicon = tagger.urdu.unigram
         for sentence in urdu:
             tags = tagger.tag(sentence)
             urdu_words += len(tags)
             for word, tag in zip(sentence, tags, strict=True):
+                known = word.lower() in lexicon
+                if known:
+                    attested += 1
                 if tag == "en":
                     false_en += 1
                     flagged[word.lower()] += 1
+                    if known:
+                        attested_en += 1
 
         false_ur = english_words = 0
         for sentence in english:
@@ -185,6 +198,12 @@ def tagger_report() -> dict:
         row = {
             "urdu_words": urdu_words,
             "urdu_tagged_en": round(false_en / urdu_words, 4),
+            # An upper bound: the denominator includes code-mixed reference tokens the
+            # gold labels call `ur` with no Urdu lexical evidence.
+            "urdu_words_in_lexicon": attested,
+            "urdu_tagged_en_lexicon_only": (
+                round(attested_en / attested, 4) if attested else None
+            ),
             "english_words": english_words,
             "english_tagged_ur": round(false_ur / english_words, 4),
             "mixed_token_accuracy": round(right / total, 4),
@@ -194,6 +213,11 @@ def tagger_report() -> dict:
         report[urdu_split] = row
         print(f"\ntag_roman_tokens, {urdu_split}")
         print(f"  Roman Urdu words tagged en   {row['urdu_tagged_en']:.2%} of {urdu_words:,}")
+        if row["urdu_tagged_en_lexicon_only"] is not None:
+            print(
+                f"    ... of those the lexicon has {row['urdu_tagged_en_lexicon_only']:.2%} "
+                f"of {attested:,}  (the rest of the gap is the reference's own code-mixing)"
+            )
         print(f"  English words tagged ur      {row['english_tagged_ur']:.2%} of {english_words:,}")
         print(
             f"  synthetic mix: token accuracy {row['mixed_token_accuracy']:.3f}, "

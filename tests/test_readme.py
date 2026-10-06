@@ -288,3 +288,26 @@ def test_the_python_classifiers_are_the_versions_ci_tests() -> None:
         f"requires-python says {floor.group(1)} but the lowest version CI tests is "
         f"{min(tested, key=lambda v: tuple(map(int, v.split('.'))))}"
     )
+
+
+def test_the_tagger_rate_is_published_with_its_lexicon_restricted_twin() -> None:
+    """3.8% reads as the tagger's error rate; roughly half of it is the reference.
+
+    Dakshina's romanised side is Wikipedia-derived and genuinely code-mixed - `county`,
+    `website`, `germany` - while its gold label for every token on that side is `ur` by
+    construction. Measured against the shipped unigram tables, 45.6% of the tokens the
+    3.8% counts are absent from the Roman Urdu lexicon entirely, so tagging them `en` was
+    right. The restricted rate is the closest thing to the tagger's own precision, and
+    both have to be published or the headline is an upper bound presented as a result.
+    """
+    corpus = (ROOT / "docs" / "CORPUS.md").read_text(encoding="utf-8")
+    assert "the Roman Urdu lexicon attests" in corpus, (
+        "CORPUS.md no longer publishes the lexicon-restricted rate beside the headline"
+    )
+    assert "absent from the Roman Urdu lexicon" in corpus, (
+        "the decomposition that explains the gap is gone"
+    )
+    # And the script must still produce it, or the document is quoting nothing.
+    script = (ROOT / "scripts" / "measure_langid.py").read_text(encoding="utf-8")
+    assert "urdu_tagged_en_lexicon_only" in script
+    assert "urdu_words_in_lexicon" in script
