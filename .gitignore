@@ -22,7 +22,18 @@ data/processed/*
 # samples, the English sentences, vocabulary counts and reports. ~35 MB, CC BY-SA,
 # and reproducible with the fetch scripts. Anchored to the root so that the
 # package's own src/urdunlp/data/ - the bundled models - is NOT ignored.
-/data/
+# The CONTENTS, not the directory: git does not descend into an ignored directory, so a
+# negation inside one can never take effect.
+/data/*
+# ...except the two small files that make an ignored corpus checkable - the identity of
+# every corpus file the published numbers were measured over, and the article ids each
+# Wikipedia sample was drawn from. They answer the two questions nobody could answer
+# before: whether a corpus on disk is the one the numbers describe, and how to fetch it
+# again.
+!/data/FINGERPRINT.tsv
+!/data/wiki/
+/data/wiki/*
+!/data/wiki/*.pages.tsv
 
 models/
 .cache/

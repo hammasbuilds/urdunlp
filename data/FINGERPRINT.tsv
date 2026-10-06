@@ -1,0 +1,33 @@
+# Identity of the corpora the shipped models and published numbers were built
+# from. data/ is gitignored, so this is the only way to confirm that a corpus on
+# disk is the one measured. Check with: python scripts/corpus_fingerprint.py --check
+#
+# Hashes are over SORTED lines: paragraph order is not part of a corpus's
+# identity, because the train/val/test split is by content hash and n-gram counts
+# are order-independent. So a corpus rebuilt with
+# `fetch_wikipedia_samples.py --from-pages`, which returns articles in id order,
+# fingerprints the same as the random-order original.
+path	sha256_sorted	lines	characters
+wiki/ar.txt	5aa13b317f34063d5877cc7c9abf8b85a3227cec7b31d1369a72290fc6c3c006	1500	339965
+wiki/azb.txt	c4e6a1a14dcb3cde3a13f97c5422d92795e523d2761a54ffbd9363af071a8942	1500	235135
+wiki/ckb.txt	7da2cba78ea1b4e6459bd79ad91141c2aab49db059316859f6fb70dcdfd76c78	1500	407009
+wiki/fa.txt	147e5cdc9d34291a004e02b02c7768aec5515a30fee4a99c9472a759e6c6a149	1500	318713
+wiki/ks.txt	17f712d37b863ef63a402a21cfd33cf45cf53fe69a44b8eda3271c8cb19a01a9	1500	355276
+wiki/pnb.1500.txt	7ccbd05158f9f191dd7be0ceb8e4f14bbb7140471b3824f2246d60d8201c12e6	1500	361261
+wiki/pnb.txt	c94a4bab908e9cb1b718c45cd84b1cae2f9cf7c7f18b44e735d599aee2f32f62	5000	1301056
+wiki/ps.txt	7e1aab5d7425ab48f239eeda02deb2d0697549743bfa427c59b05ff0e6d8abe1	1500	481178
+wiki/sd.txt	0e2bad124337791a75779b4c7d9f9a65dacb06791c09cf79a25e3fdb037fa3cb	1500	583347
+wiki/skr.1500.txt	dfcb5fbe9621f58b8bde9e8f06a25c6767fdb831dc7834bb3147c864ef18da57	1500	475257
+wiki/skr.txt	70d23793d08a92e04fc02e87e6642f92529d6f22588a191790d9f6873ca6c102	5000	1555399
+wiki/ug.txt	24b7592a53a3a269ba3f8cd5952bd8d1f21221744ee94eecb17928034cc2d1e3	1500	388671
+wiki/ur.1500.txt	e2554c887b91cc2efd18c6b96cbef5595e16174a73d3917505b8ea99ddbd547d	1500	243966
+wiki/ur.txt	95343d44d8bc02ae9a2597fbfe25a4bbbedcc0ed373171ff3c3067e003512208	5000	819690
+dakshina/ur/romanized/ur.romanized.rejoined.aligned.tsv	04f68063aeb9e51a6d44aab2b36db309c3dfd2017389aca88b0feccd81d59a02	176266	1674084
+dakshina/ur/romanized/ur.romanized.rejoined.tsv	f3c15235b61f00f8e4561a001cc3e088a4de22c18f3e7a2667bcd7be57882a43	9759	1742999
+dakshina/ur/lexicons/ur.translit.sampled.dev.tsv	5ad67a8f4a2bdecd69c50cdd522880c6b4f5da2e35f5f29930b699bae7eb1f71	10424	151068
+dakshina/ur/lexicons/ur.translit.sampled.test.tsv	c57a804a5f7bf0e51486c0a8258ec41ed62ebc4612aed741e0f3bff47d703fd8	10517	152630
+dakshina/ur/lexicons/ur.translit.sampled.train.tsv	41f4f4109e60813f578a70a75b19189acb907e800a862401b7205f6f4a51e7f2	106260	1544035
+english/test.txt	74a66780a19b54b8c08bf3a642186177684b8d0d6a356d62c92f7722e8eadbd8	8873	1167386
+english/train.txt	2c63c1566370ed43dfc0f482bf96845d151f95add7adaa5e5baea0135a292bd3	138074	18243107
+english/val.txt	525403d71580e32e92900c5a9a59892acba7a6ef265da2498757591c8cfc83df	8881	1169258
+vocab/dakshina_train_counts.tsv	c5b8b2563528357cb41971c85b0fe55b8620ccac3cf121cfe6cbabbb0fe5ed9c	176682	1448256

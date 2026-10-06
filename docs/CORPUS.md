@@ -26,6 +26,36 @@ python scripts/measure_corpus.py <directory-of-txt-or-a-parquet> --json out.json
 | Tokens | 44,698,779 |
 | Distinct normalised types | 353,358 |
 
+### Which corpus, exactly
+
+`data/` is gitignored - it is 70 MB of other people's text - so until now every number in
+this document rested on files no reader could see. Two small files, both committed, fix
+what can be fixed:
+
+**`data/FINGERPRINT.tsv`** records a hash, line count and character count for all 23
+corpus files the published numbers were measured over. `python
+scripts/corpus_fingerprint.py --check` answers the question that mattered and could not be
+asked: *is the corpus on this disk the one these numbers describe?* A hash cannot rebuild
+a corpus, but a mismatch tells you the figures do not describe what you have. The hashes
+are over sorted lines, because paragraph order is not part of a corpus's identity here -
+the train/val/test split is by content hash and n-gram counts are order-independent.
+
+**`data/wiki/<code>.pages.tsv`** records the Wikipedia article id and title behind every
+paragraph, and `fetch_wikipedia_samples.py --from-pages` re-fetches exactly those. This
+was the real hole: the draw is the server's `generator=random`, so **no seed on our side
+can reproduce it**, and before the ids were recorded a re-run produced a different corpus
+every time. Verified on Central Kurdish: delete the corpus file, rebuild from the ids
+alone, and the paragraph set is identical - and two rebuilds are byte-for-byte identical,
+which is the property that matters.
+
+**The corpus behind the currently shipped models predates the id recording**, so it is
+pinned by fingerprint and cannot be re-fetched. That is stated rather than glossed: a
+reader can confirm they have the right corpus, and cannot obtain it from scratch. How this
+was discovered is the clearest illustration of the cost - `data/wiki/ur.txt` was grown
+from 820k to 1.6M characters during a review, which left the shipped `langid.json.gz`
+trained against a file that no longer existed on disk, and nothing in the repository could
+have told anyone.
+
 ---
 
 ## 1. The Arabic/Urdu codepoint problem is real, and it is common

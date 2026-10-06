@@ -209,3 +209,46 @@ def test_the_word_accuracy_row_states_its_denominator() -> None:
         f"the word-accuracy row does not state its denominator "
         f"({int(scored):,} of {int(total):,}): {row}"
     )
+
+
+def test_the_corpus_fingerprint_is_committed_and_complete() -> None:
+    """An ignored corpus has to be checkable, or its numbers describe nothing.
+
+    `data/` is gitignored, and the language-ID corpus is an unseeded `generator=random`
+    draw - so the published 97.9% rested on files no reader could see and nobody could
+    rebuild. The fingerprint cannot rebuild a corpus, but it can say whether the one on
+    disk is the one measured, which could not be asked before.
+    """
+    fingerprint = ROOT / "data" / "FINGERPRINT.tsv"
+    if not fingerprint.is_file():
+        pytest.skip("data/ is not present, as in the installed-wheel CI job")
+    rows = [
+        line
+        for line in fingerprint.read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#") and not line.startswith("path\t")
+    ]
+    assert len(rows) >= 20, f"only {len(rows)} corpus files fingerprinted"
+    for row in rows:
+        path, digest, lines, characters = row.split("\t")
+        assert len(digest) == 64, f"{path}: not a sha256"
+        assert int(lines) > 0 and int(characters) > 0, f"{path}: empty"
+    # The eleven language files the langid model is built from must all be in it.
+    from urdunlp.langid import LANGUAGES
+
+    listed = {row.split("\t")[0] for row in rows}
+    for code in LANGUAGES:
+        assert f"wiki/{code}.txt" in listed, f"wiki/{code}.txt is not fingerprinted"
+
+
+def test_the_wikipedia_fetcher_can_rebuild_from_recorded_ids() -> None:
+    """The draw is the server's, so page ids are the only route to reproducibility.
+
+    Asserts the capability exists and is wired to the documented flag - not a live fetch,
+    which would need the network.
+    """
+    script = (ROOT / "scripts" / "fetch_wikipedia_samples.py").read_text(encoding="utf-8")
+    assert "--from-pages" in script, "the rebuild flag is gone"
+    assert "def pages_by_id" in script, "fetching by article id is gone"
+    assert "pages.tsv" in script, "article ids are no longer recorded"
+    corpus_doc = (ROOT / "docs" / "CORPUS.md").read_text(encoding="utf-8")
+    assert "--from-pages" in corpus_doc, "CORPUS.md does not document the rebuild route"
