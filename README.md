@@ -114,7 +114,7 @@ stem("کتابوں")  # 'کتاب'
 | `roman_key`, `group_roman_variants` | Group Roman spellings by the Urdu word they spell. |
 | `identify_language` | Which of eleven Perso-Arabic-script languages: Urdu, Punjabi (Shahmukhi), Saraiki, Sindhi, Pashto, Kashmiri, Persian, Arabic, Central Kurdish, Uyghur, South Azerbaijani. |
 | `tag_roman_tokens` | Every token of Roman Urdu text tagged `ur`/`en` (words) or `num`/`punct`/`id`/`code`/`other`. |
-| `parse_number`, `parse_ordinal`, `find_numbers`, `number_to_words`, `format_number` | Urdu and Roman Urdu number words both ways, with ڈیڑھ ڈھائی سوا ساڑھے پونے and lakh/crore; ordinals (تیسرا, `teesra`, `5th`); lakh-style grouping. |
+| `parse_number`, `parse_ordinal`, `find_numbers`, `number_to_words`, `format_number` | Urdu and Roman Urdu number words both ways, with ڈیڑھ ڈھائی سوا ساڑھے پونے, counted fractions (تین چوتھائی, دو تہائی) and lakh/crore; ordinals (تیسرا, `teesra`, `5th`); lakh-style grouping. |
 | `stem`, `stem_tokens` | Rule-based suffix stripping for retrieval keys. |
 | `STOPWORDS`, `NEGATION`, `is_stopword`, `remove_stopwords` | 159 function words, with negation held separately and kept by default. |
 
