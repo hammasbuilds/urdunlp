@@ -13,6 +13,7 @@ Skipped where the README is not present, as in the installed-wheel CI job.
 """
 
 import ast
+import pathlib
 import re
 from pathlib import Path
 
@@ -252,3 +253,38 @@ def test_the_wikipedia_fetcher_can_rebuild_from_recorded_ids() -> None:
     assert "pages.tsv" in script, "article ids are no longer recorded"
     corpus_doc = (ROOT / "docs" / "CORPUS.md").read_text(encoding="utf-8")
     assert "--from-pages" in corpus_doc, "CORPUS.md does not document the rebuild route"
+
+
+def test_the_python_classifiers_are_the_versions_ci_tests() -> None:
+    """A version classifier is a claim pip acts on, so it has to be tested.
+
+    These drifted in opposite directions across sibling repositories: one claimed 3.14
+    without testing it, the other tested 3.14 without claiming it. Asserting the two sets
+    are equal catches both, and catches the next one.
+    """
+    root = pathlib.Path(__file__).resolve().parent.parent
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    claimed = set(re.findall(r"Programming Language :: Python :: (3\.\d+)", pyproject))
+    assert claimed, "no Python version classifiers at all"
+
+    workflows = sorted((root / ".github" / "workflows").glob("*.yml"))
+    assert workflows, "no CI workflows to compare against"
+    tested: set[str] = set()
+    for workflow in workflows:
+        for line in workflow.read_text(encoding="utf-8").splitlines():
+            if "python:" in line and "[" in line:
+                tested |= set(re.findall(r"3\.\d+", line))
+    assert tested, "no python matrix found in any workflow"
+
+    assert claimed == tested, (
+        f"classifiers claim {sorted(claimed)} but CI tests {sorted(tested)} - "
+        f"untested: {sorted(claimed - tested)}, unclaimed: {sorted(tested - claimed)}"
+    )
+
+    # And the floor must be the lowest version actually tested.
+    floor = re.search(r'requires-python\s*=\s*"[^0-9]*(\d+\.\d+)"', pyproject)
+    assert floor, "no requires-python"
+    assert floor.group(1) == min(tested, key=lambda v: tuple(map(int, v.split(".")))), (
+        f"requires-python says {floor.group(1)} but the lowest version CI tests is "
+        f"{min(tested, key=lambda v: tuple(map(int, v.split('.'))))}"
+    )
