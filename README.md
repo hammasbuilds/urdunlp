@@ -22,8 +22,14 @@ pip install git+https://github.com/hammasbuilds/urdunlp
 
 PyPI release coming: `pip install urdunlp` will work once 0.2.0 is published.
 
-Python 3.10 or newer, any OS. No dependencies, and the three small statistical tables
-it needs (3.4 MB) ship inside the wheel - nothing is downloaded at runtime. The package
+Python 3.10 or newer, any OS. No dependencies, and the three statistical tables it needs
+(5.0 MB) ship inside the wheel - nothing is downloaded at runtime. 2.3 MB of that is the
+language-ID model, which keeps each language's 60,000 most frequent character n-grams;
+cutting it to 20,000 would save 1.6 MB and cost 4.1 points of Saraiki accuracy on
+20-character windows. The trade-off is in
+[docs/CORPUS.md](https://github.com/hammasbuilds/urdunlp/blob/main/docs/CORPUS.md) with
+the whole curve, and `scripts/build_langid_models.py` takes a different cut if you would
+rather have the megabytes. The package
 is typed (`py.typed`), so mypy and pyright see every annotation.
 
 On a Windows console that is not UTF-8 (cp1252 and friends), `print()` of Urdu text
@@ -163,9 +169,9 @@ and every number: [docs/CORPUS.md](https://github.com/hammasbuilds/urdunlp/blob/
 | Urdu → Roman, spelled as some annotator spelled that word | 41.4% | **78.2%** | the same sentences |
 | Urdu → Roman → Urdu round trip | 42.0% | **93.8%** | 15,088 tokens of Dakshina's dev and test sentences |
 | Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
-| Which of 11 Perso-Arabic languages, whole paragraph | — | **97.9%** | 1,254 test paragraphs — but see the note below: this pools an easy 8-way task with a hard 3-way one |
-| ... on 20 characters | — | **91.0%** | |
-| English words found inside Roman Urdu (recall) | — | **87.0%** | synthetic code-mixed test sentences |
+| Which of 11 Perso-Arabic languages, whole paragraph | — | **98.3%** | 1,254 test paragraphs — but see the note below: this pools an easy 8-way task with a hard 3-way one |
+| ... on 20 characters | — | **91.7%** | |
+| English words found inside Roman Urdu (recall) | — | **86.9%** | synthetic code-mixed test sentences |
 
 **Two of these numbers have a denominator worth knowing.**
 
@@ -178,22 +184,22 @@ is inserted, or when an annotator joined words, which is to say on the sentences
 to transliterate. Treat 91.3% as word accuracy *on alignable sentences*, not on the test
 set.
 
-**97.9% pools an easy task with the hard one.** Eight of the eleven languages are
+**98.3% pools an easy task with the hard one.** Eight of the eleven languages are
 separable on orthography alone and score **exactly 100%** on whole paragraphs, over 63–80
 test paragraphs each. The informative part is Urdu, Punjabi (Shahmukhi) and Saraiki, which
 share nearly all their orthography:
 
 | | test paragraphs | whole | 50 chars | 20 chars | 10 chars |
 |---|---:|---:|---:|---:|---:|
-| Urdu | 225 | 98.7% | 98.0% | 93.3% | 84.0% |
-| Punjabi (Shahmukhi) | 224 | 97.3% | 94.2% | 85.7% | 70.1% |
-| Saraiki | 229 | 92.6% | 88.9% | **75.1%** | **59.4%** |
-| the other eight | 63–80 each | **100.0%** | 98.7–100% | 95.8–100% | 88.7–100% |
+| Urdu | 225 | 98.7% | 98.5% | 91.6% | 84.4% |
+| Punjabi (Shahmukhi) | 224 | 97.8% | 94.7% | 87.5% | 75.9% |
+| Saraiki | 229 | 94.3% | 92.0% | **79.0%** | **65.5%** |
+| the other eight | 63–80 each | **100.0%** | **100.0%** | 95.8–100% | 87.1–100% |
 
-**Pooled over all eleven: 97.9%. Over Urdu/Punjabi/Saraiki alone: 96.2%** (678
-paragraphs). So the headline is ~100% on an 8-way orthography question and 96.2% on the
-three-way one, and the three-way one is where length hurts — Saraiki falls to 75.1% at 20
-characters and 59.4% at 10, while seven of the other eight are still at 100% on 50. A rate
+**Pooled over all eleven: 98.3%. Over Urdu/Punjabi/Saraiki alone: 96.9%** (678
+paragraphs). So the headline is ~100% on an 8-way orthography question and 96.9% on the
+three-way one, and the three-way one is where length hurts — Saraiki falls to 79.0% at 20
+characters and 65.5% at 10, while all eight of the others are still at 100% on 50. A rate
 of exactly 100% over 70 paragraphs means the test set holds no hard case for those
 languages, not that the model is perfect on them.
 
@@ -274,7 +280,7 @@ OUTPUT
       هذا الكتاب لي وأنا أقرأه                 -> Arabic   right  
       هي ڪتاب منهنجو آهي                       -> Sindhi   right  sd:ڪ
       دا کتاب زما دی او زه یې هره ماښام لولم   -> Pashto   right  ps:ښې ug:ې
-      دا کتاب زما دی                           -> Punjabi (Shahmukhi) WRONG, it is Pashto - four words is too few  
+      دا کتاب زما دی                           -> Pashto   right  
 
    Inflected forms, stemmed to one retrieval key:
       کتاب کتابیں کتابوں لڑکا لڑکے لڑکیاں  -> کتاب کتاب کتاب لڑک لڑک لڑک
@@ -305,11 +311,11 @@ renderer without HarfBuzz shaping produces disconnected letters in the wrong ord
   writes it (`station` → اسٹیشن), and a word the vocabulary does not hold may be matched
   to a different Urdu word that is spelled similarly (`cancel` → کونسل, which reads
   *council*). `keep_english=True` leaves the
-  words `tag_roman_tokens` calls English in Latin; that tagger finds 87.0% of
+  words `tag_roman_tokens` calls English in Latin; that tagger finds 86.9% of
   English words on synthetic test sentences and misses some in real chat
   (`kal meeting hai` tags `meeting` as Urdu). Unknown words that are clearly English
   (`recharge`) and mixed-case names (`iPhone`) are kept in Latin either way.
-- **Language identification needs a sentence**: 97.9% on a paragraph, 91.0% on 20
+- **Language identification needs a sentence**: 98.3% on a paragraph, 91.7% on 20
   characters, 81.5% on ten, with the errors between Urdu, Punjabi and Saraiki. A guess
   on fewer than 20 letters has `short=True`; `margin` is not a confidence score.
 - **Urdu → Roman is lossy.** س ص ث all give `s`. The round trip recovers most of it for

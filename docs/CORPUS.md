@@ -488,10 +488,10 @@ Saraiki - the three that get confused - have 5,000 paragraphs each; the other ei
 
 | text | first version, same test | val (4,109) | **test (1,254)** | Urdu, test |
 |---|---:|---:|---:|---:|
-| whole paragraph | 96.4% | 97.4% | **97.9%** | 98.7% |
-| 50 characters | 94.6% | 95.9% | **96.6%** | 98.0% |
-| 20 characters | 89.8% | 90.4% | **91.0%** | 93.3% |
-| 10 characters | 81.5% | 81.2% | **81.5%** | 84.0% |
+| whole paragraph | 96.4% | 98.2% | **98.3%** | 98.7% |
+| 50 characters | 94.6% | 96.8% | **97.4%** | 98.5% |
+| 20 characters | 89.8% | 91.8% | **91.7%** | 91.6% |
+| 10 characters | 81.5% | 83.1% | **84.0%** | 84.4% |
 
 *First version: 1-3-grams, 1,500 paragraphs per language.*
 
@@ -502,21 +502,39 @@ grew their test sets as well, and the first version, unchanged, scored 96.4% on 
 set. Punjabi fell from 95.8% to 89.3%: the small test set had been kind to it. On the
 larger set every change below is a gain.
 
-- **1-3 → 1-5-grams.** On validation windows 4-grams added 1.7 points at 20 characters and
-  5-grams 3.3, unpruned; 6-grams added 0.3 more for another 4.5 MB. All 5-grams are
-  5.4 MB, so each language keeps its 20,000 most frequent - a top-K cut beat a
-  minimum-count cut of the same size.
-- **1,500 → 5,000 paragraphs of Urdu, Punjabi and Saraiki.** On the same enlarged test set:
-  paragraph 96.4 → 97.9%, 50 characters 94.6 → 96.6%, 20 characters 89.8 → 91.0%, 10
-  characters level. Punjabi on a paragraph: 89.3 → 97.3%. The cost is Urdu on short
-  windows: at 10 characters on test it went from 87.1% to 84.0%, because a stronger
-  Punjabi model claims more of them.
+- **1-3 → 1-5-grams, and 5 is now a measured optimum.** `scripts/sweep_langid.py` scores
+  24 combinations of n_max, alpha and the pruning cut on validation and reports the winner
+  on test once. 4 → 5 is worth 1.3 points of validation mean; **6 and 7 are both worse
+  than 5** at every alpha and both cuts (6 at top 60k: 0.9193 against 5's 0.9243). Longer
+  grams are rarer, so the cut hits them hardest and the tail they need is what gets
+  removed. 5 had previously been the largest value tried rather than a measured best.
+- **The pruning cut cost more than this page admitted, and cost it where the model was
+  weakest.** `TOP_GRAMS` was 20,000 "to keep the package small":
+
+  | per-language cut | val mean | val whole | val 20ch | Saraiki @20 | package (gzip) |
+  |---|---:|---:|---:|---:|---:|
+  | 20,000 | 0.9109 | 97.4% | 90.3% | 73.2% | 0.89 MB |
+  | **60,000** | **0.9243** | **98.2%** | **91.8%** | **77.3%** | **2.53 MB** |
+  | 120,000 | 0.9280 | 98.4% | 92.2% | 79.9% | 4.64 MB |
+  | unpruned | - | - | - | - | 6.80 MB |
+
+  60,000 is the chosen trade-off, not the best row: most of the gain for a third of the
+  size of 120,000. The curve is still rising at 120,000, so this is a package-size
+  decision and is said as one - `--top 120000` rebuilds with the extra points.
+- **1,500 → 5,000 paragraphs of Urdu, Punjabi and Saraiki.** On the same enlarged test
+  set, and both sides measured at the then-current 20,000-gram cut so that only the
+  corpus differs: paragraph 96.4 → 97.9%, 50 characters 94.6 → 96.6%, 20 characters
+  89.8 → 91.0%, 10 characters level. Punjabi on a paragraph: 89.3 → 97.3%. The cost was
+  Urdu on short windows: at 10 characters on test it went from 87.1% to 84.0%, because a
+  stronger Punjabi model claims more of them. (These are not the current figures - the
+  cut has since risen to 60,000, which is the row above. Restating them against today's
+  model would credit the corpus with a gain that came from the pruning change.)
 - **A prior for Urdu, tried and dropped.** Adding 2, 4 or 8 nats to Urdu's score moved its
   10-character validation accuracy from 87.5% to 88.6%, 89.8% and 92.2% - and took the same
   or more from Punjabi, lowering overall accuracy each time. There is no free point here.
 
 The errors are almost all between the three closest languages. At 20 characters, Saraiki
-is right 75.1% of the time (mostly read as Punjabi), Punjabi 85.7% and Urdu 93.3%. Arabic,
+is right 79.0% of the time (mostly read as Punjabi), Punjabi 87.5% and Urdu 91.6%. Arabic,
 Central Kurdish, Sindhi and Uyghur are 100% at 20 characters: they have letters or
 spellings nobody else uses.
 
@@ -553,7 +571,7 @@ Test results (chosen on Dakshina dev and HotpotQA validation):
 | ...of those, the 68,902 the Roman Urdu lexicon attests | tagged `en` | **1.9%** |
 | HotpotQA English, 188,522 words | tagged `ur` | 1.8% |
 | synthetic code-mix (1-3 English words spliced in) | token accuracy | 95.1% |
-| synthetic code-mix | English recall | 87.0% |
+| synthetic code-mix | English recall | 86.9% |
 
 **Why there are two rows for the same measurement.** The 3.8% is an upper bound, and
 roughly half of it is the reference rather than the tagger. Decomposing the 3,314 tokens

@@ -34,6 +34,12 @@ data/processed/*
 !/data/wiki/
 /data/wiki/*
 !/data/wiki/*.pages.tsv
+# ...and the two measurement reports, for the same reason: 28 KB between them, and they
+# are what every accuracy figure in the README and docs/CORPUS.md is read from. With the
+# report ignored, those figures were prose with nothing behind them in the repository -
+# a reader could not check one and a test could not either.
+!/data/langid_report_v5.json
+!/data/langid_sweep.json
 
 models/
 .cache/

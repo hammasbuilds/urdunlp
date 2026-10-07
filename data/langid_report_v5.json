@@ -1,0 +1,1113 @@
+{
+ "identify_language": {
+  "paragraphs": {
+   "ur": {
+    "test": 225,
+    "train": 3927,
+    "val": 722
+   },
+   "pnb": {
+    "train": 3903,
+    "test": 224,
+    "val": 780
+   },
+   "skr": {
+    "train": 3981,
+    "val": 756,
+    "test": 229
+   },
+   "sd": {
+    "train": 1171,
+    "val": 214,
+    "test": 75
+   },
+   "ps": {
+    "train": 1196,
+    "test": 72,
+    "val": 228
+   },
+   "ks": {
+    "train": 1202,
+    "val": 228,
+    "test": 70
+   },
+   "fa": {
+    "train": 1197,
+    "val": 230,
+    "test": 71
+   },
+   "ar": {
+    "val": 227,
+    "test": 77,
+    "train": 1193
+   },
+   "ckb": {
+    "val": 249,
+    "train": 1174,
+    "test": 68
+   },
+   "ug": {
+    "train": 1186,
+    "val": 238,
+    "test": 63
+   },
+   "azb": {
+    "train": 1163,
+    "test": 80,
+    "val": 237
+   }
+  },
+  "is_urdu_says_yes": {
+   "ur": 0.939,
+   "pnb": 0.98,
+   "skr": 0.9926,
+   "sd": 0.9707,
+   "ps": 0.996,
+   "ks": 0.996,
+   "fa": 0.9987,
+   "ar": 0.9953,
+   "ckb": 0.994,
+   "ug": 0.988,
+   "azb": 0.982
+  },
+  "val_whole": {
+   "accuracy": 0.982,
+   "n": 4109,
+   "per_language": {
+    "ur": 0.9931,
+    "pnb": 0.9718,
+    "skr": 0.9405,
+    "sd": 1.0,
+    "ps": 0.9956,
+    "ks": 0.9956,
+    "fa": 1.0,
+    "ar": 1.0,
+    "ckb": 1.0,
+    "ug": 1.0,
+    "azb": 1.0
+   },
+   "top_confusions": [
+    [
+     "skr",
+     "pnb",
+     36
+    ],
+    [
+     "pnb",
+     "skr",
+     11
+    ],
+    [
+     "skr",
+     "ur",
+     9
+    ],
+    [
+     "pnb",
+     "ur",
+     7
+    ],
+    [
+     "ur",
+     "pnb",
+     4
+    ],
+    [
+     "pnb",
+     "fa",
+     2
+    ]
+   ],
+   "accuracy_by_margin": {
+    "0-0.02": {
+     "n": 3,
+     "accuracy": 0.3333
+    },
+    "0.02-0.05": {
+     "n": 6,
+     "accuracy": 0.6667
+    },
+    "0.05-0.1": {
+     "n": 6,
+     "accuracy": 0.6667
+    },
+    "0.1-99": {
+     "n": 4094,
+     "accuracy": 0.9834
+    }
+   }
+  },
+  "val_50 chars": {
+   "accuracy": 0.9679,
+   "n": 3555,
+   "per_language": {
+    "ur": 0.9616,
+    "pnb": 0.9435,
+    "skr": 0.9255,
+    "sd": 1.0,
+    "ps": 0.9953,
+    "ks": 0.9909,
+    "fa": 1.0,
+    "ar": 1.0,
+    "ckb": 0.9919,
+    "ug": 1.0,
+    "azb": 0.9911
+   },
+   "top_confusions": [
+    [
+     "skr",
+     "pnb",
+     34
+    ],
+    [
+     "ur",
+     "pnb",
+     21
+    ],
+    [
+     "pnb",
+     "skr",
+     17
+    ],
+    [
+     "pnb",
+     "ur",
+     16
+    ],
+    [
+     "skr",
+     "ur",
+     12
+    ],
+    [
+     "pnb",
+     "fa",
+     2
+    ]
+   ],
+   "accuracy_by_margin": {
+    "0-0.02": {
+     "n": 3,
+     "accuracy": 0.3333
+    },
+    "0.02-0.05": {
+     "n": 9,
+     "accuracy": 0.3333
+    },
+    "0.05-0.1": {
+     "n": 10,
+     "accuracy": 0.4
+    },
+    "0.1-99": {
+     "n": 3533,
+     "accuracy": 0.9717
+    }
+   }
+  },
+  "val_20 chars": {
+   "accuracy": 0.9175,
+   "n": 4109,
+   "per_language": {
+    "ur": 0.9335,
+    "pnb": 0.8872,
+    "skr": 0.7751,
+    "sd": 0.9907,
+    "ps": 0.9561,
+    "ks": 0.9561,
+    "fa": 0.9826,
+    "ar": 1.0,
+    "ckb": 0.996,
+    "ug": 1.0,
+    "azb": 0.9747
+   },
+   "top_confusions": [
+    [
+     "skr",
+     "pnb",
+     120
+    ],
+    [
+     "ur",
+     "pnb",
+     41
+    ],
+    [
+     "pnb",
+     "skr",
+     41
+    ],
+    [
+     "skr",
+     "ur",
+     38
+    ],
+    [
+     "pnb",
+     "ur",
+     37
+    ],
+    [
+     "ks",
+     "ur",
+     6
+    ]
+   ],
+   "accuracy_by_margin": {
+    "0-0.02": {
+     "n": 7,
+     "accuracy": 0.2857
+    },
+    "0.02-0.05": {
+     "n": 12,
+     "accuracy": 0.1667
+    },
+    "0.05-0.1": {
+     "n": 29,
+     "accuracy": 0.4138
+    },
+    "0.1-99": {
+     "n": 4061,
+     "accuracy": 0.9244
+    }
+   }
+  },
+  "val_10 chars": {
+   "accuracy": 0.8306,
+   "n": 4109,
+   "per_language": {
+    "ur": 0.8823,
+    "pnb": 0.7474,
+    "skr": 0.6124,
+    "sd": 0.9299,
+    "ps": 0.9035,
+    "ks": 0.8728,
+    "fa": 0.9043,
+    "ar": 0.9912,
+    "ckb": 0.9679,
+    "ug": 0.9916,
+    "azb": 0.9114
+   },
+   "top_confusions": [
+    [
+     "skr",
+     "pnb",
+     185
+    ],
+    [
+     "pnb",
+     "ur",
+     74
+    ],
+    [
+     "pnb",
+     "skr",
+     66
+    ],
+    [
+     "skr",
+     "ur",
+     58
+    ],
+    [
+     "ur",
+     "pnb",
+     55
+    ],
+    [
+     "pnb",
+     "ks",
+     20
+    ]
+   ],
+   "accuracy_by_margin": {
+    "0-0.02": {
+     "n": 13,
+     "accuracy": 0.3846
+    },
+    "0.02-0.05": {
+     "n": 25,
+     "accuracy": 0.4
+    },
+    "0.05-0.1": {
+     "n": 53,
+     "accuracy": 0.4906
+    },
+    "0.1-99": {
+     "n": 4018,
+     "accuracy": 0.8392
+    }
+   }
+  },
+  "test_whole": {
+   "accuracy": 0.9833,
+   "n": 1254,
+   "per_language": {
+    "ur": 0.9867,
+    "pnb": 0.9777,
+    "skr": 0.9432,
+    "sd": 1.0,
+    "ps": 1.0,
+    "ks": 1.0,
+    "fa": 1.0,
+    "ar": 1.0,
+    "ckb": 1.0,
+    "ug": 1.0,
+    "azb": 1.0
+   },
+   "top_confusions": [
+    [
+     "skr",
+     "pnb",
+     7
+    ],
+    [
+     "skr",
+     "ur",
+     6
+    ],
+    [
+     "ur",
+     "pnb",
+     3
+    ],
+    [
+     "pnb",
+     "skr",
+     2
+    ],
+    [
+     "pnb",
+     "ur",
+     1
+    ],
+    [
+     "pnb",
+     "ks",
+     1
+    ]
+   ],
+   "accuracy_by_margin": {
+    "0-0.02": {
+     "n": 3,
+     "accuracy": 0.3333
+    },
+    "0.05-0.1": {
+     "n": 2,
+     "accuracy": 0.5
+    },
+    "0.1-99": {
+     "n": 1249,
+     "accuracy": 0.9856
+    }
+   }
+  },
+  "test_50 chars": {
+   "accuracy": 0.974,
+   "n": 1115,
+   "per_language": {
+    "ur": 0.9848,
+    "pnb": 0.9471,
+    "skr": 0.9196,
+    "sd": 1.0,
+    "ps": 1.0,
+    "ks": 1.0,
+    "fa": 1.0,
+    "ar": 1.0,
+    "ckb": 1.0,
+    "ug": 1.0,
+    "azb": 1.0
+   },
+   "top_confusions": [
+    [
+     "skr",
+     "pnb",
+     8
+    ],
+    [
+     "skr",
+     "ur",
+     6
+    ],
+    [
+     "pnb",
+     "skr",
+     5
+    ],
+    [
+     "ur",
+     "pnb",
+     3
+    ],
+    [
+     "pnb",
+     "ur",
+     2
+    ],
+    [
+     "pnb",
+     "ks",
+     2
+    ]
+   ],
+   "accuracy_by_margin": {
+    "0-0.02": {
+     "n": 3,
+     "accuracy": 0.6667
+    },
+    "0.02-0.05": {
+     "n": 2,
+     "accuracy": 0.5
+    },
+    "0.05-0.1": {
+     "n": 1,
+     "accuracy": 0.0
+    },
+    "0.1-99": {
+     "n": 1109,
+     "accuracy": 0.9766
+    }
+   }
+  },
+  "test_20 chars": {
+   "accuracy": 0.9171,
+   "n": 1254,
+   "per_language": {
+    "ur": 0.9156,
+    "pnb": 0.875,
+    "skr": 0.7904,
+    "sd": 1.0,
+    "ps": 0.9861,
+    "ks": 0.9714,
+    "fa": 0.9577,
+    "ar": 1.0,
+    "ckb": 1.0,
+    "ug": 1.0,
+    "azb": 0.9625
+   },
+   "top_confusions": [
+    [
+     "skr",
+     "pnb",
+     32
+    ],
+    [
+     "ur",
+     "pnb",
+     14
+    ],
+    [
+     "pnb",
+     "ur",
+     13
+    ],
+    [
+     "pnb",
+     "skr",
+     11
+    ],
+    [
+     "skr",
+     "ur",
+     10
+    ],
+    [
+     "skr",
+     "ks",
+     4
+    ]
+   ],
+   "accuracy_by_margin": {
+    "0-0.02": {
+     "n": 5,
+     "accuracy": 0.6
+    },
+    "0.02-0.05": {
+     "n": 5,
+     "accuracy": 0.4
+    },
+    "0.05-0.1": {
+     "n": 6,
+     "accuracy": 0.5
+    },
+    "0.1-99": {
+     "n": 1238,
+     "accuracy": 0.9225
+    }
+   }
+  },
+  "test_10 chars": {
+   "accuracy": 0.8397,
+   "n": 1254,
+   "per_language": {
+    "ur": 0.8444,
+    "pnb": 0.7589,
+    "skr": 0.655,
+    "sd": 0.9333,
+    "ps": 0.9167,
+    "ks": 0.8714,
+    "fa": 0.9155,
+    "ar": 1.0,
+    "ckb": 0.9706,
+    "ug": 0.9841,
+    "azb": 0.95
+   },
+   "top_confusions": [
+    [
+     "skr",
+     "pnb",
+     43
+    ],
+    [
+     "ur",
+     "pnb",
+     22
+    ],
+    [
+     "pnb",
+     "ur",
+     20
+    ],
+    [
+     "skr",
+     "ur",
+     16
+    ],
+    [
+     "pnb",
+     "skr",
+     15
+    ],
+    [
+     "pnb",
+     "fa",
+     7
+    ]
+   ],
+   "accuracy_by_margin": {
+    "0-0.02": {
+     "n": 5,
+     "accuracy": 0.4
+    },
+    "0.02-0.05": {
+     "n": 5,
+     "accuracy": 0.4
+    },
+    "0.05-0.1": {
+     "n": 12,
+     "accuracy": 0.5
+    },
+    "0.1-99": {
+     "n": 1232,
+     "accuracy": 0.8466
+    }
+   }
+  }
+ },
+ "tag_roman_tokens": {
+  "dev": {
+   "urdu_words": 82058,
+   "urdu_tagged_en": 0.0339,
+   "urdu_words_in_lexicon": 65655,
+   "urdu_tagged_en_lexicon_only": 0.0159,
+   "english_words": 188821,
+   "english_tagged_ur": 0.0178,
+   "mixed_token_accuracy": 0.9541,
+   "mixed_english_recall": 0.8695,
+   "most_flagged_in_urdu": [
+    [
+     "the",
+     174
+    ],
+    [
+     "in",
+     67
+    ],
+    [
+     "masjid",
+     38
+    ],
+    [
+     "of",
+     29
+    ],
+    [
+     "county",
+     28
+    ],
+    [
+     "s",
+     21
+    ],
+    [
+     "new",
+     19
+    ],
+    [
+     "afghanistan",
+     19
+    ],
+    [
+     "tv",
+     19
+    ],
+    [
+     "markazi",
+     19
+    ],
+    [
+     "is",
+     18
+    ],
+    [
+     "a",
+     17
+    ],
+    [
+     "website",
+     16
+    ],
+    [
+     "degree",
+     16
+    ],
+    [
+     "film",
+     16
+    ],
+    [
+     "school",
+     15
+    ],
+    [
+     "carolina",
+     15
+    ],
+    [
+     "hyderabad",
+     14
+    ],
+    [
+     "ahmed",
+     14
+    ],
+    [
+     "neptune",
+     13
+    ],
+    [
+     "abdul",
+     13
+    ],
+    [
+     "c",
+     12
+    ],
+    [
+     "scotland",
+     12
+    ],
+    [
+     "to",
+     12
+    ],
+    [
+     "arabic",
+     12
+    ],
+    [
+     "punjabi",
+     11
+    ],
+    [
+     "congress",
+     11
+    ],
+    [
+     "national",
+     11
+    ],
+    [
+     "u",
+     11
+    ],
+    [
+     "ne",
+     10
+    ],
+    [
+     "commission",
+     9
+    ],
+    [
+     "germany",
+     9
+    ],
+    [
+     "n",
+     9
+    ],
+    [
+     "t",
+     9
+    ],
+    [
+     "high",
+     9
+    ],
+    [
+     "m",
+     9
+    ],
+    [
+     "government",
+     9
+    ],
+    [
+     "f",
+     8
+    ],
+    [
+     "report",
+     8
+    ],
+    [
+     "york",
+     8
+    ],
+    [
+     "university",
+     8
+    ],
+    [
+     "and",
+     8
+    ],
+    [
+     "i",
+     7
+    ],
+    [
+     "masjide",
+     7
+    ],
+    [
+     "pope",
+     7
+    ],
+    [
+     "at",
+     6
+    ],
+    [
+     "jazeera",
+     6
+    ],
+    [
+     "washington",
+     6
+    ],
+    [
+     "hindustani",
+     6
+    ],
+    [
+     "for",
+     6
+    ],
+    [
+     "b",
+     6
+    ],
+    [
+     "l",
+     6
+    ],
+    [
+     "public",
+     6
+    ],
+    [
+     "times",
+     6
+    ],
+    [
+     "india",
+     6
+    ],
+    [
+     "paradise",
+     6
+    ],
+    [
+     "australia",
+     6
+    ],
+    [
+     "indian",
+     5
+    ],
+    [
+     "association",
+     5
+    ],
+    [
+     "road",
+     5
+    ]
+   ]
+  },
+  "test": {
+   "urdu_words": 86343,
+   "urdu_tagged_en": 0.0379,
+   "urdu_words_in_lexicon": 68960,
+   "urdu_tagged_en_lexicon_only": 0.0186,
+   "english_words": 188522,
+   "english_tagged_ur": 0.0182,
+   "mixed_token_accuracy": 0.9515,
+   "mixed_english_recall": 0.8689,
+   "most_flagged_in_urdu": [
+    [
+     "the",
+     213
+    ],
+    [
+     "in",
+     66
+    ],
+    [
+     "of",
+     52
+    ],
+    [
+     "county",
+     33
+    ],
+    [
+     "a",
+     31
+    ],
+    [
+     "is",
+     31
+    ],
+    [
+     "new",
+     26
+    ],
+    [
+     "masjid",
+     26
+    ],
+    [
+     "germany",
+     25
+    ],
+    [
+     "s",
+     24
+    ],
+    [
+     "website",
+     20
+    ],
+    [
+     "markazi",
+     19
+    ],
+    [
+     "c",
+     18
+    ],
+    [
+     "intelligence",
+     17
+    ],
+    [
+     "mossad",
+     16
+    ],
+    [
+     "to",
+     16
+    ],
+    [
+     "degree",
+     16
+    ],
+    [
+     "l",
+     16
+    ],
+    [
+     "institute",
+     15
+    ],
+    [
+     "m",
+     15
+    ],
+    [
+     "carolina",
+     15
+    ],
+    [
+     "york",
+     15
+    ],
+    [
+     "for",
+     14
+    ],
+    [
+     "government",
+     14
+    ],
+    [
+     "regulation",
+     14
+    ],
+    [
+     "ne",
+     13
+    ],
+    [
+     "abdul",
+     13
+    ],
+    [
+     "voice",
+     12
+    ],
+    [
+     "times",
+     12
+    ],
+    [
+     "neptune",
+     12
+    ],
+    [
+     "tv",
+     12
+    ],
+    [
+     "congress",
+     11
+    ],
+    [
+     "hindustani",
+     11
+    ],
+    [
+     "robert",
+     11
+    ],
+    [
+     "scotland",
+     11
+    ],
+    [
+     "hyderabad",
+     11
+    ],
+    [
+     "news",
+     11
+    ],
+    [
+     "film",
+     11
+    ],
+    [
+     "national",
+     11
+    ],
+    [
+     "report",
+     10
+    ],
+    [
+     "university",
+     10
+    ],
+    [
+     "john",
+     10
+    ],
+    [
+     "at",
+     10
+    ],
+    [
+     "arabic",
+     10
+    ],
+    [
+     "and",
+     9
+    ],
+    [
+     "afghanistan",
+     9
+    ],
+    [
+     "argentina",
+     9
+    ],
+    [
+     "school",
+     9
+    ],
+    [
+     "white",
+     9
+    ],
+    [
+     "network",
+     9
+    ],
+    [
+     "u",
+     9
+    ],
+    [
+     "agency",
+     8
+    ],
+    [
+     "punjabi",
+     8
+    ],
+    [
+     "n",
+     8
+    ],
+    [
+     "indian",
+     8
+    ],
+    [
+     "washington",
+     8
+    ],
+    [
+     "township",
+     8
+    ],
+    [
+     "medical",
+     8
+    ],
+    [
+     "zero",
+     8
+    ],
+    [
+     "lawrence",
+     8
+    ]
+   ]
+  }
+ },
+ "seconds": 41
+}

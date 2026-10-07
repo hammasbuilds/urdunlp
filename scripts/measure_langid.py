@@ -37,7 +37,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from build_langid_models import wiki_splits  # noqa: E402
+from build_langid_models import wiki_splits, window  # noqa: E402
 
 from urdunlp import LANGUAGES, identify_language, is_urdu  # noqa: E402
 from urdunlp.langid import _tagger  # noqa: E402
@@ -46,13 +46,7 @@ DATA = ROOT / "data"
 _WORD = re.compile(r"[A-Za-z]+")
 
 
-def window(text: str, length: int | None) -> str | None:
-    if length is None:
-        return text
-    if len(text) < length:
-        return None
-    start = (len(text) - length) // 2
-    return text[start : start + length]
+
 
 
 def script_report() -> dict:

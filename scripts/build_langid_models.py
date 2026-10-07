@@ -48,9 +48,29 @@ from urdunlp.translit import LEXICON  # noqa: E402
 DATA = ROOT / "data"
 OUT = ROOT / "src/urdunlp/data"
 
-N_MAX = 5  # 3 -> 92.9% on 20-char val windows, 4 -> 94.6%, 5 -> 96.2% unpruned
-ALPHA = 0.1  # 0.5 -> 0.1 added ~0.3 points at every length
-TOP_GRAMS = 20000  # 5-grams unpruned are 5.4 MB; top 20k per language is 848 KB and 94.9%
+# Chosen by `scripts/sweep_langid.py` on the VALIDATION split, 24 combinations, and
+# reported on test once. Full table in data/langid_sweep.json.
+#
+# N_MAX: 4 -> 5 is worth 1.3 points of validation mean; 6 and 7 are both WORSE than 5 at
+# every alpha and both pruning levels (6 at top 60k: 0.9193 against 5's 0.9243). Longer
+# grams are rarer, so pruning hits them harder and the tail they would need is the part
+# that gets cut. 5 is now a measured optimum rather than the largest value anyone tried.
+#
+# TOP_GRAMS was the setting that mattered. The cut to 20k cost far more than the comment
+# here admitted, and it cost it where the model was already weakest:
+#
+#   top      val mean   val whole   val 20ch   Saraiki@20   package (gzip)
+#   20,000     0.9109      0.9737     0.9029       0.7315        0.89 MB
+#   60,000     0.9243      0.9820     0.9175       0.7725        2.53 MB
+#   120,000    0.9280      0.9837     0.9224       0.7989        4.64 MB
+#   unpruned        -           -          -            -        6.80 MB
+#
+# 60k is the chosen trade-off, not the best row: it takes most of the gain for a third of
+# the size of 120k. The curve is still rising, so this is a package-size decision and is
+# said as one - rebuild with `--top 120000` if you would rather have the points.
+N_MAX = 5
+ALPHA = 0.1  # 0.3 -> 0.1 is worth 0.7 points at top 60k; 0.03 is a wash (0.9242)
+TOP_GRAMS = 60000
 
 ORDER = 4
 UNIGRAM_WEIGHT = 0.5
@@ -104,13 +124,56 @@ def distinctive_letters(counts: dict[str, collections.Counter]) -> dict[str, lis
     return dict(out)
 
 
-def build_script_model() -> None:
+def inputs_digest(*parts: object) -> str:
+    """A digest of everything a model is built from.
+
+    Stored in the model and checked by tests/test_published_langid_numbers.py, because
+    the shipped Roman tagger was six commits stale and nothing could tell. It was built
+    on 2026-09-25; `urdunlp.translit.LEXICON`, which `roman_urdu_unigram` spreads word
+    frequencies over, changed in six commits after that - chat spellings, acronyms, the
+    Arabic article - and the wheel kept shipping a table that no longer matched the code
+    that produces it. Rebuilding moved 74 word weights, added eight words and dropped
+    eight.
+
+    A model artefact in git is a build output committed by hand, so the only thing that
+    keeps it honest is a record of what it was built from.
+    """
+    h = hashlib.sha256()
+    for part in parts:
+        if isinstance(part, Path):
+            h.update(part.read_bytes())
+        else:
+            h.update(repr(part).encode("utf-8"))
+        # A separator, so two adjacent parts cannot run together into the same
+        # bytes that one longer part would produce.
+        h.update(b"")
+    return h.hexdigest()[:32]
+
+
+def window(text: str, length: int | None) -> str | None:
+    """A CENTRED slice of `length` characters, or None if the text is shorter.
+
+    Centred, not leading: the start of a Wikipedia intro is disproportionately a title
+    and a date, and taking the first N characters reads about five points lower. This
+    used to live only in measure_langid.py while the build script sliced `paragraph[:20]`
+    itself, so the two printed different numbers under the same name.
+    """
+    if length is None:
+        return text
+    if len(text) < length:
+        return None
+    start = (len(text) - length) // 2
+    return text[start : start + length]
+
+
+def build_script_model(n_max: int = N_MAX, alpha: float = ALPHA,
+                       top_grams: int = TOP_GRAMS) -> None:
     splits = wiki_splits()
     counts = {}
     for code, parts in splits.items():
         c: collections.Counter = collections.Counter()
         for paragraph in parts["train"]:
-            c.update(_grams(paragraph, N_MAX))
+            c.update(_grams(paragraph, n_max))
         counts[code] = c
     distinctive = distinctive_letters(counts)
 
@@ -121,21 +184,28 @@ def build_script_model() -> None:
         vocabulary = set().union(*kept.values())
         return _ScriptModel(
             {
-                "n_max": N_MAX,
-                "alpha": ALPHA,
+                "n_max": n_max,
+                "alpha": alpha,
                 "vocabulary_size": len(vocabulary),
                 "counts": kept,
                 "distinctive": distinctive,
             }
         )
 
-    for top in (40000, TOP_GRAMS, 6000):
+    for top in dict.fromkeys((40000, top_grams, 6000)):
         model = model_for(top)
         right = total = 0
         for code, parts in splits.items():
             for paragraph in parts["val"]:
-                window = paragraph[:20]
-                scores = model.log_likelihoods(window)
+                # The same centred slice measure_langid.py uses. This took the FIRST 20
+                # characters, which reads about five points lower - the start of a
+                # Wikipedia intro is disproportionately a title and a date - so the
+                # figure printed here was not comparable with the one in the README even
+                # though both were called "validation accuracy on 20-char windows".
+                text = window(paragraph, 20)
+                if text is None:
+                    continue
+                scores = model.log_likelihoods(text)
                 right += max(scores, key=scores.get) == code
                 total += 1
         print(
@@ -143,13 +213,16 @@ def build_script_model() -> None:
             f"windows {right / total:.4f}"
         )
 
-    model = model_for(TOP_GRAMS)
+    model = model_for(top_grams)
     blob = {
-        "n_max": N_MAX,
-        "alpha": ALPHA,
+        "n_max": n_max,
+        "alpha": alpha,
         "vocabulary_size": model.vocabulary_size,
         "counts": model.counts,
         "distinctive": distinctive,
+        "inputs": inputs_digest(
+            DATA / "FINGERPRINT.tsv", n_max, alpha, top_grams
+        ),
         "source": "Wikipedia article intros, one random sample per language (CC BY-SA 4.0)",
     }
     write(OUT / "langid.json.gz", blob)
@@ -219,6 +292,16 @@ def build_roman_tagger() -> None:
         "en": side(english, english_types),
         "stay": STAY,
         "urdu_bias": URDU_BIAS,
+        "inputs": inputs_digest(
+            lexicon,
+            DATA / "vocab/dakshina_train_counts.tsv",
+            sorted(LEXICON.items()),
+            TOP_WORDS,
+            ORDER,
+            UNIGRAM_WEIGHT,
+            STAY,
+            URDU_BIAS,
+        ),
         "source": "Roman Urdu: Dakshina v1.0 (CC BY-SA 4.0). English: HotpotQA (CC BY-SA 4.0).",
     }
     write(OUT / "roman_tagger.json.gz", blob)
@@ -232,5 +315,23 @@ def write(path: Path, blob: dict) -> None:
 
 
 if __name__ == "__main__":
-    build_script_model()
-    build_roman_tagger()
+    import argparse
+
+    # Settable, because the README and docs/CORPUS.md both say the cut is a package-size
+    # decision the reader can take differently - and a documented knob that is actually
+    # a module constant is a claim the code does not honour.
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--n-max", type=int, default=N_MAX, help=f"longest n-gram ({N_MAX})")
+    ap.add_argument("--alpha", type=float, default=ALPHA, help=f"smoothing ({ALPHA})")
+    ap.add_argument(
+        "--top-grams",
+        type=int,
+        default=TOP_GRAMS,
+        help=f"n-grams kept per language ({TOP_GRAMS}). 120000 scores higher and costs "
+        "about 2 MB more in the wheel; see the table in docs/CORPUS.md",
+    )
+    ap.add_argument("--skip-tagger", action="store_true", help="only the script model")
+    a = ap.parse_args()
+    build_script_model(n_max=a.n_max, alpha=a.alpha, top_grams=a.top_grams)
+    if not a.skip_tagger:
+        build_roman_tagger()
