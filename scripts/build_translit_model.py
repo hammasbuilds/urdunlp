@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import collections
 import gzip
+import hashlib
 import json
 import math
 import sys
@@ -49,6 +50,17 @@ from urdunlp.normalize import _is_urdu_letter  # noqa: E402
 from urdunlp.translit import LEXICON as CURATED  # noqa: E402
 
 LEXICON = ROOT / "data/dakshina/ur/lexicons/ur.translit.sampled.train.tsv"
+
+def inputs_digest(*parts: object) -> str:
+    """A digest of everything this model is built from. See build_langid_models.py."""
+    h = hashlib.sha256()
+    for part in parts:
+        if isinstance(part, Path):
+            h.update(part.read_bytes())
+        else:
+            h.update(repr(part).encode("utf-8"))
+        h.update(b"")
+    return h.hexdigest()[:32]
 COUNTS = ROOT / "data/vocab/dakshina_train_counts.tsv"
 OUT = ROOT / "src/urdunlp/data/translit.json.gz"
 
@@ -253,6 +265,18 @@ def main() -> int:
         "words": ids,
         "context": {str(index[v]): context[v] for v in sorted(context, key=index.__getitem__)},
         "bigrams": {str(k): v for k, v in table.items()},
+        # What this was built from, so a shipped model that no longer matches its own
+        # source can be detected. The Roman tagger was six commits stale before this
+        # existed; so was this model - `CURATED` is `urdunlp.translit.LEXICON`, which
+        # changed in those same commits. Rebuilding moved 206 bigram weights and 313
+        # emission contexts, added 11 entries and dropped 46. Every published figure was
+        # unchanged to three decimal places, which is the point: nothing could tell
+        # without rebuilding, and "it probably does not matter" is not a measurement.
+        "inputs": inputs_digest(
+            LEXICON, COUNTS, sorted(CURATED.items()),
+            PRIOR_WEIGHT, MIN_COUNT, KAPPA, LM_WEIGHT, LEXICON_BONUS, DISCOUNT,
+            CANDIDATES,
+        ),
     }
     blob = json.dumps(model, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     args.out.parent.mkdir(parents=True, exist_ok=True)

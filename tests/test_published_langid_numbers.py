@@ -198,3 +198,20 @@ def test_the_shipped_models_were_built_from_the_current_inputs() -> None:
         "the shipped Roman tagger was not built from the lexicon now in translit.py - "
         "rebuild it with `python scripts/build_langid_models.py`"
     )
+
+    # And the transliteration model, which was stale for the same reason and found by
+    # looking for the same shape rather than by anything going wrong. Rebuilding it
+    # moved 206 bigram weights and 313 emission contexts; every published figure was
+    # unchanged to three decimal places, which is exactly why nothing noticed.
+    import build_translit_model as TR
+
+    translit = shipped("translit.json.gz")
+    expected = TR.inputs_digest(
+        lexicon_file, counts_file, sorted(LEXICON.items()),
+        TR.PRIOR_WEIGHT, TR.MIN_COUNT, TR.KAPPA, TR.LM_WEIGHT, TR.LEXICON_BONUS,
+        TR.DISCOUNT, TR.CANDIDATES,
+    )  # fmt: skip
+    assert translit.get("inputs") == expected, (
+        "the shipped transliteration model was not built from the lexicon now in "
+        "translit.py - rebuild it with `python scripts/build_translit_model.py`"
+    )
