@@ -63,3 +63,10 @@ _local/
 demo_report.html
 demo_results.json
 demo/
+
+# Coverage artefacts. A 52 KB SQLite file holding absolute local paths; it was
+# committed into four of these repositories the day coverage was first measured.
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
