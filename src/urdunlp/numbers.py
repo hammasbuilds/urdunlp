@@ -567,6 +567,13 @@ def _evaluate(tokens: list[str]) -> Fraction:
     return total + (current or 0)
 
 
+# Signs `parse_number` accepts at the start of a phrase. ASCII hyphen-minus is what
+# `format_number` writes; U+2212 MINUS SIGN and U+FF0D FULLWIDTH HYPHEN-MINUS are what a
+# copy-and-paste from a document or a spreadsheet brings. A leading plus is accepted for
+# symmetry and means nothing.
+_SIGNS = {"-": -1, "−": -1, "－": -1, "+": 1, "＋": 1}
+
+
 def parse_number(text: str) -> int | float:
     """The value of an Urdu number phrase.
 
@@ -584,10 +591,24 @@ def parse_number(text: str) -> int | float:
     Raises ValueError for text that is not a single number phrase.
     """
     _require_str(text, "parse_number")
-    tokens = _tokens(text)
+    # A leading sign, because `format_number` emits one and this could not read it back.
+    # Every other shape round-tripped - Urdu digits, the Arabic group separator, a
+    # fractional part - so `format_number(-1234567)` giving '-12,34,567' and
+    # `parse_number` raising "not a number word: '-'" was the one asymmetry in the pair.
+    #
+    # Leading only, and only as a sign on a phrase that otherwise parses: '5-10' is a
+    # range and must keep raising rather than quietly becoming 5.
+    body = text.lstrip()
+    sign = 1
+    if body[:1] in _SIGNS:
+        sign = _SIGNS[body[:1]]
+        body = body[1:].lstrip()
+        if not body:
+            raise ValueError(f"a sign with no number after it: {text!r}")
+    tokens = _tokens(body)
     if not tokens:
         raise ValueError("empty")
-    value = _evaluate(tokens)
+    value = _evaluate(tokens) * sign
     return int(value) if value.denominator == 1 else float(value)
 
 

@@ -132,6 +132,17 @@ def words(text: str, *, keep_punctuation: bool = False) -> list[str]:
     3:30, ۱۲٫۵) are one token each, as they are to the transliterator. ZWNJ is kept
     inside tokens, because in Urdu it marks a real internal boundary in compounds
     rather than separating two words.
+
+    **The tokens are normalised, so they are not always substrings of the input.**
+    `words("كتاب")` is `['کتاب']` - Arabic kaf becomes Urdu keheh - and
+    `words("٤٥٦")` is `['۴۵۶']`. Every function downstream expects normalised text, so
+    normalising here is what makes the pipeline agree with itself. The cost is that a
+    caller mapping a token back to a source offset cannot use `str.find`: normalisation
+    is per-character and length-preserving for these mappings, so `enumerate` over the
+    normalised string works, but the raw input does not contain the token.
+
+    >>> words("كتاب")
+    ['کتاب']
     """
     _require_str(text, "words")
     text = normalize(text)
