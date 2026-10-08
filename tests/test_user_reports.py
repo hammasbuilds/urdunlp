@@ -316,7 +316,22 @@ def test_the_version_is_the_same_in_every_place_it_is_declared() -> None:
     # installed-wheel CI job.
     pyproject = pathlib.Path(__file__).resolve().parent.parent / "pyproject.toml"
     if pyproject.exists():
-        import tomllib
+        assert _declared_version(pyproject.read_text(encoding="utf-8")) == U.__version__
 
-        declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-        assert declared["project"]["version"] == U.__version__
+
+def _declared_version(pyproject_text: str) -> str:
+    """The version from pyproject.toml, without needing tomllib.
+
+    tomllib arrived in 3.11 and both of these packages support 3.10, so importing it
+    unconditionally fails on the oldest Python in their own CI matrix. Neither package
+    has any runtime dependency, and adding tomli for one assertion is not worth it.
+    """
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # Python 3.10
+        import re
+
+        match = re.search(r'^version = "([^"]+)"', pyproject_text, re.M)
+        assert match, "no version line found in pyproject.toml"
+        return match.group(1)
+    return tomllib.loads(pyproject_text)["project"]["version"]
