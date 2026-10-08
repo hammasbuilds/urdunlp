@@ -8,6 +8,7 @@ name = "urdunlp"
 version = "0.2.0"
 description = "Urdu and Roman Urdu text processing: normalisation, transliteration scored against human romanisations, language identification, numbers, stemming. Pure Python, no dependencies."
 readme = "README.md"
+authors = [{ name = "hammasbuilds" }]
 requires-python = ">=3.10"
 license = "MIT AND CC-BY-SA-4.0"
 # The code is MIT; the data files bundled in the wheel (src/urdunlp/data/) are
