@@ -45,6 +45,14 @@ from urdunlp import normalize  # noqa: E402
 from urdunlp.langid import LANGUAGES, _grams  # noqa: E402
 from urdunlp.translit import LEXICON  # noqa: E402
 
+# These scripts print Urdu letters, and a Windows console defaults to cp1252,
+# where that raises UnicodeEncodeError. The crash came AFTER the model was
+# written and after four minutes of work, from a progress line - and the test
+# that fails tells you to run this very command.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 DATA = ROOT / "data"
 OUT = ROOT / "src/urdunlp/data"
 
@@ -141,7 +149,12 @@ def inputs_digest(*parts: object) -> str:
     h = hashlib.sha256()
     for part in parts:
         if isinstance(part, Path):
-            h.update(part.read_bytes())
+            # Normalised: these are text files, and git stores them with LF while
+            # a Windows checkout can hold CRLF. Hashing the raw bytes made the
+            # digest depend on the machine that built the model, so a value
+            # computed on Windows matched there and could never match on CI's
+            # Linux runner.
+            h.update(part.read_bytes().replace(b"\r\n", b"\n"))
         else:
             h.update(repr(part).encode("utf-8"))
         # A separator, so two adjacent parts cannot run together into the same
