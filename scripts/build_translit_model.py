@@ -51,6 +51,7 @@ from urdunlp.translit import LEXICON as CURATED  # noqa: E402
 
 LEXICON = ROOT / "data/dakshina/ur/lexicons/ur.translit.sampled.train.tsv"
 
+
 def inputs_digest(*parts: object) -> str:
     """A digest of everything this model is built from. See build_langid_models.py."""
     h = hashlib.sha256()
@@ -61,6 +62,8 @@ def inputs_digest(*parts: object) -> str:
             h.update(repr(part).encode("utf-8"))
         h.update(b"")
     return h.hexdigest()[:32]
+
+
 COUNTS = ROOT / "data/vocab/dakshina_train_counts.tsv"
 OUT = ROOT / "src/urdunlp/data/translit.json.gz"
 
@@ -273,8 +276,15 @@ def main() -> int:
         # unchanged to three decimal places, which is the point: nothing could tell
         # without rebuilding, and "it probably does not matter" is not a measurement.
         "inputs": inputs_digest(
-            LEXICON, COUNTS, sorted(CURATED.items()),
-            PRIOR_WEIGHT, MIN_COUNT, KAPPA, LM_WEIGHT, LEXICON_BONUS, DISCOUNT,
+            LEXICON,
+            COUNTS,
+            sorted(CURATED.items()),
+            PRIOR_WEIGHT,
+            MIN_COUNT,
+            KAPPA,
+            LM_WEIGHT,
+            LEXICON_BONUS,
+            DISCOUNT,
             CANDIDATES,
         ),
     }

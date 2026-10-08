@@ -38,9 +38,7 @@ def _script() -> dict:
 def test_the_headline_accuracy_is_the_measured_one() -> None:
     whole = _script()["test_whole"]["accuracy"]
     readme = README.read_text(encoding="utf-8")
-    assert f"{whole * 100:.1f}%" in readme, (
-        f"the README does not quote {whole * 100:.1f}% anywhere"
-    )
+    assert f"{whole * 100:.1f}%" in readme, f"the README does not quote {whole * 100:.1f}% anywhere"
     # And the old figure must be gone, or both are present and the reader picks one.
     assert "97.9%" not in readme, "a stale headline accuracy is still in the README"
 
@@ -102,10 +100,7 @@ def test_the_pruning_table_in_the_corpus_document_is_the_sweep() -> None:
             # The table is indented inside a bullet, so the line does not START with
             # a pipe - matching on that found nothing and the assertion above it had
             # already passed on the bare number appearing in prose.
-            (
-                ln for ln in corpus.splitlines()
-                if f"{top:,}" in ln and ln.lstrip().startswith("|")
-            ),
+            (ln for ln in corpus.splitlines() if f"{top:,}" in ln and ln.lstrip().startswith("|")),
             None,
         )
         assert line, f"no table line for {top:,}"
@@ -137,8 +132,7 @@ def test_the_shipped_model_is_the_one_the_numbers_describe() -> None:
     assert blob["alpha"] == best["alpha"]
     biggest = max(len(v) for v in blob["counts"].values())
     assert biggest == best["top"], (
-        f"the shipped model keeps {biggest} grams per language; the sweep chose "
-        f"{best['top']}"
+        f"the shipped model keeps {biggest} grams per language; the sweep chose {best['top']}"
     )
 
 

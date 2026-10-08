@@ -37,11 +37,11 @@ def test_a_fraction_survives_format_then_parse(value: float, urdu_digits: bool) 
     ("text", "expected"),
     [
         ("-5", -5),
-        ("−5", -5),            # U+2212 MINUS SIGN, from a document
-        ("－5", -5),            # U+FF0D FULLWIDTH HYPHEN-MINUS, from a spreadsheet
-        ("- 5", -5),                # a space after the sign
-        ("-۵", -5),            # an Urdu digit
-        ("+5", 5),                  # accepted, and means nothing
+        ("−5", -5),  # U+2212 MINUS SIGN, from a document
+        ("－5", -5),  # U+FF0D FULLWIDTH HYPHEN-MINUS, from a spreadsheet
+        ("- 5", -5),  # a space after the sign
+        ("-۵", -5),  # an Urdu digit
+        ("+5", 5),  # accepted, and means nothing
         ("＋5", 5),
         ("-ڈیڑھ لاکھ", -150000),  # a negated WORD phrase
     ],

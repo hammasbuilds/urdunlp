@@ -42,23 +42,23 @@ HOSTILE = [
     "",
     " ",
     "\t\n\r ",
-    "‌",                      # zero-width non-joiner, legal inside an Urdu word
-    "‍" * 50,                 # zero-width joiner run
-    "‮" + "abc" + "‬",   # RTL override
-    "ّ",                      # a lone shadda: a combining mark with no base
-    "ًٌٍ" * 20,     # a pile of harakat
-    "﻿الف",    # byte-order mark then letters
-    "a" * 5000,                    # the input a quadratic path was found on
+    "‌",  # zero-width non-joiner, legal inside an Urdu word
+    "‍" * 50,  # zero-width joiner run
+    "‮" + "abc" + "‬",  # RTL override
+    "ّ",  # a lone shadda: a combining mark with no base
+    "ًٌٍ" * 20,  # a pile of harakat
+    "﻿الف",  # byte-order mark then letters
+    "a" * 5000,  # the input a quadratic path was found on
     "ہ" * 3000,
-    "۱۲۳٤٥٦789",   # digits in three scripts at once
-    "ـ" * 100,                # tatweel run
-    "ایک\x00دو",        # embedded NUL
-    "कاا",          # Devanagari beside Urdu
-    "\U0001f600ا",            # astral plane beside an Urdu letter
+    "۱۲۳٤٥٦789",  # digits in three scripts at once
+    "ـ" * 100,  # tatweel run
+    "ایک\x00دو",  # embedded NUL
+    "कاا",  # Devanagari beside Urdu
+    "\U0001f600ا",  # astral plane beside an Urdu letter
     "-" * 200,
     "ڈیڑھ لاکھ " * 200,
-    "ا" + "ّ" * 500,     # one base, five hundred marks
-    "﷽",                      # a single presentation-form codepoint
+    "ا" + "ّ" * 500,  # one base, five hundred marks
+    "﷽",  # a single presentation-form codepoint
 ]
 
 NOT_STRINGS = [None, 0, 1.5, [], {}, b"bytes", object()]
@@ -66,10 +66,23 @@ NOT_STRINGS = [None, 0, 1.5, [], {}, b"bytes", object()]
 # What each public callable takes. Written out rather than guessed, because guessing is
 # what produced most of this harness's first run.
 TAKES_TEXT = (
-    "normalize", "words", "sentences", "is_urdu", "identify_language", "stem",
-    "roman_key", "fix_spacing", "remove_urls_and_mentions", "resolve_arabic_heh",
-    "transliterate_to_roman", "transliterate_to_urdu", "transliterate_with_confidence",
-    "find_numbers", "is_stopword", "tag_roman_tokens", "character_ngrams",
+    "normalize",
+    "words",
+    "sentences",
+    "is_urdu",
+    "identify_language",
+    "stem",
+    "roman_key",
+    "fix_spacing",
+    "remove_urls_and_mentions",
+    "resolve_arabic_heh",
+    "transliterate_to_roman",
+    "transliterate_to_urdu",
+    "transliterate_with_confidence",
+    "find_numbers",
+    "is_stopword",
+    "tag_roman_tokens",
+    "character_ngrams",
 )
 # Parsers: the same, but a ValueError on text that is not a number is the contract.
 TAKES_TEXT_MAY_REFUSE = ("parse_number", "parse_ordinal")
@@ -99,7 +112,8 @@ def main() -> int:
         note(f"{name} is in this harness but no longer in urdunlp.__all__")
 
     callables = [
-        n for n in urdunlp.__all__
+        n
+        for n in urdunlp.__all__
         if callable(getattr(urdunlp, n)) and not isinstance(getattr(urdunlp, n), type)
     ]
     covered = set(TAKES_TEXT + TAKES_TEXT_MAY_REFUSE + TAKES_TOKEN_LIST + TAKES_NUMBER)

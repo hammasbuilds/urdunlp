@@ -160,12 +160,13 @@ def main() -> int:
         "test": {str(w): score(model, splits, "test", w) for w in WINDOWS},
     }
     for split in ("train", "val", "test"):
-        print(f"  {split:5} " + "  ".join(
-            f"{w or 'whole'}: {report[split][str(w)]['accuracy']:.4f}" for w in WINDOWS
-        ))
-    print("  test skr:", {
-        str(w): report["test"][str(w)]["per_language"].get("skr") for w in WINDOWS
-    })
+        print(
+            f"  {split:5} "
+            + "  ".join(f"{w or 'whole'}: {report[split][str(w)]['accuracy']:.4f}" for w in WINDOWS)
+        )
+    print(
+        "  test skr:", {str(w): report["test"][str(w)]["per_language"].get("skr") for w in WINDOWS}
+    )
     args.json.write_text(json.dumps(report, indent=1, ensure_ascii=False), encoding="utf-8")
     print(f"\nwrote {args.json}")
     return 0

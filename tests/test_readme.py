@@ -21,6 +21,11 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
+# The installed-wheel CI job copies only tests/, so every file below is absent
+# there. Each test that reads one says so, rather than failing on a missing file.
+CORPUS = ROOT / "docs" / "CORPUS.md"
+PYPROJECT = ROOT / "pyproject.toml"
+FETCHER = ROOT / "scripts" / "fetch_wikipedia_samples.py"
 BLOCK = re.compile(r"```python\n(.*?)```", re.DOTALL)
 
 
@@ -143,6 +148,7 @@ def test_known_limits_examples_still_hold() -> None:
     assert urdunlp.transliterate_to_urdu("late") == "لیٹ"
 
 
+@pytest.mark.skipif(not CORPUS.exists(), reason="docs/ is not shipped with the tests")
 def test_the_per_language_table_agrees_with_the_corpus_document() -> None:
     """The README's per-language figures and CORPUS.md's prose are the same numbers.
 
@@ -189,6 +195,7 @@ def test_the_per_language_table_agrees_with_the_corpus_document() -> None:
     assert rows["Urdu"] == urd, f"README {rows['Urdu']}% vs CORPUS.md {urd}%"
 
 
+@pytest.mark.skipif(not CORPUS.exists(), reason="docs/ is not shipped with the tests")
 def test_the_word_accuracy_row_states_its_denominator() -> None:
     """91.3% is over the sentences that can be ALIGNED, not over the test set.
 
@@ -241,6 +248,7 @@ def test_the_corpus_fingerprint_is_committed_and_complete() -> None:
         assert f"wiki/{code}.txt" in listed, f"wiki/{code}.txt is not fingerprinted"
 
 
+@pytest.mark.skipif(not FETCHER.exists(), reason="scripts/ is not shipped with the tests")
 def test_the_wikipedia_fetcher_can_rebuild_from_recorded_ids() -> None:
     """The draw is the server's, so page ids are the only route to reproducibility.
 
@@ -255,6 +263,7 @@ def test_the_wikipedia_fetcher_can_rebuild_from_recorded_ids() -> None:
     assert "--from-pages" in corpus_doc, "CORPUS.md does not document the rebuild route"
 
 
+@pytest.mark.skipif(not PYPROJECT.exists(), reason="pyproject.toml is not shipped with the tests")
 def test_the_python_classifiers_are_the_versions_ci_tests() -> None:
     """A version classifier is a claim pip acts on, so it has to be tested.
 
@@ -290,6 +299,7 @@ def test_the_python_classifiers_are_the_versions_ci_tests() -> None:
     )
 
 
+@pytest.mark.skipif(not CORPUS.exists(), reason="docs/ is not shipped with the tests")
 def test_the_tagger_rate_is_published_with_its_lexicon_restricted_twin() -> None:
     """3.8% reads as the tagger's error rate; roughly half of it is the reference.
 

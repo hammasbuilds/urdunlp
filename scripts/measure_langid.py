@@ -46,9 +46,6 @@ DATA = ROOT / "data"
 _WORD = re.compile(r"[A-Za-z]+")
 
 
-
-
-
 def script_report() -> dict:
     splits = wiki_splits()
     report: dict = {"paragraphs": {k: {s: len(v) for s, v in d.items()} for k, d in splits.items()}}
@@ -195,9 +192,7 @@ def tagger_report() -> dict:
             # An upper bound: the denominator includes code-mixed reference tokens the
             # gold labels call `ur` with no Urdu lexical evidence.
             "urdu_words_in_lexicon": attested,
-            "urdu_tagged_en_lexicon_only": (
-                round(attested_en / attested, 4) if attested else None
-            ),
+            "urdu_tagged_en_lexicon_only": (round(attested_en / attested, 4) if attested else None),
             "english_words": english_words,
             "english_tagged_ur": round(false_ur / english_words, 4),
             "mixed_token_accuracy": round(right / total, 4),

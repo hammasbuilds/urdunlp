@@ -166,8 +166,9 @@ def window(text: str, length: int | None) -> str | None:
     return text[start : start + length]
 
 
-def build_script_model(n_max: int = N_MAX, alpha: float = ALPHA,
-                       top_grams: int = TOP_GRAMS) -> None:
+def build_script_model(
+    n_max: int = N_MAX, alpha: float = ALPHA, top_grams: int = TOP_GRAMS
+) -> None:
     splits = wiki_splits()
     counts = {}
     for code, parts in splits.items():
@@ -220,9 +221,7 @@ def build_script_model(n_max: int = N_MAX, alpha: float = ALPHA,
         "vocabulary_size": model.vocabulary_size,
         "counts": model.counts,
         "distinctive": distinctive,
-        "inputs": inputs_digest(
-            DATA / "FINGERPRINT.tsv", n_max, alpha, top_grams
-        ),
+        "inputs": inputs_digest(DATA / "FINGERPRINT.tsv", n_max, alpha, top_grams),
         "source": "Wikipedia article intros, one random sample per language (CC BY-SA 4.0)",
     }
     write(OUT / "langid.json.gz", blob)
