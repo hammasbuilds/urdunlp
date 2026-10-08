@@ -7,6 +7,7 @@ down every answer that would make someone file an issue.
 
 from __future__ import annotations
 
+import pathlib
 import subprocess
 import sys
 
@@ -296,3 +297,26 @@ def test_shouting_is_not_a_row_of_acronyms(roman, urdu):
 )
 def test_real_acronyms_are_still_spelled(roman, urdu):
     assert U.transliterate_to_urdu(roman) == urdu
+
+
+def test_the_version_is_the_same_in_every_place_it_is_declared() -> None:
+    """__version__, pyproject.toml and the installed metadata must agree.
+
+    The version is written twice - here and in pyproject.toml - and the other tests
+    only check that `--version` prints `__version__`, which is true however wrong
+    both are. Bump pyproject alone and the wheel says urdunlp {new} while
+    `urdunlp --version` says the old one; release.yml compares the tag to
+    pyproject, so nothing would have caught it.
+    """
+    from importlib.metadata import version
+
+    assert version("urdunlp") == U.__version__
+
+    # pyproject.toml is absent wherever only tests/ is shipped, as in the
+    # installed-wheel CI job.
+    pyproject = pathlib.Path(__file__).resolve().parent.parent / "pyproject.toml"
+    if pyproject.exists():
+        import tomllib
+
+        declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        assert declared["project"]["version"] == U.__version__
