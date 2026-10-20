@@ -335,3 +335,99 @@ def _declared_version(pyproject_text: str) -> str:
         assert match, "no version line found in pyproject.toml"
         return match.group(1)
     return tomllib.loads(pyproject_text)["project"]["version"]
+
+# --- What Roman Urdu payment chat found -------------------------------------------
+#
+# A wallet assistant put its own vocabulary through this library: 92 spellings, each
+# attested in two public Roman Urdu corpora. Eight answers were wrong, and the shape
+# of the eight is the useful part - a payments vocabulary is chat, and the decoder's
+# statistics come from Wikipedia prose, where none of this is written.
+
+HAZAAR = "ہزار"
+DE_DO = "دے دو"
+BHAI_JAN = "بھائی جان"
+AMMAN = "اماں"
+SEND = "سینڈ"
+RUPAY = "روپے"
+A_FAULT = "خطا"
+KE = "کے"
+
+
+class TestChatThousand:
+    """`15k` is fifteen thousand. Reading it as 15 is a silent factor of a thousand."""
+
+    @pytest.mark.parametrize(
+        ("text", "value"),
+        [("15k", 15_000), ("15 k", 15_000), ("15K", 15_000), ("1.5k", 1_500), ("250k", 250_000)],
+    )
+    def test_a_scale_letter_against_digits(self, text, value):
+        assert U.parse_number(text) == value
+        found = U.find_numbers(text)
+        assert [span.value for span in found] == [value]
+        # The span has to cover the letter too. A span of "15" over the text "15k"
+        # reports the right number against the wrong characters, so a caller that
+        # highlights or replaces the amount silently drops the scale.
+        assert found[0].text == text
+
+    def test_the_scale_word_is_what_it_abbreviates(self):
+        assert U.parse_number("15k") == U.parse_number("15 " + HAZAAR)
+
+    @pytest.mark.parametrize("text", ["k", "ye k baat hai", "k 15"])
+    def test_a_bare_k_is_not_a_thousand(self, text):
+        """`k` on its own is the chat spelling of a postposition, not a scale."""
+        assert all(span.value != 15_000 for span in U.find_numbers(text))
+
+    def test_k_still_transliterates_as_a_postposition(self):
+        assert U.transliterate_to_urdu("k") == KE
+
+    @pytest.mark.parametrize("text", ["2m", "2b"])
+    def test_other_letters_are_left_alone_on_purpose(self, text):
+        """Nothing in the corpora measured here writes `m` or `b` for a scale, and
+        guessing one wrong is a factor of a million. They read as the bare digit."""
+        assert [span.value for span in U.find_numbers(text)] == [2]
+
+
+class TestChatWordsReadAsOtherWords:
+    """Each of these came back a different real word, at dictionary confidence."""
+
+    @pytest.mark.parametrize(
+        ("written", "expected"),
+        [
+            ("dedo", DE_DO),  # was a non-word
+            ("bhaijan", BHAI_JAN),  # was "sent" - a payee turning into a verb
+            ("amma", AMMAN),  # was a name
+            ("send", SEND),  # was "a certificate"
+            ("rupees", RUPAY),  # was a non-word
+        ],
+    )
+    def test_the_word_it_spells(self, written, expected):
+        assert U.transliterate_to_urdu(written) == expected
+
+    @pytest.mark.parametrize("written", ["dedo", "bhaijan", "amma", "send", "rupees"])
+    def test_and_the_lexicon_is_what_answered(self, written):
+        """Not the statistics: these are fixed, so a sentence cannot overrule them."""
+        assert U.transliterate_with_confidence(written).sources == [(written, "lexicon")]
+
+    def test_the_english_two_can_stay_in_latin(self):
+        assert U.transliterate_to_urdu("send 500 rupees", keep_english=True) == "send 500 rupees"
+
+
+class TestWordsDeliberatelyNotFixed:
+    """Two of the eight are left wrong for one domain, which is the right trade.
+
+    Entries in the chat lexicon are never overruled by context. `khata` is an account
+    to a wallet, a fault in Dakshina's own test sentences and a region to the decoder;
+    `masla` is a problem in chat and as likely a spice in a product review. Pinning
+    either one globally would move the error rather than remove it, so both are left
+    to whichever domain is reading them - and this fails if someone adds them.
+    """
+
+    @pytest.mark.parametrize("ambiguous", ["khata", "masla"])
+    def test_not_in_the_chat_lexicon(self, ambiguous):
+        from urdunlp.translit import CHAT_LEXICON
+
+        assert ambiguous not in CHAT_LEXICON
+
+    def test_the_dakshina_reading_still_works(self):
+        """`be khata` is "faultless", and it is in the sentences the figures are measured on."""
+        assert A_FAULT in U.transliterate_to_urdu("aik be khata march")

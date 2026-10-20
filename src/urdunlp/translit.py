@@ -369,6 +369,22 @@ CHAT_LEXICON: dict[str, str] = {
     "g": "جی",
     "yr": "یار",
     "yar": "یار",
+    # Words from Roman Urdu payment chat, each attested in two public Roman Urdu
+    # corpora and none of them in Dakshina's test sentences. The vocabulary stage
+    # read every one as a different real word, or as no word at all, with the
+    # confidence it uses for a dictionary hit: `dedo` (*give it*) came out دڑو,
+    # which is nothing, and `bhaijan` (*brother*) came out بھیجا (*sent*),
+    # which in a wallet is a payee turning into a verb. `amma` came out ایما, a name.
+    #
+    # `khata` and `masla` are deliberately NOT here. Entries in this table are never
+    # overruled by context, and both of those have a live second meaning: `khata` is
+    # کھاتا (an account) to a wallet but خطا (a fault) in Dakshina's own
+    # sentences, and `masla` is as likely to be مسالہ (spice) in a product review
+    # as مسئلہ (a problem). A word with two readings belongs in the lexicon of
+    # whichever domain is reading it, not in this one.
+    "dedo": "دے دو",
+    "bhaijan": "بھائی جان",
+    "amma": "اماں",
 }
 # English words chat uses every day, spelled the way Urdu writes them. The Wikipedia
 # vocabulary matched each to a different real word - `charger` کارگر (*effective*),
@@ -391,6 +407,10 @@ CHAT_ENGLISH: dict[str, str] = {
     "job": "جاب",
     "salary": "سیلری",
     "busy": "بزی",
+    # `send` came out سند (*a certificate*) and `rupees` came out روپیش,
+    # which is not a word. Both are everyday English in Pakistani payment chat.
+    "send": "سینڈ",
+    "rupees": "روپے",
 }
 CHAT_LEXICON.update(CHAT_ENGLISH)
 LEXICON.update(CHAT_LEXICON)

@@ -13,6 +13,16 @@ with its method, and the scripts that reproduce them are listed there.
 
 ### Added
 
+- English number words and the chat thousand in `parse_number` and `find_numbers`:
+  `eight hundred`, `six thousand eight sau`, `fifteen thousand`, `15k`. Roman Urdu
+  writes amounts in both languages in one sentence, and with no English in the table
+  `eight hundred` read as 100 - the scale understood, the count in front of it dropped.
+  `k` counts as a thousand only straight after digits, because a bare `k` is how chat
+  writes کے. `m` and `b` are deliberately absent: this module counts in lakh and crore,
+  and guessing a scale wrong is a factor of a million. Measured on 142,358 Roman Urdu
+  wallet amounts, exact readings went from 71.9% to 88.4%, and the cases where it found
+  no number at all from 10,286 to none.
+
 - `scripts/quick_check.py` and `eval/dakshina_test_sample.tsv`: the headline Roman → Urdu
   figure re-measured on a committed tenth of the test sentences in about a minute, no
   download (91.4% on the sample against 91.3% on the full split).
@@ -119,6 +129,19 @@ with its method, and the scripts that reproduce them are listed there.
   headline is 91.3%.
 
 ### Fixed
+
+- Five words from Roman Urdu payment chat that the vocabulary stage read as a different
+  real word, at the confidence it uses for a dictionary hit: `dedo` (*give it*) came out
+  دڑو, which is nothing; `bhaijan` (*brother*) came out بھیجا (*sent*), which in a wallet
+  turns a payee into a verb; `amma` came out ایما, a name; `send` came out سند
+  (*a certificate*); `rupees` came out روپیش. Each is attested in two public Roman Urdu
+  corpora and none is in Dakshina's test sentences, so the 91.3% figure is unchanged
+  (re-measured: 91.4% on the committed sample, as before).
+- `khata` and `masla` were found the same way and are deliberately **not** fixed. Chat
+  lexicon entries are never overruled by context, and both have a live second meaning:
+  `khata` is کھاتا (an account) to a wallet but خطا (a fault) in Dakshina's own
+  sentences, and `masla` is as likely مسالہ (spice) in a product review as مسئلہ. A word
+  with two readings belongs to whichever domain is reading it.
 
 - `parse_number` rejected every hundred that was not round (پانچ سو تیس), and read
   ایک ہزار کروڑ as 10,010,000,000. Both caught while writing the tests, before release.

@@ -384,7 +384,28 @@ _ROMAN_UNITS: dict[int, tuple[str, ...]] = {
     99: ("ninnanve", "ninanway", "ninyanve", "ninnanway", "ninnanave"),
 }
 
+# English number words. Roman Urdu writes an amount in both languages in one
+# sentence - `eight hundred`, `twenty sau`, `six thousand eight sau` - and with no
+# English in the table `eight hundred` read as 100: the scale was understood and the
+# count in front of it was not, which is the quiet kind of wrong. Spelled out rather
+# than generated from a library so the list stays readable, and mapped through _UNITS
+# so an English word and its Urdu equivalent can never disagree.
+#
+# `million` and `billion` are deliberately absent: this module counts in lakh and
+# crore, neither has a single Urdu scale word, and guessing at one would put a factor
+# of ten into every amount that used it.
+_ENGLISH_UNITS: dict[str, int] = {
+    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+    "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
+    "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
+    "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40,
+    "fourty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90,
+}  # fmt: skip
+
 ROMAN_NUMBER_WORDS: dict[str, str] = {
+    **{word: _UNITS[value][0] for word, value in _ENGLISH_UNITS.items()},
+    **dict.fromkeys(("hundred", "hundreds"), HUNDRED),
+    **dict.fromkeys(("thousand", "thousands"), SCALES[-1][0]),
     **{spelling: _UNITS[n][0] for n, spellings in _ROMAN_UNITS.items() for spelling in spellings},
     **dict.fromkeys(("sau", "so", "sou", "sao"), "سو"),
     **dict.fromkeys(("hazar", "hazaar", "hajar", "hzar"), "ہزار"),
@@ -455,8 +476,27 @@ def _canonical(token: str) -> str:
     return normalize(token, normalize_digits=True)
 
 
+# Scale letters chat writes against digits: `15k` is fifteen thousand. `cr` is in
+# ROMAN_NUMBER_WORDS because it is only ever crore, but `k` is also how chat writes
+# کے, so it counts as a scale ONLY straight after a numeral - never on its own, and
+# never after a word. `m` and `b` are left out: nothing in the Roman Urdu corpora
+# measured here writes them, and reading `2m` as two million when the writer meant
+# something else would be a silent factor of a million.
+_DIGIT_SCALES: dict[str, str] = {"k": "ہزار"}
+
+
+def _with_digit_scales(raw: list[str]) -> list[str]:
+    """Rewrite a scale letter that follows a numeral into the scale word it abbreviates."""
+    out = list(raw)
+    for i in range(1, len(out)):
+        scale = _DIGIT_SCALES.get(out[i].lower())
+        if scale is not None and _numeral_value(_canonical(out[i - 1])) is not None:
+            out[i] = scale
+    return out
+
+
 def _tokens(text: str) -> list[str]:
-    tokens = [_canonical(t) for t in _TOKEN.findall(text)]
+    tokens = [_canonical(t) for t in _with_digit_scales(_TOKEN.findall(text))]
     return [_from_roman(t) if t.isascii() and t.isalpha() else t for t in tokens if t]
 
 
@@ -699,6 +739,16 @@ def find_numbers(text: str) -> list[NumberSpan]:
     def joined(a: int, b: int) -> bool:
         """Whether tokens a and b belong to one phrase - only whitespace between."""
         return not text[matches[a].end() : matches[b].start()].strip()
+
+    # A scale letter against a numeral: `15k`. The same rule as `_tokens`, applied
+    # here where the offsets are known, so the span covers the `k` as well as the
+    # digits - a span of "15" for the text "15k" would report the wrong amount and
+    # point at the wrong characters.
+    for k in range(1, len(matches)):
+        scale = _DIGIT_SCALES.get(matches[k].group().lower())
+        if scale is not None and _numeral_value(canonical[k - 1]) is not None and joined(k - 1, k):
+            canonical[k] = scale
+            roman[k] = False
 
     # Straight before a unit, a Latin word the table does not know is read with
     # `roman_key` too, as `parse_number` reads every word: `pandhra lakh` and
