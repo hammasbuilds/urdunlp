@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>urdunlp - architecture</title>
+<style>
+  :root { --hue: 205; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:#0b1017; overflow:hidden;
+    font-family: "Segoe UI", system-ui, sans-serif; color:#e8eef6; }
+  #stage { position:relative; width:1280px; height:720px; margin:0 auto; }
+  svg { position:absolute; inset:0; }
+  .hdr { position:absolute; top:26px; left:46px; }
+  .hdr h1 { margin:0; font-size:34px; letter-spacing:-.5px;
+    color:hsl(var(--hue) 85% 72%); }
+  .hdr p { margin:5px 0 0; font-size:15.5px; color:#9fb0c4; max-width:830px; }
+  .repo { position:absolute; top:34px; right:46px; font-size:13px; color:#7d8ea3;
+    font-family: Consolas, monospace; }
+  .cap { position:absolute; left:46px; bottom:34px; right:46px; min-height:74px; }
+  .cap .mod { font-family:Consolas,monospace; font-size:13px;
+    color:hsl(var(--hue) 70% 62%); letter-spacing:.4px; }
+  .cap .txt { font-size:21px; margin-top:5px; line-height:1.38; color:#dbe6f2; max-width:1050px; }
+  .panel { position:absolute; padding:13px 16px; border-radius:11px;
+    background:#121a24; border:1px solid #27333f; opacity:0; transition:opacity .5s; }
+  .panel.on { opacity:1; }
+  .panel .lb { font-size:11px; letter-spacing:2.2px; color:#7d8ea3; }
+  .panel .tx { font-family:Consolas,monospace; font-size:16.5px; margin-top:7px;
+    white-space:pre; line-height:1.5; }
+  .panel .nt { font-size:12.5px; color:#8fa2b7; margin-top:9px; max-width:290px; }
+  #inp { left:46px; top:188px; } #inp .tx { color:#cfe0f2; }
+  #outp { right:46px; bottom:150px; text-align:right; }
+  #outp .tx { color:hsl(var(--hue) 80% 70%); } #outp .nt { margin-left:auto; }
+</style></head><body>
+<div id="stage">
+  <div class="hdr"><h1>urdunlp</h1><p>Roman Urdu in, Urdu script out - and why each token came out that way</p></div>
+  <div class="repo">github.com/hammasbuilds/urdunlp</div>
+  <svg id="scene" viewBox="0 0 1280 720"></svg>
+  <div class="panel" id="inp"><div class="lb">INPUT</div>
+    <div class="tx">kal meeting cancel ho gayi,
+plz 125 rupay bhej do</div><div class="nt">Roman Urdu, as typed in a chat</div></div>
+  <div class="panel" id="outp"><div class="lb">OUTPUT</div>
+    <div class="tx">کل meeting cancel ہو گئی،
+plz 125 روپے بھیج دو</div><div class="nt">91.3% word accuracy vs human romanisations</div></div>
+  <div class="cap"><div class="mod" id="cmod"></div><div class="txt" id="ctxt"></div></div>
+</div>
+<script>
+const DATA = {"title": "urdunlp", "tagline": "Roman Urdu in, Urdu script out - and why each token came out that way", "repo": "github.com/hammasbuilds/urdunlp", "input": {"label": "INPUT", "text": "kal meeting cancel ho gayi,\nplz 125 rupay bhej do", "note": "Roman Urdu, as typed in a chat"}, "stages": [{"m": "normalize.py", "t": "Normalise", "d": "Unify Arabic/Urdu letter forms, strip diacritics, expand PDF presentation forms"}, {"m": "tokenize.py", "t": "Tokenise", "d": "Split into words and sentences, keeping punctuation addressable"}, {"m": "roman.py", "t": "Spelling key", "d": "Group the many Roman spellings one Urdu word is written with"}, {"m": "translit.py", "t": "Decide per token", "d": "Curated lexicon first, then English detection, then the model"}, {"m": "_channel.py", "t": "Noisy channel", "d": "EM-trained channel + language model pick the likeliest Urdu spelling"}], "output": {"label": "OUTPUT", "text": "\u06a9\u0644 meeting cancel \u06c1\u0648 \u06af\u0626\u06cc\u060c\nplz 125 \u0631\u0648\u067e\u06d2 \u0628\u06be\u06cc\u062c \u062f\u0648", "note": "91.3% word accuracy vs human romanisations"}, "hue": 205};
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("scene");
+const S = 47, H = 15;                      // slab half-width, slab height
+const OX = 436, OY = 258;                  // where the chain starts on screen
+
+// Isometric projection: x to the right-down, y to the left-down, z straight up.
+const iso = (x, y, z) => [OX + (x - y) * S * Math.cos(Math.PI/6),
+                          OY + (x + y) * S * Math.sin(Math.PI/6) - z * H];
+
+function el(tag, attrs) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  return n;
+}
+function slab(cx, cy, hue, i) {
+  // Three faces of a cuboid, drawn back to front so the near faces overlap.
+  const w = 0.92, g = el("g", {class: "slab", "data-i": i, opacity: 0.30});
+  const p = (pts, fill, id) => {
+    const poly = el("polygon", {points: pts.map(q => iso(...q).join(",")).join(" "),
+                                fill: fill, stroke: "#0b1017", "stroke-width": 1.1});
+    if (id) poly.setAttribute("class", id);
+    g.appendChild(poly);
+  };
+  p([[cx-w,cy-w,0],[cx+w,cy-w,0],[cx+w,cy+w,0],[cx-w,cy+w,0]], `hsl(${hue} 42% 17%)`);        // shadow
+  p([[cx-w,cy+w,1],[cx+w,cy+w,1],[cx+w,cy+w,0],[cx-w,cy+w,0]], `hsl(${hue} 55% 26%)`, "fL");  // left
+  p([[cx+w,cy-w,1],[cx+w,cy+w,1],[cx+w,cy+w,0],[cx+w,cy-w,0]], `hsl(${hue} 55% 34%)`, "fR");  // right
+  p([[cx-w,cy-w,1],[cx+w,cy-w,1],[cx+w,cy+w,1],[cx-w,cy+w,1]], `hsl(${hue} 62% 52%)`, "fT");  // top
+  return g;
+}
+
+const hue = DATA.hue, n = DATA.stages.length;
+// Only a slight sideways drift: a steeper chain runs off the bottom of the frame
+// once a project has six stages.
+const centres = DATA.stages.map((_, i) => [i * 1.95, i * 0.12]);
+
+// Connectors first, so slabs sit on top of them.
+centres.forEach((c, i) => {
+  if (i === 0) return;
+  const a = iso(centres[i-1][0], centres[i-1][1], 1), b = iso(c[0], c[1], 1);
+  svg.appendChild(el("line", {x1:a[0], y1:a[1], x2:b[0], y2:b[1],
+    stroke:`hsl(${hue} 45% 40%)`, "stroke-width":2, "stroke-dasharray":"5 5", opacity:.5}));
+});
+
+const slabs = centres.map(([x, y], i) => { const g = slab(x, y, hue, i); svg.appendChild(g); return g; });
+
+// Stage name, placed up and to the RIGHT of each slab. Directly above would land on
+// the next slab in the chain, which is where the first version put it: unreadable.
+centres.forEach(([x, y], i) => {
+  const g = el("g", {class: "lab", opacity: 0});
+  const [sx, sy] = iso(x + 1.0, y - 1.25, 1);
+  const [bx, by] = iso(x, y, 1);
+  g.appendChild(el("line", {x1:bx + 12, y1:by - 8, x2:sx + 2, y2:sy - 8,
+    stroke:`hsl(${hue} 50% 45%)`, "stroke-width":1.2}));
+  const t = el("text", {x:sx + 7, y:sy - 4, "text-anchor":"start",
+    fill:"#cdddee", "font-size":14, "font-weight":600,
+    "font-family":"Segoe UI, system-ui, sans-serif"});
+  t.textContent = `${i+1}. ${DATA.stages[i].t}`;
+  g.appendChild(t);
+  svg.appendChild(g);
+});
+const labels = [...svg.querySelectorAll("g.lab")];
+
+const packet = el("circle", {r:8.5, fill:`hsl(${hue} 95% 70%)`, opacity:0,
+  filter:"drop-shadow(0 0 10px hsl(" + hue + " 95% 60%))"});
+svg.appendChild(packet);
+
+const cmod = document.getElementById("cmod"), ctxt = document.getElementById("ctxt");
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function glide(from, to, ms) {
+  const t0 = performance.now();
+  return new Promise(done => {
+    const step = now => {
+      const k = Math.min(1, (now - t0) / ms), e = k < .5 ? 2*k*k : 1-((-2*k+2)**2)/2;
+      packet.setAttribute("cx", from[0] + (to[0]-from[0]) * e);
+      packet.setAttribute("cy", from[1] + (to[1]-from[1]) * e);
+      k < 1 ? requestAnimationFrame(step) : done();
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+async function run() {
+  document.getElementById("inp").classList.add("on");
+  cmod.textContent = ""; ctxt.textContent = DATA.input.note;
+  await sleep(2100);
+
+  packet.setAttribute("opacity", 1);
+  let pos = [250, 250];
+  packet.setAttribute("cx", pos[0]); packet.setAttribute("cy", pos[1]);
+
+  for (let i = 0; i < n; i++) {
+    const target = iso(centres[i][0], centres[i][1], 1.35);
+    await glide(pos, target, 820); pos = target;
+    slabs[i].setAttribute("opacity", 1);
+    labels[i].setAttribute("opacity", 1);
+    slabs[i].querySelector(".fT").setAttribute("fill", `hsl(${hue} 85% 66%)`);
+    cmod.textContent = `${i+1}/${n}   ${DATA.stages[i].m}`;
+    ctxt.textContent = DATA.stages[i].d;
+    await sleep(2500);
+    slabs[i].querySelector(".fT").setAttribute("fill", `hsl(${hue} 62% 52%)`);
+    slabs[i].setAttribute("opacity", 0.82);
+  }
+
+  await glide(pos, [1040, 452], 820);
+  packet.setAttribute("opacity", 0);
+  document.getElementById("outp").classList.add("on");
+  cmod.textContent = ""; ctxt.textContent = DATA.output.note;
+  await sleep(3600);
+  document.body.dataset.done = "1";
+}
+run();
+</script></body></html>

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>urdunlp - decision architecture</title>
+<style>
+  :root { --hue: 205; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:#0b1017; overflow:hidden;
+    font-family:"Segoe UI",system-ui,sans-serif; color:#e8eef6; }
+  #stage { position:relative; width:1280px; height:720px; margin:0 auto; }
+  svg { position:absolute; inset:0; }
+  .hdr { position:absolute; top:22px; left:44px; }
+  .hdr h1 { margin:0; font-size:31px; color:hsl(var(--hue) 85% 72%); letter-spacing:-.4px; }
+  .hdr h1 span { font-size:14px; color:#7d8ea3; font-weight:500; letter-spacing:2px;
+    margin-left:12px; }
+  .hdr p { margin:5px 0 0; font-size:15px; color:#9fb0c4; max-width:900px; }
+  .repo { position:absolute; top:30px; right:44px; font-size:12.5px; color:#7d8ea3;
+    font-family:Consolas,monospace; }
+  .src { position:absolute; left:44px; top:132px; font-family:Consolas,monospace;
+    font-size:13px; color:#8fa2b7; }
+  .cap { position:absolute; left:44px; bottom:28px; right:44px; min-height:72px; }
+  .cap .mod { font-family:Consolas,monospace; font-size:12.5px;
+    color:hsl(var(--hue) 70% 62%); letter-spacing:.4px; }
+  .cap .txt { font-size:19.5px; margin-top:5px; line-height:1.4; color:#dbe6f2; max-width:1120px; }
+</style></head><body>
+<div id="stage">
+  <div class="hdr"><h1>urdunlp<span>DECISION ARCHITECTURE</span></h1><p>Transliteration is not one model. Every token is decided by the first gate that can answer it.</p></div>
+  <div class="repo">github.com/hammasbuilds/urdunlp</div>
+  <div class="src">TOKEN source: kal meeting cancel ho gayi, plz 125 rupay bhej do</div>
+  <svg id="scene" viewBox="0 0 1280 720"></svg>
+  <div class="cap"><div class="mod" id="cmod"></div><div class="txt" id="ctxt"></div></div>
+</div>
+<script>
+const D = {"title": "urdunlp", "hue": 205, "sub": "Transliteration is not one model. Every token is decided by the first gate that can answer it.", "repo": "github.com/hammasbuilds/urdunlp", "unit": "TOKEN", "source": "kal meeting cancel ho gayi, plz 125 rupay bhej do", "gates": [{"q": "In the curated lexicon?", "f": "translit.py", "d": "A hand-checked word with one trusted spelling. Cheapest and surest, so it is asked first."}, {"q": "Punctuation or digits?", "f": "normalize.py", "d": "Rewritten to Urdu punctuation, or passed through unchanged."}, {"q": "An English or brand word?", "f": "langid.py", "d": "Left in Latin script on purpose - forcing it into Urdu letters would be wrong."}, {"q": "Else: the noisy channel", "f": "_channel.py", "d": "An EM-trained channel plus a language model choose the likeliest real Urdu word."}], "bins": [{"k": "lexicon", "n": 4}, {"k": "punctuation", "n": 1}, {"k": "passthrough", "n": 1}, {"k": "english", "n": 3}, {"k": "vocabulary", "n": 2}], "units": [["kal", 0, 0], ["meeting", 2, 3], ["cancel", 2, 3], ["ho", 0, 0], ["gayi", 0, 0], [",", 1, 1], ["plz", 2, 3], ["125", 1, 2], ["rupay", 0, 0], ["bhej", 3, 4], ["do", 3, 4]], "close": "11 tokens, 4 gates. The answer carries the reason: you can see WHY each token came out as it did."}, hue = D.hue;
+const NS="http://www.w3.org/2000/svg", svg=document.getElementById("scene");
+const S=38, H=13, OX=250, OY=252;
+const iso=(x,y,z)=>[OX+(x-y)*S*Math.cos(Math.PI/6), OY+(x+y)*S*Math.sin(Math.PI/6)-z*H];
+const el=(t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);return n;};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+// Gates march down-right along +x. Bins form a column that is VERTICAL on screen:
+// raising x and y together keeps (x-y) fixed, so sx does not move while sy does.
+const gatePos = D.gates.map((_,i)=>[i*1.85, i*0.10]);
+const binTop  = [12.4, -9.6];
+const binPos  = D.bins.map((_,j)=>[binTop[0]+j*1.05, binTop[1]+j*1.05]);
+
+function slab(cx,cy,hue,light){
+  const w=1.08, g=el("g",{opacity:.34});
+  const face=(pts,fill,cls)=>{const p=el("polygon",{points:pts.map(q=>iso(...q).join(",")).join(" "),
+    fill:fill,stroke:"#0b1017","stroke-width":1});if(cls)p.setAttribute("class",cls);g.appendChild(p);};
+  face([[cx-w,cy+w,1],[cx+w,cy+w,1],[cx+w,cy+w,0],[cx-w,cy+w,0]],`hsl(${hue} 55% ${light-14}%)`);
+  face([[cx+w,cy-w,1],[cx+w,cy+w,1],[cx+w,cy+w,0],[cx+w,cy-w,0]],`hsl(${hue} 55% ${light-7}%)`);
+  face([[cx-w,cy-w,1],[cx+w,cy-w,1],[cx+w,cy+w,1],[cx-w,cy+w,1]],`hsl(${hue} 60% ${light}%)`,"top");
+  return g;
+}
+
+// Gate questions sit up and to the right of each slab, with a leader line - directly
+// above would land on the next gate in the chain.
+const gates = gatePos.map(([x,y],i)=>{const g=slab(x,y,hue,46);svg.appendChild(g);
+  const [lx,ly]=iso(x+1.15,y-1.45,1), [bx,by]=iso(x,y,1);
+  svg.appendChild(el("line",{x1:bx+12,y1:by-8,x2:lx+2,y2:ly-6,
+    stroke:`hsl(${hue} 50% 45%)`,"stroke-width":1.1}));
+  const t=el("text",{x:lx+7,y:ly-2,"text-anchor":"start",fill:"#cdddee","font-size":13.5,
+    "font-weight":600});t.textContent=`${i+1}. ${D.gates[i].q}`;svg.appendChild(t);return g;});
+
+const bins = D.bins.map((b,j)=>{const [x,y]=binPos[j];
+  const hot = /GAP|SILENT|window|order|clock|hash/.test(b.k);
+  const g=slab(x,y,hot?hue:215,hot?42:24);g.setAttribute("opacity",.5);svg.appendChild(g);
+  const [lx,ly]=iso(x+1.2,y-1.2,1);
+  const t=el("text",{x:lx+10,y:ly+4,fill:hot?`hsl(${hue} 80% 72%)`:"#9fb0c4",
+    "font-size":14,"font-weight":700});t.textContent=b.k;svg.appendChild(t);
+  const c=el("text",{x:lx+10,y:ly+23,fill:"#7d8ea3","font-size":13,
+    "font-family":"Consolas,monospace"});c.textContent="0";svg.appendChild(c);
+  return {g,c,seen:0,total:b.n};});
+
+const chip=el("g",{opacity:0});
+const chipBox=el("rect",{x:-34,y:-13,width:68,height:26,rx:7,
+  fill:`hsl(${hue} 90% 66%)`,stroke:"#0b1017","stroke-width":1.5});
+const chipTxt=el("text",{x:0,y:5,"text-anchor":"middle",fill:"#0b1017",
+  "font-size":12.5,"font-weight":700,"font-family":"Consolas,monospace"});
+chip.appendChild(chipBox);chip.appendChild(chipTxt);svg.appendChild(chip);
+
+const cmod=document.getElementById("cmod"), ctxt=document.getElementById("ctxt");
+const at=(p)=>chip.setAttribute("transform",`translate(${p[0]},${p[1]})`);
+
+async function glide(a,b,ms){const t0=performance.now();
+  return new Promise(done=>{const step=now=>{const k=Math.min(1,(now-t0)/ms);
+    const e=k<.5?2*k*k:1-((-2*k+2)**2)/2;
+    at([a[0]+(b[0]-a[0])*e, a[1]+(b[1]-a[1])*e]);
+    k<1?requestAnimationFrame(step):done();};requestAnimationFrame(step);});}
+
+async function run(){
+  // Walk the gates once, slowly, explaining each.
+  for(let i=0;i<D.gates.length;i++){
+    gates[i].setAttribute("opacity",1);
+    gates[i].querySelector(".top").setAttribute("fill",`hsl(${hue} 85% 64%)`);
+    cmod.textContent=`GATE ${i+1}/${D.gates.length}   ${D.gates[i].f}`;
+    ctxt.textContent=D.gates[i].d;
+    await sleep(3000);
+    gates[i].querySelector(".top").setAttribute("fill",`hsl(${hue} 60% 46%)`);
+    gates[i].setAttribute("opacity",.8);
+  }
+
+  cmod.textContent=""; ctxt.textContent=`Now every ${D.unit.toLowerCase()} runs the gauntlet.`;
+  await sleep(1800);
+
+  const start=[150,430];
+  for(const [label,gi,bi] of D.units){
+    chipTxt.textContent=label.length>9?label.slice(0,9):label;
+    at(start); chip.setAttribute("opacity",1);
+    const fast=D.units.length>12;
+    for(let i=0;i<=gi;i++){
+      await glide(i===0?start:iso(...gatePos[i-1],1.5), iso(...gatePos[i],1.5), fast?190:340);
+      gates[i].querySelector(".top").setAttribute("fill",`hsl(${hue} 85% 64%)`);
+      await sleep(fast?70:170);
+      gates[i].querySelector(".top").setAttribute("fill",`hsl(${hue} 60% 46%)`);
+    }
+    await glide(iso(...gatePos[gi],1.5), iso(...binPos[bi],1.5), fast?230:400);
+    chip.setAttribute("opacity",0);
+    const b=bins[bi]; b.seen++; b.c.textContent=String(b.seen);
+    b.g.setAttribute("opacity",1);
+    cmod.textContent=`${D.unit}  ${label}`;
+    ctxt.textContent=`decided at gate ${gi+1} -> ${D.bins[bi].k}`;
+    await sleep(fast?110:320);
+  }
+
+  bins.forEach(b=>{b.c.textContent=String(b.total);b.g.setAttribute("opacity",1);});
+  cmod.textContent=""; ctxt.textContent=D.close;
+  await sleep(4200);
+  document.body.dataset.done="1";
+}
+run();
+</script></body></html>
