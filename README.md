@@ -24,20 +24,28 @@ wrote that the library was not built from.
 
 ## Screenshots
 
-A small browser front end drives the library for demonstrations (it is a local demo, not part of the package; the
-package itself has no web surface). Every result on these screens is a live call into `urdunlp`.
+A small browser front end drives the package for demonstrations. It is a local demo and is **not part of
+the package** — the package has no web surface and no runtime dependencies. Every result on these screens
+is a live call into the library.
 
-![Roman to Urdu](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/01-roman-to-urdu.png)
-*Input: `kal meeting cancel ho gayi, plz 125 rupay bhej do` with "keep English in Latin" ticked. Output:
-کل meeting cancel ہو گئی، plz 125 روپے بھیج دو, with the stage that decided each token (lexicon, English, vocabulary).*
+![Overview](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/00-overview.png)
+*The front end as it opens: every feature is a tab, and the page states that nothing on it is precomputed.*
 
-![Which language](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/02-which-language.png)
-*Input: a Persian sentence in Perso-Arabic script. Output: Persian (`fa`), with the log score of each of the
-nearest candidate languages.*
+![Roman To Urdu](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/01-roman-to-urdu.png)
+*Input: `kal meeting cancel ho gayi, plz 125 rupay bhej do` with "keep English in Latin" ticked. Output: کل meeting cancel ہو گئی، plz 125 روپے بھیج دو, and the stage that decided each token (lexicon, English, punctuation, passthrough, vocabulary).*
 
-![Analyse](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/03-analyse.png)
-*Input: an Urdu sentence typed with an Arabic kaf (ك). Output: the normalised text with the one unified character
-named, then each token with its stem and whether it is kept as content or dropped as a stopword.*
+![Urdu To Roman](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/02-urdu-to-roman.png)
+*Input: an Urdu sentence. Output: its romanisation, with the round trip back to Urdu script.*
+
+![Language Id](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/03-language-id.png)
+*Input: an Urdu paragraph. Output: the language picked out of eleven written in the same script, with the margin and the letters that are distinctive to particular languages.*
+
+![Analyse](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/04-analyse.png)
+*Input: Urdu text containing a number, a URL and a mention. Output: the normalised text, tokens, sentences, stems and the numbers found.*
+
+![Numbers](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/05-numbers.png)
+*Input: `320`. Output: the Urdu words for it, parsed back to 320, with the round trip checked.*
+
 
 ## Sample input / output
 
