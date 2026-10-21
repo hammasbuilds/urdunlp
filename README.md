@@ -22,16 +22,6 @@ wrote that the library was not built from.
 | `stem`, `stem_tokens` | Rule-based suffix stripping for retrieval keys. |
 | `STOPWORDS`, `NEGATION`, `is_stopword`, `remove_stopwords` | 159 function words, with negation held separately and kept by default. |
 
-## Architecture
-
-![Pipeline](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/architecture.png)
-*The path a call travels, stage by stage: normalise -> tokenise -> spelling key -> per-token decision -> noisy channel. Every stage is a module in this
-repository. Animated: [`docs/architecture.html`](https://github.com/hammasbuilds/urdunlp/blob/main/docs/architecture.html) — one file, no
-dependencies, opens in any browser.*
-
-![Decision architecture](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/architecture-deep.png)
-*Every token is decided by the first gate that can answer it: a curated lexicon, then punctuation and digits, then English detection, and only then the EM-trained noisy channel. Animated: [`docs/architecture-deep.html`](https://github.com/hammasbuilds/urdunlp/blob/main/docs/architecture-deep.html).*
-
 ## Screenshots
 
 A small browser front end drives the package for demonstrations. It is a local demo and is **not part of
@@ -55,7 +45,6 @@ is a live call into the library.
 
 ![Numbers](https://raw.githubusercontent.com/hammasbuilds/urdunlp/main/docs/screenshots/05-numbers.png)
 *Input: `320`. Output: the Urdu words for it, parsed back to 320, with the round trip checked.*
-
 
 ## Sample input / output
 
