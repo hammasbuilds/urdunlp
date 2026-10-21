@@ -336,6 +336,7 @@ def _declared_version(pyproject_text: str) -> str:
         return match.group(1)
     return tomllib.loads(pyproject_text)["project"]["version"]
 
+
 # --- What Roman Urdu payment chat found -------------------------------------------
 #
 # A wallet assistant put its own vocabulary through this library: 92 spellings, each
