@@ -50,7 +50,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from . import _channel
-from .normalize import IDENTIFIER, ZWJ, ZWNJ, _is_urdu_letter, _require_str, normalize
+from .normalize import _CONTROL_CHARACTERS, IDENTIFIER, ZWJ, ZWNJ, _is_urdu_letter, _require_str, normalize
 
 # --- Stage 1: lexicon -------------------------------------------------------------
 # High-frequency Roman Urdu, mapped to correct Urdu script. Deliberately weighted
@@ -881,6 +881,12 @@ def transliterate_with_confidence(
     Reported as `punctuation`. `False` leaves every mark as typed.
     """
     _require_str(text, "transliterate_with_confidence")
+    # The Roman side gets the same two guarantees the Urdu side already had from
+    # `normalize`: composed form, and no control characters. Without this a NUL or an
+    # ESC in the input travelled all the way to the output - and the `urdunlp`
+    # command prints that output straight to a terminal.
+    text = unicodedata.normalize("NFC", text)
+    text = _CONTROL_CHARACTERS.sub("", text)
     rendered = _render(
         text,
         use_vocabulary=use_vocabulary,

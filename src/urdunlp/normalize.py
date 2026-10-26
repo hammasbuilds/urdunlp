@@ -226,6 +226,16 @@ def resolve_arabic_heh(text: str) -> str:
     return text.replace(ARABIC_HEH, HEH_GOAL)
 
 
+# C0/C1 control characters, except the three that are real whitespace. They are
+# never Urdu text, and letting them through has two costs: a NUL survives into
+# output that a caller may put in a C string, a database or a JSON document, and an
+# ESC sequence survives into output the `urdunlp` command prints straight to a
+# terminal, where the terminal - not this library - decides what it means.
+# Format characters (Cf) are NOT touched here: ZWNJ and ZWJ carry meaning in Urdu
+# and are handled above by their own options.
+_CONTROL_CHARACTERS = re.compile("[" + "".join(chr(c) for c in list(range(0, 9)) + [11, 12] + list(range(14, 32)) + list(range(127, 160))) + "]")
+
+
 def normalize(
     text: str,
     *,
@@ -261,6 +271,7 @@ def normalize(
 
     # NFC first: composed forms make every table below single-codepoint.
     text = unicodedata.normalize("NFC", text)
+    text = _CONTROL_CHARACTERS.sub("", text)
     text = _ZERO_WIDTH_OTHER.sub("", text)
     text = text.replace(TATWEEL, "")
 
