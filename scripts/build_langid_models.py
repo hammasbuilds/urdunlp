@@ -30,6 +30,7 @@ held-out numbers.
 from __future__ import annotations
 
 import collections
+import pathlib
 import gzip
 import hashlib
 import json
@@ -99,10 +100,17 @@ def split_of(paragraph: str) -> str:
     return "train" if h < 0.80 else ("val" if h < 0.95 else "test")
 
 
-def wiki_splits() -> dict[str, dict[str, list[str]]]:
+def wiki_splits(wiki_dir: pathlib.Path | None = None) -> dict[str, dict[str, list[str]]]:
+    """The splits, from `data/wiki` unless another corpus directory is named.
+
+    The path was hard-coded, so a corpus built at a different size could not be
+    trained on without overwriting the one the shipped model was built from - which
+    is exactly the mistake FINGERPRINT.tsv exists to catch.
+    """
+    folder = wiki_dir or (DATA / "wiki")
     out: dict[str, dict[str, list[str]]] = {}
     for code in LANGUAGES:
-        path = DATA / "wiki" / f"{code}.txt"
+        path = folder / f"{code}.txt"
         if not path.exists():
             raise SystemExit(f"missing {path}: run scripts/fetch_wikipedia_samples.py")
         parts: dict[str, list[str]] = collections.defaultdict(list)
@@ -180,9 +188,10 @@ def window(text: str, length: int | None) -> str | None:
 
 
 def build_script_model(
-    n_max: int = N_MAX, alpha: float = ALPHA, top_grams: int = TOP_GRAMS
+    n_max: int = N_MAX, alpha: float = ALPHA, top_grams: int = TOP_GRAMS,
+    wiki_dir: pathlib.Path | None = None
 ) -> None:
-    splits = wiki_splits()
+    splits = wiki_splits(wiki_dir)
     counts = {}
     for code, parts in splits.items():
         c: collections.Counter = collections.Counter()
@@ -343,7 +352,15 @@ if __name__ == "__main__":
         "about 2 MB more in the wheel; see the table in docs/CORPUS.md",
     )
     ap.add_argument("--skip-tagger", action="store_true", help="only the script model")
+    ap.add_argument(
+        "--wiki-dir",
+        type=pathlib.Path,
+        help="corpus directory to train on (default data/wiki). Lets a larger "
+        "corpus be trained and scored without overwriting the one the shipped "
+        "model and FINGERPRINT.tsv were built from",
+    )
     a = ap.parse_args()
-    build_script_model(n_max=a.n_max, alpha=a.alpha, top_grams=a.top_grams)
+    build_script_model(n_max=a.n_max, alpha=a.alpha, top_grams=a.top_grams,
+                       wiki_dir=a.wiki_dir)
     if not a.skip_tagger:
         build_roman_tagger()
