@@ -82,6 +82,38 @@ jobs:
       # after upload without burning a version number.
       - run: twine check --strict dist/*
 
+      # A virtualenv, a nested sdist and a cache have all been packaged before now,
+      # and `twine check` passed every time - it reads metadata, never contents.
+      - name: the sdist must not carry junk
+        run: |
+          python - <<'EOF'
+          import glob, sys, tarfile
+
+          JUNK = (".venv", "site-packages", "__pycache__", ".pytest_cache",
+                  ".ruff_cache", ".mypy_cache", "dist_check/", ".git/")
+          LIMIT_MB = 3
+
+          sdist = glob.glob("dist/*.tar.gz")[0]
+          members = [m for m in tarfile.open(sdist).getmembers() if m.isfile()]
+          problems = []
+          for m in members:
+              inner = m.name.split("/", 1)[1] if "/" in m.name else m.name
+              if any(j in m.name for j in JUNK):
+                  problems.append(f"junk path: {inner}")
+              elif inner.endswith((".tar.gz", ".whl", ".zip", ".exe")):
+                  problems.append(f"archive or binary: {inner}")
+              elif m.size > LIMIT_MB * 1048576:
+                  problems.append(f"{m.size / 1048576:.1f} MB file: {inner}")
+          total = sum(m.size for m in members) / 1048576
+          print(f"{len(members)} files, {total:.1f} MB uncompressed, largest allowed {LIMIT_MB} MB")
+          if problems:
+              print(f"\n{len(problems)} problem(s) in {sdist}:")
+              for p in problems:
+                  print("  X", p)
+              sys.exit(1)
+          print("sdist contents clean")
+          EOF
+
       - name: py.typed and the models must be in the wheel
         run: |
           python - <<'EOF'
