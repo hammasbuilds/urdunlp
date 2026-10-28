@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import math
 import sys
 import time
 from pathlib import Path
@@ -47,6 +48,7 @@ def score(model: _ScriptModel, splits: dict, split: str, length: int | None) -> 
     """Accuracy overall and per language on one split at one window length."""
     per: dict[str, list[int]] = collections.defaultdict(lambda: [0, 0])
     confusion: collections.Counter = collections.Counter()
+    outcomes = bytearray()
     for code, parts in splits.items():
         for paragraph in parts[split]:
             # The repository's own centred slice, not the first N characters. A leading
@@ -60,6 +62,7 @@ def score(model: _ScriptModel, splits: dict, split: str, length: int | None) -> 
             scores = model.log_likelihoods(text)
             guess = max(scores, key=scores.get)
             per[code][1] += 1
+            outcomes.append(1 if guess == code else 0)
             if guess == code:
                 per[code][0] += 1
             else:
@@ -71,6 +74,13 @@ def score(model: _ScriptModel, splits: dict, split: str, length: int | None) -> 
         "n": total,
         "per_language": {k: round(v[0] / v[1], 4) for k, v in sorted(per.items()) if v[1]},
         "top_confusions": [[a, b, n] for (a, b), n in confusion.most_common(5)],
+        # One byte per scored paragraph, in iteration order, so two settings can be
+        # compared paragraph by paragraph instead of rate against rate. Which paragraphs
+        # are scored depends on `window()` alone - a property of the text, not of the
+        # model - so two settings produce the same order and the same length, which
+        # separable() asserts before comparing. Not written to the report: it is 79,388
+        # bytes per setting and it is evidence for a choice, not a published figure.
+        "outcomes": bytes(outcomes),
     }
 
 
@@ -96,14 +106,86 @@ def score(model: _ScriptModel, splits: dict, split: str, length: int | None) -> 
 # other on Saraiki. When accuracy cannot tell them apart, the remaining difference that IS
 # measured exactly is model size, which is wheel size for every user and nothing else. So:
 # the mean defines a band, and inside the band the smallest model wins.
-MEAN_TOLERANCE = 0.002
+#
+# "Cannot tell them apart" was a constant, MEAN_TOLERANCE = 0.002, and the paragraph above
+# justifies it with the standard error of a SINGLE rate - 0.95 points for Saraiki on 1,827
+# paragraphs. That is the right error bar for "how well do we know this model's accuracy"
+# and the wrong one for "is A better than B", because both settings are scored on the same
+# paragraphs. A paired comparison resolves differences far smaller than either model's own
+# interval, and it did: the rule picked top=120000 over top=180000 on a val_mean gap of
+# 0.0020, while on the discordant validation paragraphs at 20 characters 180000 wins 149
+# and loses 98, an exact p of 0.0014. The ladder had not flattened; the tolerance could
+# not see that it had not.
+#
+# So the band is defined by a test rather than a number: a setting is in it when no window
+# length shows the ceiling significantly better, Holm-corrected across the four lengths.
+ALPHA_LEVEL = 0.05
+
+
+def mcnemar(a: bytes, b: bytes) -> tuple[int, int, float]:
+    """Wins for `a`, wins for `b`, and the exact two-sided p over the discordant pairs.
+
+    Exact rather than chi-squared: the discordant count can be small for whole paragraphs
+    (40 of 19,847 here) and the continuity-corrected approximation is unreliable there.
+    """
+    if len(a) != len(b):
+        raise ValueError(
+            f"outcome vectors of different lengths ({len(a)} and {len(b)}) cannot be "
+            f"paired - the scored paragraphs must be the same ones in the same order"
+        )
+    a_only = sum(1 for x, y in zip(a, b) if x and not y)
+    b_only = sum(1 for x, y in zip(a, b) if y and not x)
+    discordant = a_only + b_only
+    if not discordant:
+        return a_only, b_only, 1.0
+    k = min(a_only, b_only)
+    tail = sum(math.comb(discordant, i) for i in range(k + 1)) / 2 ** discordant
+    return a_only, b_only, min(1.0, 2 * tail)
+
+
+def separable(candidate: dict, ceiling: dict) -> dict | None:
+    """The window length at which the ceiling beats the candidate, or None.
+
+    Holm across the four lengths, because four tests are run and the question asked is
+    "is this setting worse at any length". Only a loss counts: a candidate that is
+    significantly BETTER somewhere is not excluded for it - the ceiling is the setting
+    with the best mean, and a smaller model that wins a length is exactly what is wanted.
+    """
+    tests = []
+    for length, outcomes in candidate["outcomes"].items():
+        wins, losses, p = mcnemar(outcomes, ceiling["outcomes"][length])
+        if losses > wins:  # the ceiling is ahead at this length
+            tests.append((p, length, wins, losses))
+    # By p only. Sorting the tuples compares `length` whenever two p-values tie, and
+    # `None` is one of the four lengths, so an exact tie between the whole-paragraph test
+    # and any other raised TypeError - in the selection rule, after the sweep's work.
+    tests.sort(key=lambda t: t[0])
+    for i, (p, length, wins, losses) in enumerate(tests):
+        if p <= ALPHA_LEVEL / (len(tests) - i):
+            return {"length": length, "p": p, "candidate_wins": wins,
+                    "ceiling_wins": losses}
+    return None
 
 
 def choose(rows: list[dict]) -> dict:
-    """The smallest model among the settings validation cannot separate."""
-    ceiling = max(r["val_mean"] for r in rows)
-    close = [r for r in rows if ceiling - r["val_mean"] <= MEAN_TOLERANCE]
-    return min(close, key=lambda r: (r["json_bytes"], -r["val_skr_20"]))
+    """The smallest model no window length shows to be worse than the best mean.
+
+    Falls back to the old behaviour - a tolerance band on the mean - for rows that carry
+    no outcome vectors, so a report loaded from disk can still be re-chosen from.
+    """
+    ceiling = max(rows, key=lambda r: r["val_mean"])
+    if not all(r.get("outcomes") for r in rows):
+        close = [r for r in rows if ceiling["val_mean"] - r["val_mean"] <= 0.002]
+        return min(close, key=lambda r: (r["json_bytes"], -r["val_skr_20"]))
+    for row in sorted(rows, key=lambda r: (r["json_bytes"], -r["val_skr_20"])):
+        if row is ceiling or separable(row, ceiling) is None:
+            return row
+    return ceiling
+
+
+def _published(row: dict) -> dict:
+    """A score row without its outcome vector, which is not JSON and not a figure."""
+    return {k: v for k, v in row.items() if k != "outcomes"}
 
 
 def main() -> int:
@@ -164,6 +246,8 @@ def main() -> int:
                     "val_20": round(val["20"]["accuracy"], 5),
                     "val_skr_20": round(skr20, 5),
                     "json_bytes": size,
+                    # Dropped before the report is written; see score().
+                    "outcomes": {w: val[str(w)]["outcomes"] for w in WINDOWS},
                 })  # fmt: skip
                 print(
                     f"  n_max {n_max}  alpha {alpha:<5} top {top:>6}  "
@@ -191,17 +275,43 @@ def main() -> int:
         "vocabulary_size": len(set().union(*kept.values())),
         "counts": kept, "distinctive": distinctive_letters(counts),
     })  # fmt: skip
+    # Why this setting and not the one with the best mean: the paired comparison that
+    # decided it, published rather than left in the terminal. A tolerance band records no
+    # evidence at all, which is how a choice made on a 0.0020 gap in the mean went
+    # unexamined while a paired test on the same paragraphs separated the two at p=0.0014.
+    ceiling = max(rows, key=lambda r: r["val_mean"])
+    chosen_against_ceiling = None
+    if best is not ceiling and best.get("outcomes") and ceiling.get("outcomes"):
+        chosen_against_ceiling = {
+            "ceiling": {k: ceiling[k] for k in ("n_max", "alpha", "top", "val_mean")},
+            "by_window": {},
+        }
+        for w in WINDOWS:
+            wins, losses, pvalue = mcnemar(
+                best["outcomes"][w], ceiling["outcomes"][w]
+            )
+            chosen_against_ceiling["by_window"][str(w)] = {
+                "chosen_only_right": wins,
+                "ceiling_only_right": losses,
+                "exact_p": round(pvalue, 6),
+            }
+
     report = {
         # Which corpus these settings were chosen on. The committed sweep carried
         # `corpus: None`, so a sweep over data/wiki and one over data/wiki_large -
         # eleven times larger, and giving a different winner - were indistinguishable
         # files. The model blob records its corpus for the same reason.
         "corpus": (args.wiki_dir or (ROOT / "data" / "wiki")).name,
-        "chosen": best,
-        "sweep": rows,
-        "train": {str(w): score(model, splits, "train", w) for w in WINDOWS},
-        "val": {str(w): score(model, splits, "val", w) for w in WINDOWS},
-        "test": {str(w): score(model, splits, "test", w) for w in WINDOWS},
+        "chosen": {k: v for k, v in best.items() if k != "outcomes"},
+        "chosen_against_best_mean": chosen_against_ceiling,
+        # The outcome vectors are evidence for the choice, not a published figure, and
+        # they are 79,388 bytes per setting - so they are dropped here rather than
+        # written. choose() falls back to the old tolerance band for rows without them,
+        # which is what a report reloaded from this file has.
+        "sweep": [{k: v for k, v in r.items() if k != "outcomes"} for r in rows],
+        "train": {str(w): _published(score(model, splits, "train", w)) for w in WINDOWS},
+        "val": {str(w): _published(score(model, splits, "val", w)) for w in WINDOWS},
+        "test": {str(w): _published(score(model, splits, "test", w)) for w in WINDOWS},
     }
     for split in ("train", "val", "test"):
         print(
