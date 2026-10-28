@@ -46,6 +46,85 @@ DATA = ROOT / "data"
 _WORD = re.compile(r"[A-Za-z]+")
 
 
+def margin_bands(margins: list[tuple[float, bool]]) -> dict:
+    """Accuracy per fixed margin band, the shape earlier reports used.
+
+    The edges - 0, 0.02, 0.05, 0.1 - were chosen when the model was built on 1,500
+    paragraphs per language and its margins were fractions. On the 130,791-paragraph
+    corpus the same quantity runs from 0.001 to 41, with a median of 11.9, so 0.1 is the
+    0.6th percentile: 6,093 of 6,136 windows land in the top band and the three bands
+    below it hold 9, 10 and 24 texts between them.
+
+    That is how docs/CORPUS.md came to say "6,093 of 6,136 windows carry a margin above
+    0.1, and so do 288 of the 312 errors" as evidence that margin is not informative. The
+    sentence is arithmetically true and says nothing: when 99.3% of everything is above a
+    threshold, so are almost all the errors. Band edges have to come from the
+    distribution - see margin_deciles() - or they measure the scale rather than the model.
+    """
+    bands = {}
+    for lo, hi in ((0, 0.02), (0.02, 0.05), (0.05, 0.1), (0.1, 99)):
+        inside = [ok for m, ok in margins if lo <= m < hi]
+        if inside:
+            bands[f"{lo}-{hi}"] = {
+                "n": len(inside),
+                "accuracy": round(sum(inside) / len(inside), 4),
+            }
+    return bands
+
+
+def margin_deciles(margins: list[tuple[float, bool]]) -> list[dict]:
+    """Accuracy per tenth of the margin distribution, lowest first.
+
+    Edges from the data, so the answer cannot be an artefact of a scale that moved. Each
+    row carries the margins it spans, so a reader can turn a decile back into a threshold
+    for their own text.
+    """
+    rows = sorted(margins)
+    n = len(rows)
+    out = []
+    for i in range(10):
+        chunk = rows[i * n // 10:(i + 1) * n // 10]
+        if not chunk:
+            continue
+        out.append({
+            "decile": i + 1,
+            "margin_from": round(chunk[0][0], 4),
+            "margin_to": round(chunk[-1][0], 4),
+            "n": len(chunk),
+            "accuracy": round(sum(ok for _, ok in chunk) / len(chunk), 4),
+            "errors": sum(1 for _, ok in chunk if not ok),
+        })
+    return out
+
+
+def error_retention(margins: list[tuple[float, bool]]) -> list[dict]:
+    """What keeping only the highest margins buys, which is the question a caller asks.
+
+    "Is accuracy worse at low margin" is answered by the deciles. A caller who can drop
+    an answer asks the other question: if I keep the confident ones, how many of the
+    errors do I keep? A signal can look informative per band and still be useless here,
+    if the errors are spread evenly.
+    """
+    rows = sorted(margins)
+    n = len(rows)
+    total_errors = sum(1 for _, ok in rows if not ok)
+    out = []
+    for keep in (0.5, 0.75, 0.9, 0.95, 0.99):
+        kept = rows[int(n * (1 - keep)):]
+        if not kept:
+            continue
+        errors = sum(1 for _, ok in kept if not ok)
+        out.append({
+            "keep": keep,
+            "n": len(kept),
+            "accuracy": round(sum(ok for _, ok in kept) / len(kept), 4),
+            "errors_kept": errors,
+            "errors_total": total_errors,
+            "errors_kept_share": round(errors / total_errors, 4) if total_errors else None,
+        })
+    return out
+
+
 def script_report(wiki_dir: Path | None = None) -> dict:
     """Score identify_language on `wiki_dir`, default data/wiki.
 
@@ -94,41 +173,21 @@ def script_report(wiki_dir: Path | None = None) -> dict:
                     if not ok:
                         confusion[(code, guess.language)] += 1
             label = "whole" if length is None else f"{length} chars"
-            bands = {}
-            for lo, hi in ((0, 0.02), (0.02, 0.05), (0.05, 0.1), (0.1, 99)):
-                inside = [ok for m, ok in margins if lo <= m < hi]
-                if inside:
-                    bands[f"{lo}-{hi}"] = {
-                        "n": len(inside),
-                        "accuracy": round(sum(inside) / len(inside), 4),
-                    }
+            bands = margin_bands(margins)
+            deciles = margin_deciles(margins)
+            retention = error_retention(margins)
             report[f"{part}_{label}"] = {
                 "accuracy": round(right / total, 4),
                 "n": total,
                 "per_language": {c: round(k / n, 4) for c, (k, n) in per_language.items()},
                 "top_confusions": [[a, b, n] for (a, b), n in confusion.most_common(6)],
+                # Kept for continuity with earlier reports, and no longer the figure any
+                # document quotes: see margin_bands() for why fixed edges stopped
+                # describing this model.
                 "accuracy_by_margin": bands,
-                # The counts docs/CORPUS.md's "`margin` is not confidence" paragraph
-                # quotes. The bands above give accuracy per band, which answers "are
-                # low-margin answers worse" but not the question a user actually asks:
-                # if I keep only confident answers, how many of the errors do I keep?
-                # Those two numbers were written into the document from a one-off
-                # script, so the document could not be checked against anything.
                 "errors": total - right,
-                "windows_above_margin_0_1": sum(1 for m, _ in margins if m > 0.1),
-                "errors_above_margin_0_1": sum(1 for m, ok in margins if m > 0.1 and not ok),
-                "below_margin_0_1": {
-                    "n": sum(1 for m, _ in margins if m <= 0.1),
-                    "accuracy": (
-                        round(
-                            sum(ok for m, ok in margins if m <= 0.1)
-                            / sum(1 for m, _ in margins if m <= 0.1),
-                            4,
-                        )
-                        if any(m <= 0.1 for m, _ in margins)
-                        else None
-                    ),
-                },
+                "accuracy_by_margin_decile": deciles,
+                "error_retention_by_margin": retention,
             }
             worst = min(per_language, key=lambda c: per_language[c][0] / per_language[c][1])
             print(
@@ -137,9 +196,16 @@ def script_report(wiki_dir: Path | None = None) -> dict:
                 + ", ".join(f"{a}->{b} {n}" for (a, b), n in confusion.most_common(3))
             )
             if part == "test" and length == 20:
-                for band, row in bands.items():
-                    n, accuracy = row["n"], row["accuracy"]
-                    print(f"      margin {band:<10} {n:>5} texts, accuracy {accuracy:.3f}")
+                print("      margin decile (1 = lowest margin)")
+                for row in deciles:
+                    print(f"        {row['decile']:>2}  {row['margin_from']:7.3f}-"
+                          f"{row['margin_to']:<8.3f} {row['n']:>5} texts, accuracy "
+                          f"{row['accuracy']:.3f}, {row['errors']:>3} errors")
+                for row in retention:
+                    print(f"      keeping the top {row['keep']:>4.0%} by margin: accuracy "
+                          f"{row['accuracy']:.4f}, {row['errors_kept']} of "
+                          f"{row['errors_total']} errors kept "
+                          f"({row['errors_kept_share']:.1%})")
     return report
 
 

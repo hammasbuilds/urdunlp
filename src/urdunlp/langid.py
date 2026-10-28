@@ -54,8 +54,9 @@ _LANGUAGES: dict[str, str] = {
 LANGUAGES: Mapping[str, str] = MappingProxyType(_LANGUAGES)
 
 # Below this many Perso-Arabic letters a guess is flagged `short`. Held-out accuracy
-# by window length: 97.9% on a paragraph, 96.6% on 50 characters, 91.0% on 20, 81.5%
-# on 10 (docs/CORPUS.md, section 10).
+# by window length on the 6,136-paragraph test split: 99.1% on a paragraph, 98.2% on
+# 50 characters, 94.9% on 20, 88.7% on 10 (data/langid_report_v5.json, which
+# tests/test_published_langid_numbers.py checks these three places against).
 SHORT_TEXT = 20
 
 _ARABIC_RUNS = re.compile("[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿‌]+")
@@ -146,18 +147,22 @@ class LanguageGuess:
 
     `language` is an ISO 639 code from `LANGUAGES`, or `None` when the text holds no
     Perso-Arabic letters at all. `margin` is how much more likely, per character,
-    the winner is than the runner-up, in nats. **Do not read it as confidence.** On
-    held-out 20-character windows, 1,239 of 1,254 guesses had a margin above 0.1 -
-    and so did 102 of the 113 wrong ones: naive Bayes is confidently wrong when Urdu,
-    Punjabi and Saraiki share every word in a short window. What predicts an error
-    is length, not margin; see the accuracy by length below. `evidence` lists
-    letters in the text that only a few of the eleven languages use, keyed by those
-    languages.
+    the winner is than the runner-up, in nats. It is a ranking score, not a
+    probability: it has no upper bound and on this model runs from 0.001 to about 41,
+    with a median of 11.9 on 20-character windows. Over a population it separates
+    well - on the 6,136-window held-out split, the lowest tenth of margins (under
+    1.90) carries 241 of the 312 errors, and dropping that tenth leaves the rest
+    right 98.7% of the time. For a single answer it is weaker than that suggests:
+    `اسلام آباد` is called Sindhi at 1.64 and `ہاں` Saraiki at 1.77, both wrong,
+    while a correct guess can come in at 0.03. Use it to order or to filter a batch,
+    and read `short` for one answer. `evidence` lists letters in the text that only a
+    few of the eleven languages use, keyed by those languages.
 
     `short` is True when the text had fewer than 20 Perso-Arabic letters - one or
-    two words. Held-out accuracy there is 91% at best and 81.5% at ten characters,
+    two words. Held-out accuracy there is 94.9% at best and 88.7% at ten characters,
     and a single word is often a word several of the languages share, so treat a
-    short guess as a guess. It is the flag to check; `margin` is not.
+    short guess as a guess. For one answer this is the flag to check; `margin`
+    answers a question about a batch.
     """
 
     language: str | None
@@ -180,9 +185,10 @@ def identify_language(text: str) -> LanguageGuess:
     punctuation are ignored. Accuracy falls with length, and falls fastest between
     the three closest languages - Urdu, Punjabi and Saraiki share most of their
     letters and much of their vocabulary. On held-out Wikipedia paragraphs it is
-    right 97.9% of the time; on 50 characters 96.6%, on 20 91.0%, on ten 81.5%.
-    Urdu itself: 98.7%, 98.0%, 93.3% and 84.0%. Under 20 letters the result has
-    `short=True`: on one word, expect a neighbouring language about as often as not.
+    right 99.1% of the time; on 50 characters 98.2%, on 20 94.9%, on ten 88.7%.
+    Urdu itself: 99.0%, 95.6%, 93.4% and 85.3%. Saraiki on 20 characters is the
+    weakest case at 80.3%. Under 20 letters the result has `short=True`: on one word,
+    expect a neighbouring language about as often as not.
     """
     _require_str(text, "identify_language")
     # Presentation forms (text copied out of a PDF) become the letters they are

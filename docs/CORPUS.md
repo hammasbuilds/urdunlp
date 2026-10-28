@@ -558,21 +558,40 @@ they have letters or spellings nobody else uses. None of them reaches 100% on th
 corpus - the earlier figure was 100% over 63-80 test paragraphs each, and over 510-592
 each a handful of short windows do get missed.
 
-**`margin` is not confidence.** With 1-3-grams, the 29 test windows (of 771, at 20
-characters) with a margin under 0.1 were right 55% of the time, and most errors still had
-a margin above it. With 5-grams the scores spread further still. Re-measured on the
-6,136-window held-out set of `data/wiki_large`, at 20 characters: 6,093 of 6,136 windows
-carry a margin above 0.1, **and so do 288 of the 312 errors**. The 43 windows below 0.1
-are right 44% of the time. On whole paragraphs the same shape holds - 48 of 53 errors sit
-above 0.1. Naive Bayes is confidently wrong when two languages share every word in a short
-window, and a user filtering on margin keeps almost every error it makes. An earlier
-docstring claimed almost every error had a margin below 0.05; the measurement said
-otherwise, twice, and the docstring now says to read length, not margin.
+**`margin` sorts answers well, and is not a probability.** On the 6,136-window test split
+of `data/wiki_large`, at 20 characters, accuracy by tenth of the margin distribution -
+edges from the data, lowest tenth first:
 
-The three answers a first-time user is most likely to try show it: `اسلام آباد`
-(Islamabad) is called Sindhi with a margin of 1.64 and `ہاں` (yes) Saraiki with 1.77,
-while a correct answer on `میں گھر جا رہا ہوں` carries 0.03. All three are flagged
-`short=True`, which is the field to read.
+| decile | margin | windows | accuracy | errors |
+|---:|---|---:|---:|---:|
+| 1 | 0.001 - 1.90 | 613 | 60.7% | 241 |
+| 2 | 1.90 - 4.31 | 614 | 91.5% | 52 |
+| 3 | 4.32 - 6.77 | 613 | 98.0% | 12 |
+| 4-10 | 6.77 - 41.0 | 4,296 | 99.8% | 7 |
+
+**The lowest tenth carries 241 of the 312 errors.** Dropping it keeps 22.8% of them and
+leaves the remaining 90% of windows right 98.7% of the time. The 19,847-window validation
+split agrees: 75.0% of its 1,052 errors in the lowest tenth, against 77.2% on test. On
+whole paragraphs the shape is the same - 43 of 53 errors in the lowest tenth.
+
+**This document said the opposite until 2026-10-28, and the reason is worth keeping.** The
+claim was "6,093 of 6,136 windows carry a margin above 0.1, and so do 288 of the 312
+errors", offered as evidence that filtering on margin keeps every error. Both halves are
+arithmetically right and the conclusion does not follow: 0.1 is the 0.6th percentile of
+this model's margins, which run to 41 with a median of 11.9, so 99.3% of *everything* is
+above it. The 0.1 edge was chosen when the model was built on 1,500 paragraphs per
+language and the same quantity was a fraction; the corpus grew 11-fold, the scale moved,
+and the threshold stayed. A test written to catch exactly this - "if a future model made
+margin informative, this fails" - passed throughout, because it too was expressed in terms
+of 0.1 and so measured the scale rather than the model.
+
+**A single margin is still not a verdict**, which is why the field is not called
+confidence. The three answers a first-time user is most likely to try show both halves at
+once: `اسلام آباد` (Islamabad) is called Sindhi with a margin of 1.64 and `ہاں` (yes)
+Saraiki with 1.77 - both wrong, both in the lowest two deciles - while a *correct* answer
+on `میں گھر جا رہا ہوں` carries 0.03, lower than either. Margin orders a population; it
+does not grade one answer. All three are flagged `short=True`, which is the field to read
+for one or two words.
 
 Accuracy per character count is the honest summary: give it a sentence and it is
 reliable; give it a word and it is guessing between neighbours.

@@ -216,42 +216,122 @@ def test_the_shipped_models_were_built_from_the_current_inputs() -> None:
     )
 
 
-def test_the_margin_paragraph_quotes_the_measured_counts() -> None:
-    """docs/CORPUS.md's "`margin` is not confidence" figures come from the report.
+def test_the_margin_table_in_the_corpus_document_is_the_measured_one() -> None:
+    """docs/CORPUS.md's margin deciles come from the report, row by row.
 
-    This paragraph is the one a user acts on - it is the answer to "can I filter on
-    margin and keep only the answers that are right" - and it is the paragraph that has
-    already been wrong twice. Its figures were last written from a one-off script against
-    a test set of 1,254 windows; the corpus is now 6,136, so the numbers moved and
-    nothing compared them to anything. The counts are now in the report
-    (`errors_above_margin_0_1` and friends) precisely so this can be checked.
+    This passage is the one a user acts on - it answers "can I filter on margin and keep
+    only the answers that are right" - and it has now been wrong three times. The first
+    two were figures written from one-off scripts. The third was subtler and is why the
+    bands moved: the paragraph argued from a fixed 0.1 threshold, chosen when the model
+    was built on 1,500 paragraphs per language and its margins were fractions. On the
+    corpus eleven times larger the same quantity runs to 41, so 0.1 became the 0.6th
+    percentile and "288 of the 312 errors are above it" reduced to "99.3% of everything
+    is above it". Deciles cannot go stale that way: their edges are the data's.
     """
-    script = _script()
+    twenty = _script()["test_20 chars"]
+    deciles = twenty["accuracy_by_margin_decile"]
     corpus = CORPUS.read_text(encoding="utf-8")
-    twenty, whole = script["test_20 chars"], script["test_whole"]
+    first = deciles[0]
     for figure in (
-        f"{twenty['windows_above_margin_0_1']:,} of {twenty['n']:,} windows",
-        f"{twenty['errors_above_margin_0_1']} of the {twenty['errors']} errors",
-        f"The {twenty['below_margin_0_1']['n']} windows below 0.1",
-        f"{twenty['below_margin_0_1']['accuracy'] * 100:.0f}% of the time",
-        f"{whole['errors_above_margin_0_1']} of {whole['errors']} errors",
+        f"carries {first['errors']} of the {twenty['errors']} errors",
+        f"{first['accuracy'] * 100:.1f}%",
+        f"{first['n']:,}",
     ):
         assert figure in corpus, (
             f"CORPUS.md does not state {figure!r}, which is what the report measures"
         )
+    # The retention figure the paragraph quotes, and the accuracy of what is kept.
+    keep_90 = next(r for r in twenty["error_retention_by_margin"] if r["keep"] == 0.9)
+    assert f"{keep_90['errors_kept_share'] * 100:.1f}% of them" in corpus
+    assert f"right {keep_90['accuracy'] * 100:.1f}% of the time" in corpus
 
 
-def test_most_errors_carry_a_high_margin_which_is_the_documented_point() -> None:
-    """The claim itself, not just its wording: filtering on margin keeps the errors.
+def test_margin_separates_right_from_wrong_which_is_the_documented_point() -> None:
+    """The claim itself, in units that cannot drift: shares of the error count.
 
-    If a future model made margin informative, this test fails and the paragraph needs
-    rewriting rather than the figures nudging - which is the outcome worth being told
+    Expressed as "errors above 0.1", this test passed while the claim it guarded became
+    false, because the threshold was in the units that had moved. A decile is defined by
+    the distribution, so the same sentence stays measurable whatever the scale does.
+
+    If a future model made margin uninformative, this fails and the paragraph needs
+    rewriting rather than its figures nudging - which is the outcome worth being told
     about.
     """
-    for key in ("test_whole", "test_20 chars"):
+    for key in ("test_whole", "test_20 chars", "val_whole", "val_20 chars"):
         row = _script()[key]
-        kept = row["errors_above_margin_0_1"] / row["errors"]
-        assert kept > 0.5, (
-            f"{key}: only {kept:.0%} of errors carry a margin above 0.1, so margin now "
-            f"separates right from wrong and docs/CORPUS.md overstates the problem"
+        deciles = row["accuracy_by_margin_decile"]
+        assert len(deciles) == 10, f"{key}: {len(deciles)} deciles, not 10"
+        lowest = deciles[0]
+        share = lowest["errors"] / row["errors"]
+        assert share > 0.5, (
+            f"{key}: the lowest margin decile holds only {share:.0%} of the errors, so "
+            f"margin no longer sorts them and docs/CORPUS.md overstates what it buys"
+        )
+        # Monotone enough to act on: the top half must be better than the bottom tenth.
+        top_half = deciles[5:]
+        assert min(r["accuracy"] for r in top_half) > lowest["accuracy"], key
+
+
+def test_dropping_the_lowest_margins_drops_more_errors_than_answers() -> None:
+    """A filter is only worth offering if it removes errors faster than data.
+
+    The deciles can look informative and the filter still be useless, if the errors are
+    spread thinly - so the retention curve is measured separately and checked here.
+    """
+    for key in ("test_20 chars", "val_20 chars"):
+        row = _script()[key]
+        for kept in row["error_retention_by_margin"]:
+            dropped_answers = 1 - kept["keep"]
+            dropped_errors = 1 - kept["errors_kept_share"]
+            assert dropped_errors > dropped_answers, (
+                f"{key}: keeping the top {kept['keep']:.0%} by margin drops "
+                f"{dropped_errors:.1%} of the errors for {dropped_answers:.0%} of the "
+                f"answers, so filtering on margin costs more than it saves"
+            )
+
+
+def test_the_librarys_own_accuracy_figures_are_the_measured_ones() -> None:
+    """The docstring a user reads with help(), not only the README.
+
+    The model was rebuilt on a corpus eleven times larger, the README was updated, and
+    src/urdunlp/langid.py went on quoting 97.9% / 96.6% / 91.0% / 81.5% by window length
+    against a measured 99.1 / 98.2 / 94.9 / 88.7 - in two sentences, one of them the
+    docstring of the public return type. The existing guard asserted only that the stale
+    headline was absent from the README, so neither was covered.
+
+    Both sentences are required. The first version of this check found one of the two and
+    passed: `assert sentences` is satisfied by a single match, so a pattern that silently
+    missed the other place reported success over it - a checker that skips part of its
+    input and says nothing is how the stale figures survived the last rewrite.
+    """
+    import re
+
+    script = _script()
+    measured = [
+        round(script[f"test_{k}"]["accuracy"] * 100, 1)
+        for k in ("whole", "50 chars", "20 chars", "10 chars")
+    ]
+    source = (ROOT / "src" / "urdunlp" / "langid.py").read_text(encoding="utf-8")
+    # Both sentences wrap, one inside a comment and one inside a docstring, so the line
+    # breaks and their leading markers are collapsed before matching.
+    flat = re.sub(r"\s*\n\s*(?:#\s*)?", " ", source)
+    patterns = {
+        "the LanguageGuess docstring": (
+            r"right ([\d.]+)% of the time; on 50 characters ([\d.]+)%, "
+            r"on 20 ([\d.]+)%, on ten ([\d.]+)%"
+        ),
+        "the SHORT_TEXT comment": (
+            r"([\d.]+)% on a paragraph, ([\d.]+)% on 50 characters, "
+            r"([\d.]+)% on 20, ([\d.]+)% on 10"
+        ),
+    }
+    for where, pattern in patterns.items():
+        found = re.findall(pattern, flat)
+        assert len(found) == 1, (
+            f"the accuracy-by-length sentence in {where} was not found exactly once "
+            f"({len(found)} matches) - if the wording changed, update the pattern rather "
+            f"than letting the other match carry the check"
+        )
+        assert [float(x) for x in found[0]] == measured, (
+            f"{where} quotes {found[0]} by window length; the report measures {measured}"
         )

@@ -260,6 +260,13 @@ def build_script_model(
     blob = {
         "n_max": n_max,
         "alpha": alpha,
+        # Recorded, not only hashed. top_grams is in the inputs digest, so a model built
+        # at a different budget is detectably different - but the blob did not say which
+        # budget it was, and vocabulary_size is a proxy a reader has to decode. `corpus`
+        # was added for this reason after a sweep over data/wiki and one over
+        # data/wiki_large produced indistinguishable files; the gram budget is the other
+        # thing a sweep varies.
+        "top_grams": top_grams,
         "vocabulary_size": model.vocabulary_size,
         "counts": model.counts,
         "distinctive": distinctive,
