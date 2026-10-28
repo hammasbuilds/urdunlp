@@ -502,43 +502,76 @@ grew their test sets as well, and the first version, unchanged, scored 96.4% on 
 set. Punjabi fell from 95.8% to 89.3%: the small test set had been kind to it. On the
 larger set every change below is a gain.
 
-- **1-3 → 1-5-grams, and 5 is now a measured optimum.** `scripts/sweep_langid.py` scores
-  27 combinations of n_max, alpha and the pruning cut on validation and reports the winner
-  on test once. 4 → 5 is worth 0.9 points of validation mean at top 60,000; **6 is worse
-  than 5 at 8 of the 9 matched budgets** (6 at top 60k, alpha 0.03: 0.9478 against 5's
-  0.9491). Longer grams are rarer, so the cut hits them hardest and the tail they need is
-  what gets removed. 5 had previously been the largest value tried rather than a measured
-  best; it is now a measured best.
+- **1-3 → 1-6-grams, and the earlier "5 is the optimum" was true only of a small
+  budget.** `scripts/sweep_langid.py` scores combinations of n_max, alpha and the pruning
+  cut on validation and reports the winner on test once. 4 → 5 is worth 0.9 points of
+  validation mean at top 60,000, and at the budgets measured then **6 was worse than 5 at
+  8 of the 9 matched settings** (6 at top 60k, alpha 0.03: 0.9478 against 5's 0.9491).
+  The reason given was that longer grams are rarer, so the cut hits them hardest and the
+  tail they need is what gets removed.
 
-  The one exception is worth stating because it is the kind of result that invites a wrong
-  conclusion: at top 90,000, n_max 6 reaches the highest Saraiki @20 of all 27 settings
-  (0.7969 against 5's 0.7915). Selecting on that was tried, and the model it picked was
-  **worse on test** - Saraiki @20 0.8069 against 0.8179 - because a 0.54-point gain on
-  1,827 validation paragraphs is inside the 0.95-point standard error. The column is right
-  to report; it is not fine-grained enough to choose on.
-- **The pruning cut cost more than this page admitted, and cost it where the model was
-  weakest.** `TOP_GRAMS` was 20,000 "to keep the package small":
+  That reason predicted its own reversal, and the reversal happened. Once the cut rose
+  past 120,000 the tail survives, and **6 beats 5 at every matched budget**:
 
-  | per-language cut | val mean | val whole | val 20ch | Saraiki @20 | package (gzip) |
-  |---|---:|---:|---:|---:|---:|
-  | 20,000 | 0.9399 | 98.5% | 93.6% | 74.0% | 0.92 MB |
-  | **60,000** | **0.9491** | **99.0%** | **94.7%** | **79.1%** | **2.56 MB** |
-  | 90,000 | 0.9507 | 99.0% | 94.9% | 79.1% | 3.71 MB |
+  | alpha | top | n_max 5 | n_max 6 |
+  |---:|---:|---:|---:|
+  | 0.03 | 120,000 | 0.9518 | **0.9525** |
+  | 0.03 | 180,000 | 0.9523 | **0.9545** |
+  | 0.03 | 240,000 | 0.9527 | **0.9550** |
+  | 0.1 | 120,000 | 0.9513 | **0.9520** |
+  | 0.1 | 180,000 | 0.9520 | **0.9539** |
+  | 0.1 | 240,000 | 0.9522 | **0.9550** |
 
-  Measured over data/wiki_large at n_max 5, alpha 0.03, so only the cut differs.
+  So the conclusion was not wrong for the budget it was measured at; it was stated as a
+  property of n_max when it was a property of n_max *and the cut*. Six is what ships.
 
-  60,000 is now the best row on the only ground that separates it from 90,000. On the
-  smaller corpus the cut was a straight package-size concession - the curve was still
-  rising, and 120,000 bought 2.6 points of Saraiki for 2 MB. On 130,791 paragraphs that
-  is no longer true: 90,000 adds 0.0016 to the validation mean and leaves Saraiki @20
-  **unchanged at 79.1%**, so the extra 1.15 MB buys nothing for the language the model is
-  worst at. The mean still rises because the eight easily separable languages keep
-  improving, and they are already above 96%.
+  One result from the earlier sweep is worth keeping because it invites a wrong
+  conclusion: at top 90,000, n_max 6 reached the highest Saraiki @20 of the 27 settings
+  (0.7969 against 5's 0.7915), and selecting on that picked a model **worse on test** -
+  Saraiki @20 0.8069 against 0.8179 - because a 0.54-point gain on 1,827 validation
+  paragraphs is inside the 0.95-point standard error. The column is right to report; a
+  single language's rate is not fine-grained enough to choose on. Choosing is now done by
+  a paired test over the same paragraphs, which resolves differences that column cannot.
+- **The pruning cut cost more than this page admitted, and the page stopped measuring
+  before the cost stopped falling.** `TOP_GRAMS` was 20,000 "to keep the package small",
+  and this table stopped at 90,000. Every rung, at n_max 6 and alpha 0.03 so only the cut
+  differs, with the size the wheel actually carries:
 
-  Saraiki @20 cannot be pushed much further by pruning. Its validation estimate rests on
-  1,827 paragraphs, a standard error of 0.95 points, and the spread across every setting
-  within 0.2 points of the best mean is smaller than that. `--top 90000` rebuilds with the
-  extra mean if a caller wants it.
+  | per-language cut | val mean | val whole | val 20ch | Saraiki @20 | wheel (gzip) | against the rung below, at 20 chars |
+  |---|---:|---:|---:|---:|---:|---|
+  | 20,000 | 0.9376 | 98.4% | 93.2% | 72.7% | 0.94 MB | — |
+  | 60,000 | 0.9478 | 98.8% | 94.6% | 78.9% | 2.62 MB | 463 wins to 192, p = 9e-27 |
+  | 90,000 | 0.9505 | 98.9% | 94.8% | 79.7% | 3.82 MB | 190 to 138, p = 0.005 |
+  | 120,000 | 0.9525 | 99.0% | 95.1% | 80.4% | 4.98 MB | 149 to 102, p = 0.004 |
+  | **180,000** | **0.9545** | **99.0%** | **95.3%** | **81.4%** | **7.25 MB** | **151 to 99, p = 0.001** |
+  | 240,000 | 0.9550 | 99.1% | 95.3% | 81.4% | 9.44 MB | 81 to 81, p = 1 |
+  | 300,000 | 0.9558 | 99.1% | 95.4% | 82.1% | 11.60 MB | 72 to 56, p = 0.185 |
+
+  The last column is a McNemar test on the 19,847 validation paragraphs, counting the
+  ones each rung gets right that the rung below gets wrong. It is the comparison that
+  matters and the one this page was not making: both rungs are scored on the *same*
+  paragraphs, so the question is paired, and a paired test resolves differences far
+  smaller than either model's own confidence interval.
+
+  **180,000 is the last rung that separates.** 240,000 is identical at 20 characters - 81
+  wins each way - and 300,000 is not distinguishable either, while each costs about
+  2.2 MB more wheel. Stated in the unit a user pays, the climb from 120,000 to 180,000
+  costs 8.65 MB per point of 20-character accuracy and the climb on to 300,000 costs
+  19.30.
+
+  This page previously argued the opposite, that 60,000 was the stopping point because
+  "90,000 adds 0.0016 to the validation mean and leaves Saraiki @20 unchanged at 79.1%".
+  Both halves came apart: the mean kept rising to 300,000, and 90,000 does beat 60,000
+  paragraph by paragraph (p = 0.005). The stopping test had been an absolute tolerance on
+  the mean, justified by the standard error of a *single* rate - the right error bar for
+  "how well do we know this model's accuracy" and the wrong one for "is this rung better
+  than that one".
+
+  Saraiki @20 still cannot be chosen on. Its validation estimate rests on 1,827
+  paragraphs and a standard error of 0.95 points, so the column is reported and the
+  decision is made on the paired test. `--top-grams 60000` rebuilds a 2.62 MB model for a
+  caller who would rather have the smaller wheel, at 0.7 points of 20-character accuracy
+  and 2.5 points of Saraiki.
 - **1,500 → 5,000 paragraphs of Urdu, Punjabi and Saraiki.** On the same enlarged test
   set, and both sides measured at the then-current 20,000-gram cut so that only the
   corpus differs: paragraph 96.4 → 97.9%, 50 characters 94.6 → 96.6%, 20 characters
@@ -552,8 +585,8 @@ larger set every change below is a gain.
   or more from Punjabi, lowering overall accuracy each time. There is no free point here.
 
 The errors are almost all between the three closest languages. At 20 characters, Saraiki
-is right 80.3% of the time (mostly read as Punjabi), Punjabi 85.7% and Urdu 93.4%. Arabic
-(99.8%), Central Kurdish (99.7%), Sindhi (98.8%) and Uyghur (98.7%) are close behind:
+is right 82.9% of the time (mostly read as Punjabi), Punjabi 86.6% and Urdu 93.4%. Central
+Kurdish (99.8%), Arabic (99.6%), Sindhi (98.8%) and Uyghur (98.8%) are close behind:
 they have letters or spellings nobody else uses. None of them reaches 100% on the larger
 corpus - the earlier figure was 100% over 63-80 test paragraphs each, and over 510-592
 each a handful of short windows do get missed.
@@ -564,22 +597,23 @@ edges from the data, lowest tenth first:
 
 | decile | margin | windows | accuracy | errors |
 |---:|---|---:|---:|---:|
-| 1 | 0.001 - 1.90 | 613 | 60.7% | 241 |
-| 2 | 1.90 - 4.31 | 614 | 91.5% | 52 |
-| 3 | 4.32 - 6.77 | 613 | 98.0% | 12 |
-| 4-10 | 6.77 - 41.0 | 4,296 | 99.8% | 7 |
+| 1 | 0.02 - 2.80 | 613 | 63.1% | 226 |
+| 2 | 2.81 - 6.04 | 614 | 93.7% | 39 |
+| 3 | 6.04 - 9.46 | 613 | 99.2% | 5 |
+| 4-10 | 9.46 - 47.2 | 4,296 | 99.8% | 6 |
 
-**The lowest tenth carries 241 of the 312 errors.** Dropping it keeps 22.8% of them and
-leaves the remaining 90% of windows right 98.7% of the time. The 19,847-window validation
-split agrees: 75.0% of its 1,052 errors in the lowest tenth, against 77.2% on test. On
-whole paragraphs the shape is the same - 43 of 53 errors in the lowest tenth.
+**The lowest tenth carries 226 of the 276 errors.** Dropping it keeps 18.1% of them and
+leaves the remaining 90% of windows right 99.1% of the time. The 19,847-window validation
+split agrees: 79.1% of its 925 errors in the lowest tenth, against 81.9% on test. On
+whole paragraphs the shape is the same - 36 of 46 errors in the lowest tenth.
 
 **This document said the opposite until 2026-10-28, and the reason is worth keeping.** The
 claim was "6,093 of 6,136 windows carry a margin above 0.1, and so do 288 of the 312
 errors", offered as evidence that filtering on margin keeps every error. Both halves are
-arithmetically right and the conclusion does not follow: 0.1 is the 0.6th percentile of
-this model's margins, which run to 41 with a median of 11.9, so 99.3% of *everything* is
-above it. The 0.1 edge was chosen when the model was built on 1,500 paragraphs per
+arithmetically right and the conclusion does not follow: 0.1 is below this model's
+entire margin distribution, which runs from 0.02 to 47 with a median of 14, so
+essentially *everything* is above it. The 0.1 edge was chosen when the model was built on
+1,500 paragraphs per
 language and the same quantity was a fraction; the corpus grew 11-fold, the scale moved,
 and the threshold stayed. A test written to catch exactly this - "if a future model made
 margin informative, this fails" - passed throughout, because it too was expressed in terms

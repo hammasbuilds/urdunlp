@@ -309,17 +309,20 @@ class Channel:
         z = current.get(m, 0.0)
         return math.log(z) if z > 0 else -math.inf
 
-    def log_spelling(self, urdu: str, roman: str) -> float:
+    def _mix_attested(self, urdu: str, roman: str, letters: float) -> float:
         """log P(roman | urdu): the word's own attested spellings, backed off to letters.
 
         The letter model has learnt that a final ہ is rarely typed as `e`. True of
         the letter, false of کہ, which annotators wrote as `ke`. With its own
         spellings mixed in, کہ can be reached from `ke` - and the bigram model then
         decides between it and کے.
-        """
-        return self._mix_attested(urdu, roman, self.log_emission(urdu, roman))
 
-    def _mix_attested(self, urdu: str, roman: str, letters: float) -> float:
+        This docstring was on `log_spelling`, a one-line public wrapper that called it
+        with `log_emission` as the letter score. Nothing called the wrapper - the one
+        real caller, the decoder at line 378, already has the letter score in hand and
+        calls this directly - so the method that carried the explanation was dead and the
+        method doing the work had none.
+        """
         seen = self.attested_total.get(urdu)
         if not seen:
             return letters

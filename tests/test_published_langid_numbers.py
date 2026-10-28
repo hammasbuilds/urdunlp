@@ -62,6 +62,30 @@ def test_the_per_language_table_rows_are_the_measured_ones() -> None:
         )
 
 
+def test_the_other_eight_row_is_the_measured_range() -> None:
+    """The row the per-language guard did not cover.
+
+    `LABELS` holds Urdu, Punjabi and Saraiki, so the table's fourth row - the range over
+    the eight languages that are nearly separable on orthography - was unguarded. On the
+    model rebuilt at top=180000 all four of its cells were written from intuition and
+    three were wrong: 98.8-100.0 against a typed 99.3-100.0 on whole paragraphs,
+    89.1-98.9 against 88.4-98.5 at ten characters. A range is as quotable as a number and
+    needs the same check.
+    """
+    script = _script()
+    readme = README.read_text(encoding="utf-8")
+    others = [c for c in script["test_whole"]["per_language"] if c not in LABELS]
+    assert len(others) == 8, f"{len(others)} languages outside LABELS, not 8"
+    cells = []
+    for key in ("test_whole", "test_50 chars", "test_20 chars", "test_10 chars"):
+        rates = [script[key]["per_language"][c] * 100 for c in others]
+        cells.append(f"{min(rates):.1f}–{max(rates):.1f}%")
+    row = re.search(r"^\|\s*the other eight\s*\|(.+?)\|\s*$", readme, re.M)
+    assert row, "the per-language table has no 'the other eight' row"
+    found = re.findall(r"\d+\.\d–\d+\.\d%", row.group(0))
+    assert found == cells, f"the README row says {found}, the report says {cells}"
+
+
 def test_the_corpus_document_quotes_the_measured_twenty_character_figures() -> None:
     script = _script()
     stated = re.search(
@@ -78,16 +102,41 @@ def test_the_corpus_document_quotes_the_measured_twenty_character_figures() -> N
         )
 
 
-def test_the_pruning_table_in_the_corpus_document_is_the_sweep() -> None:
-    """The trade-off table is the whole argument for a 2.3 MB model, so it is checked.
+def _pruning_table() -> list[str]:
+    """The lines of the pruning table, and nothing else.
 
-    Its rows are what justify shipping 60,000 n-grams per language rather than 20,000,
-    and a reader deciding whether to rebuild with `--top-grams 120000` is reading them.
+    This guard used to take the first indented pipe line containing the cut - which was
+    the pruning table's row until a second table appeared above it, comparing n_max 5 and
+    6 at the same three budgets. The guard then read `| 0.03 | 120,000 | 0.9518 | 0.9525 |`
+    and reported the row as carrying no percentages. "The first line that mentions the
+    number" is not "the row of the table I mean", so the table is located by its own
+    header.
+    """
+    lines = CORPUS.read_text(encoding="utf-8").splitlines()
+    start = next(
+        (i for i, ln in enumerate(lines) if "per-language cut" in ln and "|" in ln),
+        None,
+    )
+    assert start is not None, "CORPUS.md has no pruning table header"
+    out = []
+    for line in lines[start + 1:]:
+        if not line.strip().startswith("|"):
+            break
+        out.append(line)
+    assert out, "the pruning table header is not followed by any rows"
+    return out
+
+
+def test_the_pruning_table_in_the_corpus_document_is_the_sweep() -> None:
+    """The trade-off table is the whole argument for a 7 MB model, so it is checked.
+
+    Its rows are what justify shipping 180,000 n-grams per language rather than 60,000,
+    and a reader deciding whether to rebuild with `--top-grams 60000` is reading them.
     """
     if not SWEEP.exists():
         pytest.skip("the sweep report is not shipped with the tests")
     sweep = json.loads(SWEEP.read_text(encoding="utf-8"))
-    corpus = CORPUS.read_text(encoding="utf-8")
+    table = _pruning_table()
     best = sweep["chosen"]
     rows = {
         r["top"]: r
@@ -95,15 +144,8 @@ def test_the_pruning_table_in_the_corpus_document_is_the_sweep() -> None:
         if r["n_max"] == best["n_max"] and r["alpha"] == best["alpha"]
     }
     for top, row in rows.items():
-        assert f"{top:,}" in corpus, f"the {top:,} row is missing from CORPUS.md"
-        line = next(
-            # The table is indented inside a bullet, so the line does not START with
-            # a pipe - matching on that found nothing and the assertion above it had
-            # already passed on the bare number appearing in prose.
-            (ln for ln in corpus.splitlines() if f"{top:,}" in ln and ln.lstrip().startswith("|")),
-            None,
-        )
-        assert line, f"no table line for {top:,}"
+        line = next((ln for ln in table if f"{top:,}" in ln), None)
+        assert line, f"the pruning table has no row for {top:,}"
         # Numerically, not as a string: 0.7725 * 100 lands on a rounding boundary and
         # `:.1f` gives 77.2 while the table reasonably says 77.3. A string match on a
         # half-way value fails for no reason a reader would accept as a defect.
@@ -112,6 +154,23 @@ def test_the_pruning_table_in_the_corpus_document_is_the_sweep() -> None:
             f"the {top:,} row carries {found}, and the sweep measured Saraiki@20 at "
             f"{row['val_skr_20'] * 100:.2f}%: {line}"
         )
+
+
+def test_the_pruning_table_states_the_shipped_cut_as_the_chosen_one() -> None:
+    """The row in bold must be the row the wheel was built from.
+
+    The table argues for a cut, and the model ships one. A table whose bold row is not
+    the shipped setting argues for something the package does not do - which is the state
+    this document was in after the sweep moved from 60,000 to 180,000.
+    """
+    if not SWEEP.exists():
+        pytest.skip("the sweep report is not shipped with the tests")
+    chosen = json.loads(SWEEP.read_text(encoding="utf-8"))["chosen"]["top"]
+    bold = [ln for ln in _pruning_table() if "**" in ln]
+    assert len(bold) == 1, f"{len(bold)} rows of the pruning table are bold, not 1"
+    assert f"{chosen:,}" in bold[0], (
+        f"the bold row is {bold[0].strip()[:40]!r} but the sweep chose {chosen:,}"
+    )
 
 
 def test_the_shipped_model_is_the_one_the_numbers_describe() -> None:

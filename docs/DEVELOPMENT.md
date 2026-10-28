@@ -43,8 +43,8 @@ speakers romanise ~10,000 Urdu Wikipedia sentences by hand. Scored against them,
 | Urdu → Roman, spelled as a person spelled it | 28.6% | **54.5%** | 52,087 words of test sentences |
 | Urdu → Roman → Urdu round trip | 42.0% | **93.8%** | 15,088 tokens of Dakshina's dev and test sentences |
 | Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
-| Which of 11 Perso-Arabic languages (whole paragraph) | — | **99.1%** | 6,136 test paragraphs |
-| ... on 20 characters | — | **94.9%** | |
+| Which of 11 Perso-Arabic languages (whole paragraph) | — | **99.3%** | 6,136 test paragraphs |
+| ... on 20 characters | — | **95.5%** | |
 | English words found inside Roman Urdu (recall) | — | **87.0%** | synthetic code-mixed test sentences |
 | Stemming, retrieval recall@10 | — | **+0.008** | 2,582 test queries, sign test p = 0.019 |
 
@@ -294,7 +294,7 @@ not confidence and length is what predicts an error. That correction then became
 its turn. The corpus grew 11-fold, margins that had been fractions came to run from 0.001
 to 41, and 0.1 became the 0.6th percentile: the re-measured "288 of 312 errors carry a
 margin above 0.1" says only that 99.3% of all windows do. By deciles taken from the
-distribution, the lowest tenth holds 241 of the 312 errors and dropping it keeps 22.8% of
+distribution, the lowest tenth holds 226 of the 276 errors and dropping it keeps 18.1% of
 them — margin sorts well, and the shipped docstring was telling users to ignore it.
 *Fixed* by taking the band edges from the data, in `scripts/measure_langid.py`, and by
 guarding the claim with a test about deciles rather than about 0.1. The guard written for
@@ -392,7 +392,7 @@ scored 96.4% on the larger test set, not the 99.5% published from the smaller on
 alone went from 95.8% to 89.3%. The larger training sample then lifted it back: 97.9%
 overall, Punjabi 97.3%. The headline number went down and the model got better. The same
 thing happened again on the 130,791-paragraph corpus, whose test split is 6,136
-paragraphs: 99.1% overall, which is what the table above reports. Adding a prior for Urdu was tried to win back its
+paragraphs: 99.3% overall, which is what the table above reports. Adding a prior for Urdu was tried to win back its
 short-window accuracy and was dropped - every point it gave Urdu it took from Punjabi.
 
 **Two ideas measured and not shipped.** Generating a spelling for Roman words the

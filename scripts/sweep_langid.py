@@ -260,7 +260,9 @@ def main() -> int:
 
     best = choose(rows)
     print()
-    print(f"best on validation: {best}")
+    # Without the outcome vectors: adding them to the row made this one line dump
+    # 79,388 bytes per window into the log, 300 KB in all.
+    print(f"best on validation: {_published(best)}")
 
     # And now, once, on test.
     counts = {}
