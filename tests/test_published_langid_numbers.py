@@ -170,9 +170,14 @@ def test_the_shipped_models_were_built_from_the_current_inputs() -> None:
             return json.load(fh)
 
     langid = shipped("langid.json.gz")
+    # The corpus name is part of the digest. Without it a model trained on data/wiki and
+    # one trained on data/wiki_large carried identical digests whenever the hyperparameters
+    # matched, so the check that exists to prove which inputs a committed artefact came
+    # from could not tell the two corpora apart.
+    assert "corpus" in langid, "the shipped model does not record which corpus it was built on"
     expected = B.inputs_digest(
         data / "FINGERPRINT.tsv", langid["n_max"], langid["alpha"],
-        max(len(v) for v in langid["counts"].values()),
+        max(len(v) for v in langid["counts"].values()), langid["corpus"],
     )  # fmt: skip
     assert langid.get("inputs") == expected, (
         "the shipped language-ID model was not built from the corpus fingerprint and "
@@ -209,3 +214,44 @@ def test_the_shipped_models_were_built_from_the_current_inputs() -> None:
         "the shipped transliteration model was not built from the lexicon now in "
         "translit.py - rebuild it with `python scripts/build_translit_model.py`"
     )
+
+
+def test_the_margin_paragraph_quotes_the_measured_counts() -> None:
+    """docs/CORPUS.md's "`margin` is not confidence" figures come from the report.
+
+    This paragraph is the one a user acts on - it is the answer to "can I filter on
+    margin and keep only the answers that are right" - and it is the paragraph that has
+    already been wrong twice. Its figures were last written from a one-off script against
+    a test set of 1,254 windows; the corpus is now 6,136, so the numbers moved and
+    nothing compared them to anything. The counts are now in the report
+    (`errors_above_margin_0_1` and friends) precisely so this can be checked.
+    """
+    script = _script()
+    corpus = CORPUS.read_text(encoding="utf-8")
+    twenty, whole = script["test_20 chars"], script["test_whole"]
+    for figure in (
+        f"{twenty['windows_above_margin_0_1']:,} of {twenty['n']:,} windows",
+        f"{twenty['errors_above_margin_0_1']} of the {twenty['errors']} errors",
+        f"The {twenty['below_margin_0_1']['n']} windows below 0.1",
+        f"{twenty['below_margin_0_1']['accuracy'] * 100:.0f}% of the time",
+        f"{whole['errors_above_margin_0_1']} of {whole['errors']} errors",
+    ):
+        assert figure in corpus, (
+            f"CORPUS.md does not state {figure!r}, which is what the report measures"
+        )
+
+
+def test_most_errors_carry_a_high_margin_which_is_the_documented_point() -> None:
+    """The claim itself, not just its wording: filtering on margin keeps the errors.
+
+    If a future model made margin informative, this test fails and the paragraph needs
+    rewriting rather than the figures nudging - which is the outcome worth being told
+    about.
+    """
+    for key in ("test_whole", "test_20 chars"):
+        row = _script()[key]
+        kept = row["errors_above_margin_0_1"] / row["errors"]
+        assert kept > 0.5, (
+            f"{key}: only {kept:.0%} of errors carry a margin above 0.1, so margin now "
+            f"separates right from wrong and docs/CORPUS.md overstates the problem"
+        )

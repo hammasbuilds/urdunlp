@@ -74,15 +74,54 @@ def score(model: _ScriptModel, splits: dict, split: str, length: int | None) -> 
     }
 
 
+# Selection, and why it is not accuracy.
+#
+# This file's docstring says "the per-language column matters more than the mean here: a
+# setting that adds 0.2 points overall by trading Saraiki away is not an improvement".
+# That principle is right, and the rule that used to act on it was
+#
+#     max(rows, key=lambda r: (r["val_mean"], r["val_skr_20"]))
+#
+# which reads Saraiki only when two means are exactly equal as floats - across 27 settings,
+# never. So it was effectively mean-only.
+#
+# Selecting on Saraiki instead was tried, and it picked a model that is worse on test:
+# n_max 6 / alpha 0.03 / top 90000 won on validation Saraiki@20 by 0.54 points and then
+# lost on test Saraiki@20 by 1.10 points, while being slightly worse at three of the four
+# windows overall. The reason is resolution, not bad luck. Saraiki has 1,827 validation and
+# 549 test paragraphs, so at p ~ 0.80 the standard error is 0.95 and 1.65 points; both the
+# gain and the loss sit inside one standard error. The column cannot separate these settings.
+#
+# Seven of the 27 settings are within 0.2 points of the best mean, and within noise of each
+# other on Saraiki. When accuracy cannot tell them apart, the remaining difference that IS
+# measured exactly is model size, which is wheel size for every user and nothing else. So:
+# the mean defines a band, and inside the band the smallest model wins.
+MEAN_TOLERANCE = 0.002
+
+
+def choose(rows: list[dict]) -> dict:
+    """The smallest model among the settings validation cannot separate."""
+    ceiling = max(r["val_mean"] for r in rows)
+    close = [r for r in rows if ceiling - r["val_mean"] <= MEAN_TOLERANCE]
+    return min(close, key=lambda r: (r["json_bytes"], -r["val_skr_20"]))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n-max", type=int, nargs="+", default=[4, 5, 6])
     ap.add_argument("--alpha", type=float, nargs="+", default=[0.3, 0.1, 0.03])
     ap.add_argument("--top", type=int, nargs="+", default=[20000, 60000])
+    ap.add_argument(
+        "--wiki-dir",
+        type=Path,
+        help="corpus directory to sweep over (default data/wiki). The builder and the "
+        "measurement both take this; without it here the settings would be chosen on "
+        "the 1,500-per-language sample and then applied to a corpus 11x larger",
+    )
     ap.add_argument("--json", type=Path, default=ROOT / "data" / "langid_sweep.json")
     args = ap.parse_args()
 
-    splits = wiki_splits()
+    splits = wiki_splits(args.wiki_dir)
     print(
         "paragraphs: "
         + ", ".join(f"{k} {len(v['train'])}/{len(v['val'])}/{len(v['test'])}"
@@ -135,7 +174,7 @@ def main() -> int:
                 )
         print(f"  (n_max {n_max}: counted in {counted:.0f}s)")
 
-    best = max(rows, key=lambda r: (r["val_mean"], r["val_skr_20"]))
+    best = choose(rows)
     print()
     print(f"best on validation: {best}")
 
@@ -153,6 +192,11 @@ def main() -> int:
         "counts": kept, "distinctive": distinctive_letters(counts),
     })  # fmt: skip
     report = {
+        # Which corpus these settings were chosen on. The committed sweep carried
+        # `corpus: None`, so a sweep over data/wiki and one over data/wiki_large -
+        # eleven times larger, and giving a different winner - were indistinguishable
+        # files. The model blob records its corpus for the same reason.
+        "corpus": (args.wiki_dir or (ROOT / "data" / "wiki")).name,
         "chosen": best,
         "sweep": rows,
         "train": {str(w): score(model, splits, "train", w) for w in WINDOWS},

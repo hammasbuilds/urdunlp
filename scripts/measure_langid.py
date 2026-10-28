@@ -46,12 +46,24 @@ DATA = ROOT / "data"
 _WORD = re.compile(r"[A-Za-z]+")
 
 
-def script_report() -> dict:
-    splits = wiki_splits()
-    report: dict = {"paragraphs": {k: {s: len(v) for s, v in d.items()} for k, d in splits.items()}}
+def script_report(wiki_dir: Path | None = None) -> dict:
+    """Score identify_language on `wiki_dir`, default data/wiki.
+
+    The corpus directory has to be an argument here, not a constant. build_langid_models.py
+    grew a --wiki-dir option so a larger corpus could be "trained and scored", but the
+    scoring half was never wired up: this function read data/wiki whatever the model was
+    trained on. A model built on the 132,000-paragraph corpus was therefore still reported
+    against the 1,500-per-language sample, and the corpus upgrade could not reach the number.
+    """
+    folder = wiki_dir or (DATA / "wiki")
+    splits = wiki_splits(wiki_dir)
+    report: dict = {
+        "corpus": folder.name,
+        "paragraphs": {k: {s: len(v) for s, v in d.items()} for k, d in splits.items()},
+    }
 
     raw = {
-        code: (DATA / "wiki" / f"{code}.txt").read_text("utf-8").splitlines() for code in LANGUAGES
+        code: (folder / f"{code}.txt").read_text("utf-8").splitlines() for code in LANGUAGES
     }
     report["is_urdu_says_yes"] = {
         code: round(sum(is_urdu(p) for p in rows) / len(rows), 4) for code, rows in raw.items()
@@ -96,6 +108,27 @@ def script_report() -> dict:
                 "per_language": {c: round(k / n, 4) for c, (k, n) in per_language.items()},
                 "top_confusions": [[a, b, n] for (a, b), n in confusion.most_common(6)],
                 "accuracy_by_margin": bands,
+                # The counts docs/CORPUS.md's "`margin` is not confidence" paragraph
+                # quotes. The bands above give accuracy per band, which answers "are
+                # low-margin answers worse" but not the question a user actually asks:
+                # if I keep only confident answers, how many of the errors do I keep?
+                # Those two numbers were written into the document from a one-off
+                # script, so the document could not be checked against anything.
+                "errors": total - right,
+                "windows_above_margin_0_1": sum(1 for m, _ in margins if m > 0.1),
+                "errors_above_margin_0_1": sum(1 for m, ok in margins if m > 0.1 and not ok),
+                "below_margin_0_1": {
+                    "n": sum(1 for m, _ in margins if m <= 0.1),
+                    "accuracy": (
+                        round(
+                            sum(ok for m, ok in margins if m <= 0.1)
+                            / sum(1 for m, _ in margins if m <= 0.1),
+                            4,
+                        )
+                        if any(m <= 0.1 for m, _ in margins)
+                        else None
+                    ),
+                },
             }
             worst = min(per_language, key=lambda c: per_language[c][0] / per_language[c][1])
             print(
@@ -218,13 +251,36 @@ def tagger_report() -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--json", type=Path)
+    # Defaulted, not optional. `--json` had no default, so this script printed a full
+    # measurement, exited 0, and wrote nothing: the committed report stayed at whatever
+    # the last person to remember the flag produced. That is how
+    # data/langid_report_v5.json went stale while the model was retrained, and how the
+    # six tests that read it sat skipped because the figures they guard were never
+    # refreshed. The report records which corpus it measured, so a --wiki-dir run that
+    # lands here is identifiable rather than silently confusing.
+    ap.add_argument(
+        "--json",
+        type=Path,
+        default=DATA / "langid_report_v5.json",
+        help="where to write the report (default data/langid_report_v5.json, the file "
+        "tests/test_published_langid_numbers.py reads)",
+    )
+    ap.add_argument(
+        "--wiki-dir",
+        type=Path,
+        help="corpus directory to score on (default data/wiki). Must match the "
+        "--wiki-dir the model was built with, or the number describes neither corpus",
+    )
     args = ap.parse_args()
     started = time.time()
-    report = {"identify_language": script_report(), "tag_roman_tokens": tagger_report()}
+    report = {
+        "identify_language": script_report(args.wiki_dir),
+        "tag_roman_tokens": tagger_report(),
+    }
     report["seconds"] = round(time.time() - started)
     if args.json:
         args.json.write_text(json.dumps(report, indent=1, ensure_ascii=False), encoding="utf-8")
+        print(f"\nwrote {args.json.name} (corpus: {report['identify_language']['corpus']})")
     print(f"\n[{report['seconds']}s]")
     return 0
 

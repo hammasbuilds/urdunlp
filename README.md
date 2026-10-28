@@ -94,7 +94,7 @@ OUTPUT
       هذا الكتاب لي وأنا أقرأه                 -> Arabic   right  
       هي ڪتاب منهنجو آهي                       -> Sindhi   right  sd:ڪ
       دا کتاب زما دی او زه یې هره ماښام لولم   -> Pashto   right  ps:ښې ug:ې
-      دا کتاب زما دی                           -> Pashto   right  
+      دا کتاب زما دی                           -> Punjabi (Shahmukhi) WRONG, it is Pashto - four words is too few  
 
    Inflected forms, stemmed to one retrieval key:
       کتاب کتابیں کتابوں لڑکا لڑکے لڑکیاں  -> کتاب کتاب کتاب لڑک لڑک لڑک
@@ -118,24 +118,24 @@ Measured on data held out from everything the models were built from. Method, sp
 | Urdu → Roman, spelled as some annotator spelled that word | 41.4% | **78.2%** | the same sentences |
 | Urdu → Roman → Urdu round trip | 42.0% | **93.8%** | 15,088 tokens of Dakshina's dev and test sentences |
 | Grouping spelling variants (`nahi`, `nhi`, `naheen`), B-cubed F1 | 0.577 | **0.831** | 10,517 test-lexicon spellings |
-| Which of 11 Perso-Arabic languages, whole paragraph | — | **98.3%** | 1,254 test paragraphs (Wikipedia, split by a hash of the text) |
-| ... on 20 characters | — | **91.7%** | |
+| Which of 11 Perso-Arabic languages, whole paragraph | — | **99.1%** | 6,136 test paragraphs (Wikipedia, split by a hash of the text) |
+| ... on 20 characters | — | **94.9%** | |
 | English words found inside Roman Urdu (recall) | — | **86.9%** | Dakshina test sentences with 1-3 English words spliced in |
 | Stemming, retrieval recall@10 | — | **+0.008** | 2,582 test queries, sign test p = 0.019 |
 
 Word accuracy is over the 73% of test sentences whose Urdu and Roman token counts agree, which excludes the
 hardest ones (izafat written as one token or three, merged compounds, inserted English). The language-ID figure
-pools eight languages that are separable on orthography alone (100% on whole paragraphs) with the three that share
+pools eight languages that are nearly separable on orthography alone (98.8–100% on whole paragraphs) with the three that share
 nearly all of it:
 
 | | test paragraphs | whole | 50 chars | 20 chars | 10 chars |
 |---|---:|---:|---:|---:|---:|
-| Urdu | 225 | 98.7% | 98.5% | 91.6% | 84.4% |
-| Punjabi (Shahmukhi) | 224 | 97.8% | 94.7% | 87.5% | 75.9% |
-| Saraiki | 229 | 94.3% | 92.0% | **79.0%** | **65.5%** |
-| the other eight | 63–80 each | **100.0%** | **100.0%** | 95.8–100% | 87.1–100% |
+| Urdu | 578 | 99.0% | 95.6% | 93.4% | 85.3% |
+| Punjabi (Shahmukhi) | 537 | 96.7% | 92.9% | 85.7% | 72.6% |
+| Saraiki | 549 | 96.9% | 93.1% | **80.3%** | **65.8%** |
+| the other eight | 510–592 each | 98.8–100.0% | 98.9–100.0% | 96.1–99.8% | 87.2–98.2% |
 
-Over Urdu, Punjabi and Saraiki alone the whole-paragraph accuracy is 96.9% (678 paragraphs). A guess on fewer than
+Over Urdu, Punjabi and Saraiki alone the whole-paragraph accuracy is 97.5% (1,664 paragraphs). A guess on fewer than
 20 letters is marked `short=True`, and `margin` is not a confidence score.
 
 **Speed.** `import urdunlp` loads nothing (about 0.1 s); each model loads on first use (about 0.6 s for

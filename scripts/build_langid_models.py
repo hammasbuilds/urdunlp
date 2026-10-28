@@ -77,8 +77,21 @@ OUT = ROOT / "src/urdunlp/data"
 # 60k is the chosen trade-off, not the best row: it takes most of the gain for a third of
 # the size of 120k. The curve is still rising, so this is a package-size decision and is
 # said as one - rebuild with `--top 120000` if you would rather have the points.
+# Chosen by scripts/sweep_langid.py over data/wiki_large, 27 settings, on validation.
+# The previous comment here read "0.3 -> 0.1 is worth 0.7 points at top 60k; 0.03 is a
+# wash (0.9242)", measured on the 1,500-per-language corpus. On 130,791 paragraphs 0.03
+# is no longer a wash: it is the best of the three at every n_max and every gram budget,
+# though only by 0.0005 on the mean, which is inside noise.
+#
+# n_max 6 was added to the sweep because 5 used to be the largest value tried, so it was
+# the top of the range rather than a measured optimum. 6 is worse at 8 of 9 matched
+# budgets, so 5 is now a measured optimum.
+#
+# top 60000 rather than 90000: validation could not separate them (0.0016 on the mean,
+# identical Saraiki@20), and 90000 costs 10 MB more. See sweep_langid.py for why the
+# per-language column cannot break that tie - its standard error is larger than the gap.
 N_MAX = 5
-ALPHA = 0.1  # 0.3 -> 0.1 is worth 0.7 points at top 60k; 0.03 is a wash (0.9242)
+ALPHA = 0.03
 TOP_GRAMS = 60000
 
 ORDER = 4
@@ -189,8 +202,15 @@ def window(text: str, length: int | None) -> str | None:
 
 def build_script_model(
     n_max: int = N_MAX, alpha: float = ALPHA, top_grams: int = TOP_GRAMS,
-    wiki_dir: pathlib.Path | None = None
+    wiki_dir: pathlib.Path | None = None, out_dir: pathlib.Path | None = None
 ) -> None:
+    """Build the script model. `out_dir` defaults to the shipped src/urdunlp/data.
+
+    out_dir exists so a hyperparameter sweep does not overwrite the shipped model once
+    per candidate. Without it, comparing top-grams settings means replacing the artefact
+    the package installs on every iteration, and a sweep interrupted half way leaves the
+    wheel carrying whichever candidate happened to run last.
+    """
     splits = wiki_splits(wiki_dir)
     counts = {}
     for code, parts in splits.items():
@@ -243,10 +263,14 @@ def build_script_model(
         "vocabulary_size": model.vocabulary_size,
         "counts": model.counts,
         "distinctive": distinctive,
-        "inputs": inputs_digest(DATA / "FINGERPRINT.tsv", n_max, alpha, top_grams),
+        "inputs": inputs_digest(DATA / "FINGERPRINT.tsv", n_max, alpha, top_grams,
+                                (wiki_dir or (DATA / "wiki")).name),
+        "corpus": (wiki_dir or (DATA / "wiki")).name,
         "source": "Wikipedia article intros, one random sample per language (CC BY-SA 4.0)",
     }
-    write(OUT / "langid.json.gz", blob)
+    target = (out_dir or OUT) / "langid.json.gz"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    write(target, blob)
     print("  distinctive letters:", {k: "".join(v) for k, v in distinctive.items()})
 
 
@@ -332,7 +356,15 @@ def write(path: Path, blob: dict) -> None:
     raw = json.dumps(blob, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(gzip.compress(raw.encode("utf-8"), compresslevel=9, mtime=0))
-    print(f"wrote {path.relative_to(ROOT)} ({path.stat().st_size / 1024:.0f} KB)")
+    # relative_to raises for any path outside the repo, and --out-dir exists precisely so
+    # a sweep can write elsewhere. Reported as written and then crashed on the line
+    # announcing it, after the bytes were safely on disk - the same shape as the manifest
+    # writer that exited 1 on its own success message.
+    try:
+        shown = path.relative_to(ROOT)
+    except ValueError:
+        shown = path
+    print(f"wrote {shown} ({path.stat().st_size / 1024:.0f} KB)")
 
 
 if __name__ == "__main__":
@@ -353,6 +385,12 @@ if __name__ == "__main__":
     )
     ap.add_argument("--skip-tagger", action="store_true", help="only the script model")
     ap.add_argument(
+        "--out-dir",
+        type=pathlib.Path,
+        help="where to write the model (default src/urdunlp/data). Lets a sweep compare "
+        "candidates without replacing the artefact the package ships",
+    )
+    ap.add_argument(
         "--wiki-dir",
         type=pathlib.Path,
         help="corpus directory to train on (default data/wiki). Lets a larger "
@@ -361,6 +399,6 @@ if __name__ == "__main__":
     )
     a = ap.parse_args()
     build_script_model(n_max=a.n_max, alpha=a.alpha, top_grams=a.top_grams,
-                       wiki_dir=a.wiki_dir)
+                       wiki_dir=a.wiki_dir, out_dir=a.out_dir)
     if not a.skip_tagger:
         build_roman_tagger()

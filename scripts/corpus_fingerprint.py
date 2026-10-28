@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import pathlib
 import sys
 from pathlib import Path
 
@@ -36,11 +37,43 @@ OUT = DATA / "FINGERPRINT.tsv"
 # Dakshina layout have both changed and a missing file must be reported, not skipped.
 TRACKED = (
     "wiki/*.txt",
+    # The larger corpus, trained and scored with --wiki-dir. Fingerprinted beside
+    # wiki/ rather than replacing it: both corpora produce published numbers.
+    "wiki_large/*.txt",
+    "wiki_large/*.pages.tsv",
+    "heldout/*.txt",
     "dakshina/ur/romanized/*.tsv",
     "dakshina/ur/lexicons/*.tsv",
     "english/*.txt",
     "vocab/*.tsv",
 )
+
+# Files under data/ that no published number is measured over: downloaded source
+# archives, kept so a corpus can be rebuilt. Listed explicitly because the previous
+# behaviour - anything not in TRACKED is silently invisible - is what allowed a corpus
+# 11x the size of the fingerprinted one to pass --check without comment.
+IGNORED = (
+    "dakshina/*/native_script_wikipedia/*",
+    "dakshina/*/romanized/*.txt",
+    "**/__pycache__/*",
+)
+
+
+def uncovered() -> list[str]:
+    """Files under data/ that neither TRACKED nor IGNORED mentions.
+
+    collect() walks TRACKED only, so without this a new corpus directory is never
+    examined and the EXTRA branch of --check cannot fire for it.
+    """
+    tracked: set[pathlib.Path] = set()
+    for pattern in TRACKED + IGNORED:
+        tracked.update(DATA.glob(pattern))
+    out = []
+    for path in sorted(DATA.rglob("*")):
+        if path.is_dir() or path.name == OUT.name or path in tracked:
+            continue
+        out.append(path.relative_to(DATA).as_posix())
+    return out
 
 
 def fingerprint(path: Path) -> tuple[str, int, int]:
@@ -111,7 +144,26 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 1
-        print(f"all {len(rows)} corpus file(s) match the committed fingerprint.")
+        stray = uncovered()
+        if stray:
+            print(
+                f"  UNCOVERED  {len(stray)} file(s) under data/ that no TRACKED or "
+                f"IGNORED pattern mentions:",
+                file=sys.stderr,
+            )
+            for path in stray[:20]:
+                print(f"    {path}", file=sys.stderr)
+            if len(stray) > 20:
+                print(f"    ... and {len(stray) - 20} more", file=sys.stderr)
+            print(
+                "\nA file here is measured by nothing and recorded by nothing. Add it to "
+                "TRACKED\nif a number is taken over it, or to IGNORED if it is a source "
+                "archive.",
+                file=sys.stderr,
+            )
+            return 1
+        print(f"all {len(rows)} corpus file(s) match the committed fingerprint, "
+              f"and every file under data/ is either tracked or explicitly ignored.")
         return 0
 
     OUT.write_text(

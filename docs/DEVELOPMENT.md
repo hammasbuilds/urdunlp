@@ -289,7 +289,9 @@ its behaviour and its name, documented as what it is.
 
 **A docstring claimed a property the measurement then refused.** `identify_language`'s
 `margin` was documented as "almost every error has a margin below 0.05". On held-out
-20-character windows, most errors — 31 of 44 — came with a margin above 0.1. Naive Bayes is
+20-character windows, most errors — 31 of 44 — came with a margin above 0.1, and on the
+6,136-window held-out set of the enlarged corpus the proportion is worse, not better:
+288 of 312. Naive Bayes is
 confidently wrong when two languages share every word in a short window. *Fixed* by
 rewriting the docstring from the measurement, not the other way round.
 

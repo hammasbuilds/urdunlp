@@ -503,24 +503,42 @@ set. Punjabi fell from 95.8% to 89.3%: the small test set had been kind to it. O
 larger set every change below is a gain.
 
 - **1-3 → 1-5-grams, and 5 is now a measured optimum.** `scripts/sweep_langid.py` scores
-  24 combinations of n_max, alpha and the pruning cut on validation and reports the winner
-  on test once. 4 → 5 is worth 1.3 points of validation mean; **6 and 7 are both worse
-  than 5** at every alpha and both cuts (6 at top 60k: 0.9193 against 5's 0.9243). Longer
-  grams are rarer, so the cut hits them hardest and the tail they need is what gets
-  removed. 5 had previously been the largest value tried rather than a measured best.
+  27 combinations of n_max, alpha and the pruning cut on validation and reports the winner
+  on test once. 4 → 5 is worth 0.9 points of validation mean at top 60,000; **6 is worse
+  than 5 at 8 of the 9 matched budgets** (6 at top 60k, alpha 0.03: 0.9478 against 5's
+  0.9491). Longer grams are rarer, so the cut hits them hardest and the tail they need is
+  what gets removed. 5 had previously been the largest value tried rather than a measured
+  best; it is now a measured best.
+
+  The one exception is worth stating because it is the kind of result that invites a wrong
+  conclusion: at top 90,000, n_max 6 reaches the highest Saraiki @20 of all 27 settings
+  (0.7969 against 5's 0.7915). Selecting on that was tried, and the model it picked was
+  **worse on test** - Saraiki @20 0.8069 against 0.8179 - because a 0.54-point gain on
+  1,827 validation paragraphs is inside the 0.95-point standard error. The column is right
+  to report; it is not fine-grained enough to choose on.
 - **The pruning cut cost more than this page admitted, and cost it where the model was
   weakest.** `TOP_GRAMS` was 20,000 "to keep the package small":
 
   | per-language cut | val mean | val whole | val 20ch | Saraiki @20 | package (gzip) |
   |---|---:|---:|---:|---:|---:|
-  | 20,000 | 0.9109 | 97.4% | 90.3% | 73.2% | 0.89 MB |
-  | **60,000** | **0.9243** | **98.2%** | **91.8%** | **77.3%** | **2.53 MB** |
-  | 120,000 | 0.9280 | 98.4% | 92.2% | 79.9% | 4.64 MB |
-  | unpruned | - | - | - | - | 6.80 MB |
+  | 20,000 | 0.9399 | 98.5% | 93.6% | 74.0% | 0.92 MB |
+  | **60,000** | **0.9491** | **99.0%** | **94.7%** | **79.1%** | **2.56 MB** |
+  | 90,000 | 0.9507 | 99.0% | 94.9% | 79.1% | 3.71 MB |
 
-  60,000 is the chosen trade-off, not the best row: most of the gain for a third of the
-  size of 120,000. The curve is still rising at 120,000, so this is a package-size
-  decision and is said as one - `--top 120000` rebuilds with the extra points.
+  Measured over data/wiki_large at n_max 5, alpha 0.03, so only the cut differs.
+
+  60,000 is now the best row on the only ground that separates it from 90,000. On the
+  smaller corpus the cut was a straight package-size concession - the curve was still
+  rising, and 120,000 bought 2.6 points of Saraiki for 2 MB. On 130,791 paragraphs that
+  is no longer true: 90,000 adds 0.0016 to the validation mean and leaves Saraiki @20
+  **unchanged at 79.1%**, so the extra 1.15 MB buys nothing for the language the model is
+  worst at. The mean still rises because the eight easily separable languages keep
+  improving, and they are already above 96%.
+
+  Saraiki @20 cannot be pushed much further by pruning. Its validation estimate rests on
+  1,827 paragraphs, a standard error of 0.95 points, and the spread across every setting
+  within 0.2 points of the best mean is smaller than that. `--top 90000` rebuilds with the
+  extra mean if a caller wants it.
 - **1,500 → 5,000 paragraphs of Urdu, Punjabi and Saraiki.** On the same enlarged test
   set, and both sides measured at the then-current 20,000-gram cut so that only the
   corpus differs: paragraph 96.4 → 97.9%, 50 characters 94.6 → 96.6%, 20 characters
@@ -534,17 +552,27 @@ larger set every change below is a gain.
   or more from Punjabi, lowering overall accuracy each time. There is no free point here.
 
 The errors are almost all between the three closest languages. At 20 characters, Saraiki
-is right 79.0% of the time (mostly read as Punjabi), Punjabi 87.5% and Urdu 91.6%. Arabic,
-Central Kurdish, Sindhi and Uyghur are 100% at 20 characters: they have letters or
-spellings nobody else uses.
+is right 80.3% of the time (mostly read as Punjabi), Punjabi 85.7% and Urdu 93.4%. Arabic
+(99.8%), Central Kurdish (99.7%), Sindhi (98.8%) and Uyghur (98.7%) are close behind:
+they have letters or spellings nobody else uses. None of them reaches 100% on the larger
+corpus - the earlier figure was 100% over 63-80 test paragraphs each, and over 510-592
+each a handful of short windows do get missed.
 
 **`margin` is not confidence.** With 1-3-grams, the 29 test windows (of 771, at 20
 characters) with a margin under 0.1 were right 55% of the time, and most errors still had
-a margin above it. With 5-grams the scores spread further: on the enlarged test set 1,239
-of 1,254 windows have a margin above 0.1, and so do 102 of the 113 errors. Naive Bayes is
-confidently wrong when two languages share every word in a short window. An earlier
+a margin above it. With 5-grams the scores spread further still. Re-measured on the
+6,136-window held-out set of `data/wiki_large`, at 20 characters: 6,093 of 6,136 windows
+carry a margin above 0.1, **and so do 288 of the 312 errors**. The 43 windows below 0.1
+are right 44% of the time. On whole paragraphs the same shape holds - 48 of 53 errors sit
+above 0.1. Naive Bayes is confidently wrong when two languages share every word in a short
+window, and a user filtering on margin keeps almost every error it makes. An earlier
 docstring claimed almost every error had a margin below 0.05; the measurement said
 otherwise, twice, and the docstring now says to read length, not margin.
+
+The three answers a first-time user is most likely to try show it: `اسلام آباد`
+(Islamabad) is called Sindhi with a margin of 1.64 and `ہاں` (yes) Saraiki with 1.77,
+while a correct answer on `میں گھر جا رہا ہوں` carries 0.03. All three are flagged
+`short=True`, which is the field to read.
 
 Accuracy per character count is the honest summary: give it a sentence and it is
 reliable; give it a word and it is guessing between neighbours.
