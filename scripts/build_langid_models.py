@@ -68,31 +68,43 @@ OUT = ROOT / "src/urdunlp/data"
 # TOP_GRAMS was the setting that mattered. The cut to 20k cost far more than the comment
 # here admitted, and it cost it where the model was already weakest:
 #
-#   top      val mean   val whole   val 20ch   Saraiki@20   package (gzip)
-#   20,000     0.9109      0.9737     0.9029       0.7315        0.89 MB
-#   60,000     0.9243      0.9820     0.9175       0.7725        2.53 MB
-#   120,000    0.9280      0.9837     0.9224       0.7989        4.64 MB
-#   unpruned        -           -          -            -        6.80 MB
+# Chosen by scripts/sweep_langid.py over data/wiki_large, on validation, by a paired test
+# rather than a tolerance on the mean - see that file for why the two differ. The whole
+# ladder, at n_max 6 and alpha 0.03 so only the cut varies, with the size the wheel
+# carries and a McNemar test of each rung against the one below on 19,847 paragraphs:
 #
-# 60k is the chosen trade-off, not the best row: it takes most of the gain for a third of
-# the size of 120k. The curve is still rising, so this is a package-size decision and is
-# said as one - rebuild with `--top 120000` if you would rather have the points.
-# Chosen by scripts/sweep_langid.py over data/wiki_large, 27 settings, on validation.
-# The previous comment here read "0.3 -> 0.1 is worth 0.7 points at top 60k; 0.03 is a
+#   top      val mean   val whole   val 20ch   Saraiki@20   wheel (gzip)   vs below, 20ch
+#   20,000     0.9376      0.9838     0.9321       0.7274       0.94 MB     -
+#   60,000     0.9478      0.9880     0.9458       0.7887       2.62 MB     p = 9e-27
+#   90,000     0.9505      0.9894     0.9484       0.7969       3.82 MB     p = 0.005
+#   120,000    0.9525      0.9898     0.9508       0.8041       4.98 MB     p = 0.004
+#   180,000    0.9545      0.9902     0.9534       0.8144       7.25 MB     p = 0.001
+#   240,000    0.9550      0.9907     0.9534       0.8139       9.44 MB     p = 1
+#   300,000    0.9558      0.9909     0.9542       0.8210      11.60 MB     p = 0.185
+#
+# 180,000 is the last rung that separates from the one below it. Past it the wheel grows
+# about 2.2 MB per rung for differences 19,847 validation paragraphs cannot resolve - at
+# 240,000 the 20-character column is identical, 81 wins each way. Rebuild with
+# `--top-grams 60000` for a 2.62 MB model at 0.7 points of 20-character accuracy and 2.5
+# points of Saraiki.
+#
+# These defaults are the setting that shipped, which a test enforces: they were left at
+# n_max 5 / 60,000 after the sweep moved, so a plain `python scripts/build_langid_models.py`
+# would have replaced the artefact with a different and worse model while every digest
+# check still passed, because the digest is of the inputs a run was given.
+#
+# alpha: the previous comment read "0.3 -> 0.1 is worth 0.7 points at top 60k; 0.03 is a
 # wash (0.9242)", measured on the 1,500-per-language corpus. On 130,791 paragraphs 0.03
-# is no longer a wash: it is the best of the three at every n_max and every gram budget,
-# though only by 0.0005 on the mean, which is inside noise.
+# is the best of the three at every n_max and every gram budget, though only by 0.0005 on
+# the mean, which is inside noise.
 #
-# n_max 6 was added to the sweep because 5 used to be the largest value tried, so it was
-# the top of the range rather than a measured optimum. 6 is worse at 8 of 9 matched
-# budgets, so 5 is now a measured optimum.
-#
-# top 60000 rather than 90000: validation could not separate them (0.0016 on the mean,
-# identical Saraiki@20), and 90000 costs 10 MB more. See sweep_langid.py for why the
-# per-language column cannot break that tie - its standard error is larger than the gap.
-N_MAX = 5
+# n_max: 5 used to be the largest value tried, so it was the top of the range rather than
+# a measured optimum, and 6 was worse at 8 of 9 matched budgets - all of them at cuts of
+# 90,000 or below. The reason given was that longer grams are rarer, so the cut hits them
+# hardest; past 120,000 the tail survives and 6 beats 5 at every matched budget.
+N_MAX = 6
 ALPHA = 0.03
-TOP_GRAMS = 60000
+TOP_GRAMS = 180000
 
 ORDER = 4
 UNIGRAM_WEIGHT = 0.5
@@ -387,8 +399,9 @@ if __name__ == "__main__":
         "--top-grams",
         type=int,
         default=TOP_GRAMS,
-        help=f"n-grams kept per language ({TOP_GRAMS}). 120000 scores higher and costs "
-        "about 2 MB more in the wheel; see the table in docs/CORPUS.md",
+        help=f"n-grams kept per language ({TOP_GRAMS:,}), the last rung validation can "
+        "separate from the one below. 60000 gives a 2.62 MB model instead of 7.25 MB, at "
+        "0.7 points of 20-character accuracy; see the ladder in docs/CORPUS.md",
     )
     ap.add_argument("--skip-tagger", action="store_true", help="only the script model")
     ap.add_argument(

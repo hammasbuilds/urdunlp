@@ -394,3 +394,48 @@ def test_the_librarys_own_accuracy_figures_are_the_measured_ones() -> None:
         assert [float(x) for x in found[0]] == measured, (
             f"{where} quotes {found[0]} by window length; the report measures {measured}"
         )
+
+
+def test_the_builders_defaults_are_the_setting_that_shipped() -> None:
+    """A plain `python scripts/build_langid_models.py` must rebuild what the wheel holds.
+
+    The defaults were left at n_max 5 / 60,000 grams after the sweep chose n_max 6 /
+    180,000, so a default run would have replaced the shipped model with a different and
+    worse one - and every digest check would still have passed, because the digest is of
+    the inputs a run was given rather than of the settings the sweep chose.
+    """
+    if not SWEEP.exists():
+        pytest.skip("the sweep report is not shipped with the tests")
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import build_langid_models as builder
+
+    chosen = json.loads(SWEEP.read_text(encoding="utf-8"))["chosen"]
+    assert builder.N_MAX == chosen["n_max"], (
+        f"the builder defaults to n_max {builder.N_MAX}, the sweep chose {chosen['n_max']}"
+    )
+    assert builder.ALPHA == chosen["alpha"]
+    assert builder.TOP_GRAMS == chosen["top"], (
+        f"the builder defaults to {builder.TOP_GRAMS:,} grams, the sweep chose "
+        f"{chosen['top']:,} - a default build would replace the shipped model"
+    )
+
+
+def test_the_shipped_model_records_those_same_settings() -> None:
+    """The other half: what is in the wheel must be what the defaults would rebuild."""
+    import gzip
+
+    blob = ROOT / "src" / "urdunlp" / "data" / "langid.json.gz"
+    with gzip.open(blob, "rt", encoding="utf-8") as fh:
+        model = json.load(fh)
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import build_langid_models as builder
+
+    assert model["n_max"] == builder.N_MAX
+    assert model["alpha"] == builder.ALPHA
+    assert model["top_grams"] == builder.TOP_GRAMS, (
+        "the shipped model was built at a different gram budget from the current default"
+    )
