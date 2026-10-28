@@ -439,3 +439,27 @@ def test_the_shipped_model_records_those_same_settings() -> None:
     assert model["top_grams"] == builder.TOP_GRAMS, (
         "the shipped model was built at a different gram budget from the current default"
     )
+
+
+def test_the_readme_states_the_real_bundled_size() -> None:
+    """The wheel's data is what every user downloads, so the figure has to be current.
+
+    It read 5.0 MB while the directory held 10.0 MB: the language model went from 2.56 MB
+    to 7.25 MB when the gram budget moved, and the one line a user checks before adding a
+    dependency was left behind. Rounded to one decimal, which is what the line quotes.
+    """
+    data = ROOT / "src" / "urdunlp"
+    # What the wheel carries: __pycache__ is 0.62 MB here and is not shipped, so a total
+    # over every file on disk would make the figure depend on whether the tests had run.
+    total = sum(
+        f.stat().st_size
+        for f in data.rglob("*")
+        if f.is_file() and "__pycache__" not in f.parts
+    )
+    stated = re.search(r"Bundled statistical tables \(([\d.]+) MB in the wheel\)",
+                       README.read_text(encoding="utf-8"))
+    assert stated, "the README no longer states the bundled size in the known shape"
+    assert float(stated.group(1)) == pytest.approx(round(total / 1e6, 1), abs=0.15), (
+        f"the README says {stated.group(1)} MB, src/urdunlp holds "
+        f"{total / 1e6:.1f} MB"
+    )

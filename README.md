@@ -146,7 +146,7 @@ caches. For a large corpus, split it across processes; in a web server, make one
 ## Tech stack
 
 - Python 3.10+, standard library only; typed (`py.typed`, checked with `mypy --strict`)
-- Bundled statistical tables (5.0 MB in the wheel): a noisy-channel transliteration model over a 60,638-word
+- Bundled statistical tables (10.2 MB in the wheel): a noisy-channel transliteration model over a 60,638-word
   vocabulary with a bigram language model, a character n-gram language-ID model for 11 languages, an English
   lexicon for the code-mix tagger
 - Measurement scripts use `pyarrow` to read the Wikipedia and HotpotQA parquets (not needed to use the library)
