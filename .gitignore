@@ -76,3 +76,7 @@ coverage.xml
 # dependency, and the model is 938 KB of somebody else's weights.
 .venv-baselines/
 .baselines/
+
+# Research experiments: a separate environment and third-party baselines, neither of
+# which the package depends on.
+.venv-research/

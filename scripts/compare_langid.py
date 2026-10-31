@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import gzip
 import json
 import os
 import subprocess
@@ -138,6 +139,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--wiki-dir", type=Path, default=ROOT / "data" / "wiki_large")
     ap.add_argument("--out", type=Path, default=ROOT / "docs" / "langid-comparison.json")
+    ap.add_argument("--predictions", type=Path,
+                    default=ROOT / "research" / "results" / "predictions.json.gz",
+                    help="per-item predictions for every tool and length, gzipped. The "
+                         "aggregates in --out are what the package's guard tests read; "
+                         "this is experiment input - a confusion matrix, a per-class "
+                         "recall, a bootstrap interval and a McNemar test all need to "
+                         "know what each tool said about each item")
+    ap.add_argument("--no-predictions", action="store_true")
     args = ap.parse_args()
 
     versions = ensure_baselines()
@@ -150,6 +159,7 @@ def main() -> int:
     print(f"{len(rows):,} test paragraph(s) over {len(splits)} language(s) "
           f"from {args.wiki_dir.name}\n", flush=True)
 
+    per_item: dict = {"truth": truth, "languages": sorted(splits), "by_length": {}}
     result: dict = {
         "measured": time.strftime("%Y-%m-%d"),
         "corpus": args.wiki_dir.name,
@@ -222,6 +232,11 @@ def main() -> int:
                 "what_it_says_instead": says_for_unknown,
                 "seconds": side["seconds"][name],
             }
+        per_item["by_length"][label] = {
+            "urdunlp": ours,
+            "langdetect": side["predictions"]["langdetect"],
+            "fasttext": side["predictions"]["fasttext"],
+        }
         result["by_length"][label] = entry
 
         print(f"  {label:<10} urdunlp {entry['urdunlp']['accuracy_all_languages']:.4f}"
@@ -232,6 +247,15 @@ def main() -> int:
               flush=True)
 
     args.out.write_text(json.dumps(result, indent=1), encoding="utf-8")
+    if not args.no_predictions:
+        args.predictions.parent.mkdir(parents=True, exist_ok=True)
+        # mtime=0: gzip stores a timestamp, and a file identical except for when it was
+        # written is a diff on every run.
+        with gzip.GzipFile(args.predictions, "wb", mtime=0) as fh:
+            fh.write(json.dumps(per_item).encode("utf-8"))
+        rows = len(truth) * len(per_item["by_length"]) * 3
+        print(f"{rows:,} per-item prediction(s) -> {args.predictions.name} "
+              f"({args.predictions.stat().st_size / 1024:.0f} KB)")
     whole = result["by_length"]["whole"]
     print("\nlabel coverage of the 11-language task:")
     for name in ("langdetect", "fasttext"):

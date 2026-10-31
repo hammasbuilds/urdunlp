@@ -1,0 +1,26 @@
+{
+ "urdunlp_vs_pali": {
+  "a_only": 1136,
+  "b_only": 9,
+  "discordant": 1145,
+  "p_value": 4e-323,
+  "log10_p_value": -322.42,
+  "p_value_below": null
+ },
+ "urdunlp_vs_fasttext": {
+  "a_only": 1717,
+  "b_only": 8,
+  "discordant": 1725,
+  "p_value": null,
+  "log10_p_value": -497.69,
+  "p_value_below": "1e-497"
+ },
+ "urdunlp_vs_langdetect": {
+  "a_only": 4438,
+  "b_only": 4,
+  "discordant": 4442,
+  "p_value": null,
+  "log10_p_value": -1323.66,
+  "p_value_below": "1e-1323"
+ }
+}

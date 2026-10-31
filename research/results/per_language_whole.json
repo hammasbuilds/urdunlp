@@ -1,0 +1,255 @@
+{
+ "ur": {
+  "support": 578,
+  "urdunlp": {
+   "precision": 0.9794520547945206,
+   "recall": 0.9896193771626297,
+   "f1": 0.9845094664371773
+  },
+  "pali": {
+   "precision": 0.8816120906801007,
+   "recall": 0.6055363321799307,
+   "f1": 0.717948717948718
+  },
+  "fasttext": {
+   "precision": 0.49738675958188155,
+   "recall": 0.9878892733564014,
+   "f1": 0.6616454229432214
+  },
+  "langdetect": {
+   "precision": 0.2302158273381295,
+   "recall": 0.9965397923875432,
+   "f1": 0.374025974025974
+  }
+ },
+ "pnb": {
+  "support": 537,
+  "urdunlp": {
+   "precision": 0.9757462686567164,
+   "recall": 0.9739292364990689,
+   "f1": 0.9748369058713886
+  },
+  "pali": {
+   "precision": 0.7408,
+   "recall": 0.8621973929236499,
+   "f1": 0.7969018932874355
+  },
+  "fasttext": {
+   "precision": 0.4014227642276423,
+   "recall": 0.7355679702048417,
+   "f1": 0.5193951347797502
+  },
+  "langdetect": {
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  }
+ },
+ "skr": {
+  "support": 549,
+  "urdunlp": {
+   "precision": 0.9925650557620818,
+   "recall": 0.9726775956284153,
+   "f1": 0.9825206991720331
+  },
+  "pali": {
+   "precision": 0.9191564147627417,
+   "recall": 0.9526411657559198,
+   "f1": 0.9355992844364938
+  },
+  "fasttext": {
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  },
+  "langdetect": {
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  }
+ },
+ "sd": {
+  "support": 510,
+  "urdunlp": {
+   "precision": 1.0,
+   "recall": 0.9980392156862745,
+   "f1": 0.9990186457311089
+  },
+  "pali": {
+   "precision": 0.9712643678160919,
+   "recall": 0.9941176470588236,
+   "f1": 0.9825581395348837
+  },
+  "fasttext": {
+   "precision": 0.9931662870159453,
+   "recall": 0.8549019607843137,
+   "f1": 0.9188619599578504
+  },
+  "langdetect": {
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  }
+ },
+ "ps": {
+  "support": 578,
+  "urdunlp": {
+   "precision": 1.0,
+   "recall": 0.9948096885813149,
+   "f1": 0.997398091934085
+  },
+  "pali": {
+   "precision": 0.9845094664371773,
+   "recall": 0.9896193771626297,
+   "f1": 0.9870578084555651
+  },
+  "fasttext": {
+   "precision": 0.9959016393442623,
+   "recall": 0.8408304498269896,
+   "f1": 0.9118198874296435
+  },
+  "langdetect": {
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  }
+ },
+ "ks": {
+  "support": 569,
+  "urdunlp": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "f1": 1.0
+  },
+  "pali": {
+   "precision": 0.9929701230228472,
+   "recall": 0.9929701230228472,
+   "f1": 0.9929701230228472
+  },
+  "fasttext": {
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  },
+  "langdetect": {
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  }
+ },
+ "fa": {
+  "support": 523,
+  "urdunlp": {
+   "precision": 0.9980916030534351,
+   "recall": 1.0,
+   "f1": 0.9990448901623686
+  },
+  "pali": {
+   "precision": 1.0,
+   "recall": 0.31166347992351817,
+   "f1": 0.47521865889212833
+  },
+  "fasttext": {
+   "precision": 0.5342185903983657,
+   "recall": 1.0,
+   "f1": 0.6964047936085219
+  },
+  "langdetect": {
+   "precision": 0.21306122448979592,
+   "recall": 0.9980879541108987,
+   "f1": 0.35116044399596374
+  }
+ },
+ "ar": {
+  "support": 558,
+  "urdunlp": {
+   "precision": 0.9721254355400697,
+   "recall": 1.0,
+   "f1": 0.9858657243816255
+  },
+  "pali": {
+   "precision": 0.9670932358318098,
+   "recall": 0.9480286738351255,
+   "f1": 0.9574660633484164
+  },
+  "fasttext": {
+   "precision": 0.8230088495575221,
+   "recall": 1.0,
+   "f1": 0.9029126213592232
+  },
+  "langdetect": {
+   "precision": 0.47128378378378377,
+   "recall": 1.0,
+   "f1": 0.6406429391504018
+  }
+ },
+ "ckb": {
+  "support": 567,
+  "urdunlp": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "f1": 1.0
+  },
+  "pali": {
+   "precision": 0.993006993006993,
+   "recall": 0.25044091710758376,
+   "f1": 0.4
+  },
+  "fasttext": {
+   "precision": 1.0,
+   "recall": 0.9947089947089947,
+   "f1": 0.9973474801061007
+  },
+  "langdetect": {
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  }
+ },
+ "ug": {
+  "support": 592,
+  "urdunlp": {
+   "precision": 1.0,
+   "recall": 0.9881756756756757,
+   "f1": 0.994052676295667
+  },
+  "pali": {
+   "precision": 0.9865092748735245,
+   "recall": 0.9881756756756757,
+   "f1": 0.9873417721518988
+  },
+  "fasttext": {
+   "precision": 1.0,
+   "recall": 0.981418918918919,
+   "f1": 0.9906223358908782
+  },
+  "langdetect": {
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  }
+ },
+ "azb": {
+  "support": 575,
+  "urdunlp": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "f1": 1.0
+  },
+  "pali": {
+   "precision": 0.9608177172061328,
+   "recall": 0.9808695652173913,
+   "f1": 0.9707401032702239
+  },
+  "fasttext": {
+   "precision": 0.9888888888888889,
+   "recall": 0.4643478260869565,
+   "f1": 0.6319526627218935
+  },
+  "langdetect": {
+   "precision": null,
+   "recall": 0.0,
+   "f1": null
+  }
+ }
+}

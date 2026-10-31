@@ -1,0 +1,377 @@
+{
+ "urdunlp": {
+  "rows": {
+   "ar": {
+    "ar": 558
+   },
+   "azb": {
+    "azb": 575
+   },
+   "ckb": {
+    "ckb": 567
+   },
+   "fa": {
+    "fa": 523
+   },
+   "ks": {
+    "ks": 569
+   },
+   "pnb": {
+    "pnb": 523,
+    "ur": 5,
+    "ar": 4,
+    "skr": 4,
+    "fa": 1
+   },
+   "ps": {
+    "ps": 575,
+    "ar": 2,
+    "ur": 1
+   },
+   "sd": {
+    "sd": 509,
+    "ar": 1
+   },
+   "skr": {
+    "skr": 534,
+    "pnb": 9,
+    "ur": 6
+   },
+   "ug": {
+    "ug": 585,
+    "ar": 7
+   },
+   "ur": {
+    "ur": 572,
+    "pnb": 4,
+    "ar": 2
+   }
+  },
+  "labels_true": [
+   "ar",
+   "azb",
+   "ckb",
+   "fa",
+   "ks",
+   "pnb",
+   "ps",
+   "sd",
+   "skr",
+   "ug",
+   "ur"
+  ],
+  "labels_predicted": [
+   "ar",
+   "azb",
+   "ckb",
+   "fa",
+   "ks",
+   "pnb",
+   "ps",
+   "sd",
+   "skr",
+   "ug",
+   "ur"
+  ],
+  "outside_the_task": []
+ },
+ "pali": {
+  "rows": {
+   "ar": {
+    "ar": 529,
+    "glk": 10,
+    "ug": 8,
+    "ps": 3,
+    "sd": 3,
+    "ku": 2,
+    "azb": 1,
+    "hac": 1,
+    "sdh": 1
+   },
+   "azb": {
+    "azb": 564,
+    "mzn": 7,
+    "glk": 4
+   },
+   "ckb": {
+    "sdh": 246,
+    "ckb": 142,
+    "hac": 98,
+    "ku": 80,
+    "mzn": 1
+   },
+   "fa": {
+    "mzn": 286,
+    "fa": 163,
+    "glk": 53,
+    "azb": 17,
+    "ps": 2,
+    "ckb": 1,
+    "skr": 1
+   },
+   "ks": {
+    "ks": 565,
+    "skr": 3,
+    "pnb": 1
+   },
+   "pnb": {
+    "pnb": 463,
+    "ur": 42,
+    "skr": 13,
+    "ar": 6,
+    "sd": 6,
+    "ks": 2,
+    "ps": 2,
+    "azb": 1,
+    "brh": 1,
+    "mzn": 1
+   },
+   "ps": {
+    "ps": 572,
+    "ar": 2,
+    "azb": 1,
+    "glk": 1,
+    "pnb": 1,
+    "sd": 1
+   },
+   "sd": {
+    "sd": 507,
+    "ar": 2,
+    "glk": 1
+   },
+   "skr": {
+    "skr": 523,
+    "pnb": 16,
+    "ur": 5,
+    "azb": 1,
+    "brh": 1,
+    "ks": 1,
+    "ps": 1,
+    "sd": 1
+   },
+   "ug": {
+    "ug": 585,
+    "ar": 7
+   },
+   "ur": {
+    "ur": 350,
+    "pnb": 144,
+    "trw": 46,
+    "skr": 29,
+    "sd": 4,
+    "azb": 2,
+    "ar": 1,
+    "ks": 1,
+    "ps": 1
+   }
+  },
+  "labels_true": [
+   "ar",
+   "azb",
+   "ckb",
+   "fa",
+   "ks",
+   "pnb",
+   "ps",
+   "sd",
+   "skr",
+   "ug",
+   "ur"
+  ],
+  "labels_predicted": [
+   "ar",
+   "azb",
+   "brh",
+   "ckb",
+   "fa",
+   "glk",
+   "hac",
+   "ks",
+   "ku",
+   "mzn",
+   "pnb",
+   "ps",
+   "sd",
+   "sdh",
+   "skr",
+   "trw",
+   "ug",
+   "ur"
+  ],
+  "outside_the_task": [
+   "brh",
+   "glk",
+   "hac",
+   "ku",
+   "mzn",
+   "sdh",
+   "trw"
+  ]
+ },
+ "fasttext": {
+  "rows": {
+   "ar": {
+    "ar": 558
+   },
+   "azb": {
+    "fa": 307,
+    "azb": 267,
+    "ar": 1
+   },
+   "ckb": {
+    "ckb": 564,
+    "ar": 1,
+    "azb": 1,
+    "fa": 1
+   },
+   "fa": {
+    "fa": 523
+   },
+   "ks": {
+    "ur": 310,
+    "pnb": 186,
+    "fa": 73
+   },
+   "pnb": {
+    "pnb": 395,
+    "ur": 126,
+    "ar": 11,
+    "fa": 5
+   },
+   "ps": {
+    "ps": 486,
+    "fa": 59,
+    "ar": 25,
+    "arz": 3,
+    "sd": 3,
+    "azb": 2
+   },
+   "sd": {
+    "sd": 436,
+    "ar": 74
+   },
+   "skr": {
+    "pnb": 401,
+    "ur": 140,
+    "fa": 8
+   },
+   "ug": {
+    "ug": 581,
+    "ar": 6,
+    "ps": 2,
+    "ko": 1,
+    "mzn": 1,
+    "ur": 1
+   },
+   "ur": {
+    "ur": 571,
+    "fa": 3,
+    "ar": 2,
+    "pnb": 2
+   }
+  },
+  "labels_true": [
+   "ar",
+   "azb",
+   "ckb",
+   "fa",
+   "ks",
+   "pnb",
+   "ps",
+   "sd",
+   "skr",
+   "ug",
+   "ur"
+  ],
+  "labels_predicted": [
+   "ar",
+   "arz",
+   "azb",
+   "ckb",
+   "fa",
+   "ko",
+   "mzn",
+   "pnb",
+   "ps",
+   "sd",
+   "ug",
+   "ur"
+  ],
+  "outside_the_task": [
+   "arz",
+   "ko",
+   "mzn"
+  ]
+ },
+ "langdetect": {
+  "rows": {
+   "ar": {
+    "ar": 558
+   },
+   "azb": {
+    "fa": 572,
+    "ar": 3
+   },
+   "ckb": {
+    "fa": 454,
+    "ur": 113
+   },
+   "fa": {
+    "fa": 522,
+    "ur": 1
+   },
+   "ks": {
+    "ur": 568,
+    "fa": 1
+   },
+   "pnb": {
+    "ur": 523,
+    "ar": 12,
+    "fa": 2
+   },
+   "ps": {
+    "fa": 560,
+    "ar": 15,
+    "ur": 3
+   },
+   "sd": {
+    "fa": 329,
+    "ur": 162,
+    "ar": 19
+   },
+   "skr": {
+    "ur": 543,
+    "fa": 4,
+    "ar": 2
+   },
+   "ug": {
+    "ar": 573,
+    "ur": 13,
+    "fa": 6
+   },
+   "ur": {
+    "ur": 576,
+    "ar": 2
+   }
+  },
+  "labels_true": [
+   "ar",
+   "azb",
+   "ckb",
+   "fa",
+   "ks",
+   "pnb",
+   "ps",
+   "sd",
+   "skr",
+   "ug",
+   "ur"
+  ],
+  "labels_predicted": [
+   "ar",
+   "fa",
+   "ur"
+  ],
+  "outside_the_task": []
+ }
+}

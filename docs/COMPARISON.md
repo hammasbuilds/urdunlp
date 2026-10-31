@@ -43,11 +43,17 @@ everything below:
 | `langdetect`, all 11 languages | 0.2699 | 0.2678 | 0.2518 | 0.2226 |
 | `langdetect`, where it has a label | 0.9982 | 0.9904 | 0.9313 | 0.8234 |
 
-Read the two `langdetect` rows together. On the three languages it knows it is **excellent**
-- 0.9982 on whole paragraphs, better than this tool - and across the task it is 0.2699,
-because eight of the eleven classes are not in its label set. That is not a flaw in
-`langdetect`. It is the whole argument for a task-specific model: the general tool is very
-good at a different, easier question.
+Read the two `langdetect` rows together. On the three languages it knows it is **as good
+as this tool** - 0.9982 against 0.9964 on whole paragraphs, which on those same 1,659
+paragraphs is **indistinguishable** (McNemar exact, 11 discordant pairs, p = 0.375) - and
+across the task it is 0.2699, because eight of the eleven classes are not in its label
+set. That is not a flaw in `langdetect`. It is the whole argument for a task-specific
+model: the general tool is as good as this one at a different, easier question.
+
+An earlier version of this page said langdetect was "better than this tool" there, on the
+strength of 0.9982 against 0.9964. The paired test says those two rates are not
+distinguishable on this sample, so "better" claimed more than the data supports - in the
+baseline's favour, but wrong either way.
 
 Where fastText *does* have the label it still trails, 0.8731 against 0.9925, and the gap
 widens as the text gets shorter - 0.5355 against 0.7909 at ten characters.

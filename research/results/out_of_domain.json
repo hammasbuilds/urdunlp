@@ -1,0 +1,200 @@
+{
+ "source": "Tatoeba sentence exports (CC-BY 2.0 FR), downloads.tatoeba.org",
+ "why": "a non-Wikipedia domain, to test the in-domain objection",
+ "languages_available": [
+  "ar",
+  "ckb",
+  "fa",
+  "ks",
+  "pnb",
+  "sd",
+  "skr",
+  "ug",
+  "ur"
+ ],
+ "languages_absent": [
+  "azb",
+  "ps"
+ ],
+ "min_n_for_a_rate": 30,
+ "per_language": {
+  "ur": {
+   "available": true,
+   "n": 2812,
+   "correct": 1491,
+   "confusions": {
+    "pnb": 1255,
+    "skr": 59,
+    "ug": 4,
+    "fa": 1,
+    "ks": 1,
+    "sd": 1
+   },
+   "accuracy": {
+    "rate": 0.5302,
+    "lo": 0.5118,
+    "hi": 0.5486,
+    "n": 2812,
+    "correct": 1491
+   }
+  },
+  "pnb": {
+   "available": true,
+   "n": 70,
+   "correct": 48,
+   "confusions": {
+    "skr": 15,
+    "ur": 7
+   },
+   "accuracy": {
+    "rate": 0.6857,
+    "lo": 0.5697,
+    "hi": 0.7824,
+    "n": 70,
+    "correct": 48
+   }
+  },
+  "skr": {
+   "available": true,
+   "n": 133,
+   "correct": 126,
+   "confusions": {
+    "pnb": 4,
+    "ur": 3
+   },
+   "accuracy": {
+    "rate": 0.9474,
+    "lo": 0.8953,
+    "hi": 0.9743,
+    "n": 133,
+    "correct": 126
+   }
+  },
+  "sd": {
+   "available": true,
+   "n": 7,
+   "correct": 6,
+   "confusions": {
+    "pnb": 1
+   },
+   "accuracy": null,
+   "withheld": "7 sentence(s) is below 30; a rate over this many has an interval wider than the range it lives in, so the count is reported and the rate is not"
+  },
+  "ps": {
+   "available": false,
+   "why": "absent from Tatoeba (tried ('pbu', 'pus', 'pbt'))"
+  },
+  "ks": {
+   "available": true,
+   "n": 210,
+   "correct": 34,
+   "confusions": {
+    "null": 176
+   },
+   "accuracy": {
+    "rate": 0.1619,
+    "lo": 0.1182,
+    "hi": 0.2177,
+    "n": 210,
+    "correct": 34
+   }
+  },
+  "fa": {
+   "available": true,
+   "n": 31444,
+   "correct": 31106,
+   "confusions": {
+    "pnb": 80,
+    "ar": 76,
+    "ur": 46,
+    "ps": 39,
+    "azb": 33,
+    "sd": 23,
+    "skr": 18,
+    "ks": 12,
+    "null": 7,
+    "ckb": 4
+   },
+   "accuracy": {
+    "rate": 0.9893,
+    "lo": 0.988,
+    "hi": 0.9903,
+    "n": 31444,
+    "correct": 31106
+   }
+  },
+  "ar": {
+   "available": true,
+   "n": 64078,
+   "correct": 63153,
+   "confusions": {
+    "sd": 399,
+    "fa": 221,
+    "pnb": 106,
+    "ps": 99,
+    "null": 36,
+    "ur": 21,
+    "ks": 21,
+    "azb": 16,
+    "ug": 3,
+    "ckb": 2,
+    "skr": 1
+   },
+   "accuracy": {
+    "rate": 0.9856,
+    "lo": 0.9846,
+    "hi": 0.9865,
+    "n": 64078,
+    "correct": 63153
+   }
+  },
+  "ckb": {
+   "available": true,
+   "n": 12491,
+   "correct": 12468,
+   "confusions": {
+    "fa": 16,
+    "ar": 4,
+    "azb": 2,
+    "ps": 1
+   },
+   "accuracy": {
+    "rate": 0.9982,
+    "lo": 0.9972,
+    "hi": 0.9988,
+    "n": 12491,
+    "correct": 12468
+   }
+  },
+  "ug": {
+   "available": true,
+   "n": 9926,
+   "correct": 9913,
+   "confusions": {
+    "null": 11,
+    "ar": 1,
+    "ckb": 1
+   },
+   "accuracy": {
+    "rate": 0.9987,
+    "lo": 0.9978,
+    "hi": 0.9992,
+    "n": 9926,
+    "correct": 9913
+   }
+  },
+  "azb": {
+   "available": false,
+   "why": "absent from Tatoeba (tried ('azb',))"
+  }
+ },
+ "overall": {
+  "rate": 0.9767,
+  "lo": 0.9758,
+  "hi": 0.9775,
+  "n": 121171,
+  "correct": 118345
+ },
+ "languages_with_a_reportable_rate": 8,
+ "the_limitation": "Tatoeba has 1.3 KB of Shahmukhi Punjabi, 2.0 KB of Saraiki and 242 bytes of Sindhi. So this validates the easy half of the task out of domain and cannot validate the half the task exists for. There is no out-of-domain corpus of a size that can validate a classifier on Saraiki or Shahmukhi Punjabi, which is a fact about the languages' resources rather than about this model."
+}

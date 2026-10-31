@@ -1,0 +1,70 @@
+{
+ "pali": {
+  "n": 6136,
+  "classes": [
+   "ar",
+   "azb",
+   "ckb",
+   "fa",
+   "ks",
+   "pnb",
+   "ps",
+   "sd",
+   "skr",
+   "ug",
+   "ur"
+  ],
+  "urdunlp_accuracy": 0.9925,
+  "pali_accuracy": 0.8088,
+  "mcnemar": {
+   "a_only": 1136,
+   "b_only": 9,
+   "discordant": 1145,
+   "p_value": 4e-323,
+   "log10_p_value": -322.42,
+   "p_value_below": null
+  }
+ },
+ "fasttext": {
+  "n": 5018,
+  "classes": [
+   "ar",
+   "azb",
+   "ckb",
+   "fa",
+   "pnb",
+   "ps",
+   "sd",
+   "ug",
+   "ur"
+  ],
+  "urdunlp_accuracy": 0.9938,
+  "fasttext_accuracy": 0.8731,
+  "mcnemar": {
+   "a_only": 614,
+   "b_only": 8,
+   "discordant": 622,
+   "p_value": 6.183336477036992e-170,
+   "log10_p_value": -169.21,
+   "p_value_below": null
+  }
+ },
+ "langdetect": {
+  "n": 1659,
+  "classes": [
+   "ar",
+   "fa",
+   "ur"
+  ],
+  "urdunlp_accuracy": 0.9964,
+  "langdetect_accuracy": 0.9982,
+  "mcnemar": {
+   "a_only": 1,
+   "b_only": 4,
+   "discordant": 5,
+   "p_value": 0.37500000000000044,
+   "log10_p_value": -0.43,
+   "p_value_below": null
+  }
+ }
+}

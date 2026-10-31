@@ -1,0 +1,9 @@
+{
+ "fig1_coverage": "Label coverage of the eleven-language task. A filled cell means the system has a label for that language: urdunlp 11/11, fastText 9/11, langdetect 3/11. Hatched cells are languages the system cannot name, so no accuracy over them is meaningful.",
+ "fig2_accuracy_by_length": "Accuracy against the amount of text, 6,136 test paragraphs per point. Solid lines are accuracy over all eleven languages; dashed lines restrict each baseline to the languages it has a label for. The y-axis starts at zero and is not truncated.",
+ "fig3_per_class_f1": "Per-language F1 on whole paragraphs. Macro-F1 over the classes each system can score: urdunlp 0.992 over 11, fastText 0.803 over 9, langdetect 0.455 over 3. A missing bar is a class the system has no label for, which is not the same as an F1 of zero.",
+ "fig4_misattribution_langdetect": "What langdetect answers for the languages it has no label for, whole paragraphs. Kashmiri is labelled Urdu in 99.8% of its paragraphs. Each bar sums to one; segments are the answers the system actually gave.",
+ "fig5_confusion_langdetect": "Row-normalised confusion for langdetect on whole paragraphs, 6,136 paragraphs. Each row sums to one. Every answer fell inside the task's labels.",
+ "fig6_margin_deciles": "Accuracy by margin decile on whole test paragraphs, 6,136 items, 613-614 per decile. 36 of the 46 errors (78%) fall in the narrowest decile, so the margin carries usable information about which answers to doubt. The accuracy axis is truncated below 0.9 to make the spread visible; the error panel is not truncated.",
+ "fig7_selective_prediction": "Selective prediction: answer only the items whose margin is in the top fraction. At 50% coverage, accuracy on the 3,068 items kept is 1.0000 and 0 of the 46 errors remain. The error share is plotted beside accuracy because accuracy on a shrinking set rises whether or not abstention is choosing the right items."
+}

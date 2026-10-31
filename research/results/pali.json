@@ -1,0 +1,258 @@
+{
+ "model": "LID_model_merged.ftz",
+ "source": "https://github.com/sinaahmadi/PersoArabicLID (MIT)",
+ "paper": "arXiv:2304.01322",
+ "labels_in_model": [
+  "ar",
+  "azb",
+  "bal",
+  "brh",
+  "ckb",
+  "fa",
+  "glk",
+  "hac",
+  "kas",
+  "ku",
+  "mzn",
+  "pa",
+  "ps",
+  "sd",
+  "sdh",
+  "skr",
+  "trw",
+  "ud",
+  "ug"
+ ],
+ "mapping_learned_on": "validation split",
+ "mapping": {
+  "ar": "ar",
+  "azb": "azb",
+  "ckb": "ckb",
+  "fa": "fa",
+  "ks": "kas",
+  "pnb": "pa",
+  "ps": "ps",
+  "sd": "sd",
+  "skr": "skr",
+  "ug": "ug",
+  "ur": "ud"
+ },
+ "how": {
+  "ar": "identity",
+  "azb": "identity",
+  "ckb": "identity",
+  "fa": "identity",
+  "ks": "derived on val",
+  "pnb": "derived on val",
+  "ps": "identity",
+  "sd": "identity",
+  "skr": "identity",
+  "ug": "identity",
+  "ur": "derived on val"
+ },
+ "identity_for": [
+  "ar",
+  "azb",
+  "ckb",
+  "fa",
+  "ps",
+  "sd",
+  "skr",
+  "ug"
+ ],
+ "derived_for": [
+  "ks",
+  "pnb",
+  "ur"
+ ],
+ "generous_mapping": {
+  "ar": "ar",
+  "azb": "azb",
+  "ckb": "sdh",
+  "fa": "mzn",
+  "ks": "kas",
+  "pnb": "pa",
+  "ps": "ps",
+  "sd": "sd",
+  "skr": "skr",
+  "ug": "ug",
+  "ur": "ud"
+ },
+ "evidence": {
+  "ar": {
+   "pali_label": "ar",
+   "share": 0.9657,
+   "n": 1748,
+   "runner_up": [
+    "ug",
+    15
+   ]
+  },
+  "azb": {
+   "pali_label": "azb",
+   "share": 0.9851,
+   "n": 1815,
+   "runner_up": [
+    "mzn",
+    22
+   ]
+  },
+  "ckb": {
+   "pali_label": "sdh",
+   "share": 0.4332,
+   "n": 1856,
+   "runner_up": [
+    "ckb",
+    539
+   ]
+  },
+  "fa": {
+   "pali_label": "mzn",
+   "share": 0.5265,
+   "n": 1848,
+   "runner_up": [
+    "fa",
+    630
+   ]
+  },
+  "ks": {
+   "pali_label": "kas",
+   "share": 0.9951,
+   "n": 1854,
+   "runner_up": [
+    "skr",
+    3
+   ]
+  },
+  "pnb": {
+   "pali_label": "pa",
+   "share": 0.873,
+   "n": 1779,
+   "runner_up": [
+    "ud",
+    138
+   ]
+  },
+  "ps": {
+   "pali_label": "ps",
+   "share": 0.9848,
+   "n": 1781,
+   "runner_up": [
+    "ar",
+    7
+   ]
+  },
+  "sd": {
+   "pali_label": "sd",
+   "share": 0.9911,
+   "n": 1792,
+   "runner_up": [
+    "ar",
+    5
+   ]
+  },
+  "skr": {
+   "pali_label": "skr",
+   "share": 0.9584,
+   "n": 1827,
+   "runner_up": [
+    "pa",
+    42
+   ]
+  },
+  "ug": {
+   "pali_label": "ug",
+   "share": 0.9888,
+   "n": 1778,
+   "runner_up": [
+    "ar",
+    16
+   ]
+  },
+  "ur": {
+   "pali_label": "ud",
+   "share": 0.5789,
+   "n": 1769,
+   "runner_up": [
+    "pa",
+    470
+   ]
+  }
+ },
+ "collisions": {},
+ "confound": "PALI's corpora are Wikipedia dumps for several of these languages and this test set is Wikipedia, so these test paragraphs may appear in PALI's training data. The bias is in PALI's favour; a lead for this tool is therefore conservative and a lead for PALI cannot be read as clean.",
+ "by_length": {
+  "whole": {
+   "accuracy": 0.8088,
+   "accuracy_generous_mapping": 0.8955,
+   "n": 6136,
+   "per_language": {
+    "ar": 0.948,
+    "azb": 0.9809,
+    "ckb": 0.2504,
+    "fa": 0.3117,
+    "ks": 0.993,
+    "pnb": 0.8622,
+    "ps": 0.9896,
+    "sd": 0.9941,
+    "skr": 0.9526,
+    "ug": 0.9882,
+    "ur": 0.6055
+   }
+  },
+  "50 chars": {
+   "accuracy": 0.7238,
+   "accuracy_generous_mapping": 0.802,
+   "n": 6136,
+   "per_language": {
+    "ar": 0.8674,
+    "azb": 0.8922,
+    "ckb": 0.127,
+    "fa": 0.1778,
+    "ks": 0.9508,
+    "pnb": 0.784,
+    "ps": 0.9602,
+    "sd": 0.9745,
+    "skr": 0.8652,
+    "ug": 0.9882,
+    "ur": 0.3547
+   }
+  },
+  "20 chars": {
+   "accuracy": 0.5758,
+   "accuracy_generous_mapping": 0.6333,
+   "n": 6136,
+   "per_language": {
+    "ar": 0.5699,
+    "azb": 0.6765,
+    "ckb": 0.0776,
+    "fa": 0.1224,
+    "ks": 0.833,
+    "pnb": 0.5102,
+    "ps": 0.8824,
+    "sd": 0.8686,
+    "skr": 0.6339,
+    "ug": 0.9747,
+    "ur": 0.1592
+   }
+  },
+  "10 chars": {
+   "accuracy": 0.4327,
+   "accuracy_generous_mapping": 0.4744,
+   "n": 6136,
+   "per_language": {
+    "ar": 0.31,
+    "azb": 0.4922,
+    "ckb": 0.03,
+    "fa": 0.1013,
+    "ks": 0.6626,
+    "pnb": 0.3259,
+    "ps": 0.6453,
+    "sd": 0.7412,
+    "skr": 0.4572,
+    "ug": 0.8581,
+    "ur": 0.1159
+   }
+  }
+ }
+}
