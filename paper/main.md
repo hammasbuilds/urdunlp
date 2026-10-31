@@ -27,11 +27,11 @@ labelled Shahmukhi Punjabi. Two independent sources agree, so this is the model 
 label noise. No number available in the single-domain setup could have warned of it,
 because training and test came from one domain.
 
-Rebuilding the corpus from **forty-seven sources** across CC-100, eighteen OPUS corpora,
-four Wikimedia projects and Tatoeba, with every source contributing to train, validation
-and test, raises Urdu from **0.5369 to 0.9459** and the overall figure from **0.8946 to
-0.9728** — at a stated cost to Shahmukhi Punjabi (0.9725 → 0.9317), which has no
-non-Wikimedia source to add. The contribution is therefore less a better classifier than
+Rebuilding the corpus from every real source these languages have — **3,587,017 lines
+over 36 source–language pairs**, drawn from CC-100, eight OPUS corpora and two Wikimedia
+projects, with every source contributing to train, validation and test — raises Urdu from
+**0.5369 to 0.9459** and the overall figure from **0.8946 to 0.9728**, at a stated cost to
+Shahmukhi Punjabi (0.9725 → 0.9317), which has no non-Wikimedia source to add. The contribution is therefore less a better classifier than
 a demonstration that **single-domain evaluation of low-resource language ID is capable of
 reporting 0.99 for a model that is wrong three times in four**, and a corpus and protocol
 that make the failure visible.
@@ -222,6 +222,45 @@ Kurdish while the distributed model's label list treats it inconsistently. The m
 §4 therefore uses identity wherever PALI has our code and reports the alternative beside
 it, rather than resolving an ambiguity in another project's label set by assertion.
 
+## 4.4 What a missing label actually does
+
+A system with no label for a language does not abstain — it answers something else,
+confidently. That is why coverage is §3 and not a footnote.
+
+![Figure 4](../research/figures/fig4_misattribution_langdetect.png)
+
+**Figure 4.** What `langdetect` answers for the eight languages it has no label for, whole
+paragraphs. **Kashmiri is labelled Urdu in 99.8% of its paragraphs.** Each bar sums to
+one; segments are the answers the system actually gave. For a pipeline routing text by
+detected language, this is not a missing answer but a wrong one at near-certainty.
+
+![Figure 5](../research/figures/fig5_confusion_langdetect.png)
+
+**Figure 5.** Row-normalised confusion for `langdetect` over 6,136 paragraphs. Every
+answer fell inside the task's eleven labels, so the errors are misattributions among
+these languages rather than escapes to unrelated ones.
+
+## 4.5 Knowing when to doubt the answer
+
+![Figure 6](../research/figures/fig6_margin_deciles.png)
+
+**Figure 6.** Accuracy by margin decile, 6,136 items, 613–614 per decile. **36 of the 46
+errors (78%) fall in the narrowest decile**, so the margin carries usable information
+about which answers to doubt. The accuracy axis is truncated below 0.9 to make the spread
+visible; the error panel is not truncated. An earlier version of this figure used three
+bins, which put 6,131 of the 6,136 items in one of them and showed nothing.
+
+![Figure 7](../research/figures/fig7_selective_prediction.png)
+
+**Figure 7.** Selective prediction: answer only the items whose margin is in the top
+fraction. At 50% coverage, accuracy on the 3,068 items kept is 1.0000 and **none of the 46
+errors remain**. The error share is plotted beside accuracy because accuracy on a
+shrinking set rises whether or not abstention is choosing the right items to drop.
+
+This is the practical consequence of §3 and §4 together: a model that covers the task can
+also say when it is unsure, and a model that cannot name the language cannot do either.
+These numbers are in-domain, and §5 is about what happens when that assumption fails.
+
 # 5. The result that matters: 0.9925 does not survive leaving Wikipedia
 
 The number above was produced by training and testing on one domain. Two out-of-domain
@@ -258,11 +297,21 @@ both would have entered the corpus labelled as the languages they are not.
 
 # 6. Rebuilding the corpus, and what it costs
 
-The corpus was rebuilt from every real source that exists for these languages: CC-100,
-eighteen OPUS corpora, four Wikimedia projects (Wikipedia, Wiktionary, Wikisource,
-Wikibooks) and Tatoeba — **forty-seven distinct sources**. Every source is split
-**80/10/10 within itself**, so the test split spans every domain the training split saw.
-This is the design the single-domain setup lacked and the reason it could not warn of §5.
+The corpus was rebuilt from every real source that exists for these languages. CC-100's
+120 languages, eighteen OPUS corpora and four Wikimedia projects were swept; what
+actually yielded usable Perso-Arabic text was **CC-100, eight OPUS corpora and two
+Wikimedia projects**, giving **36 source–language pairs and 3,587,017 lines**, with every
+language above 100,000. The gap between what was swept and what yielded is itself the
+resource picture: ten OPUS corpora and two Wikimedia projects have nothing for any of
+these eleven languages.
+
+Every source is split **80/10/10 within itself**, so the test split spans every domain
+the training split saw. This is the design the single-domain setup lacked and the reason
+it could not warn of §5.
+
+Per-language counts, and the three kinds of row, are in `docs/CORPUS.md` §14; the
+rejections — Latin-script `az`, Devanagari `ks` — are in §14.2, and Kashmiri's built rows
+in §14.3.
 
 Scored on identical rows, 74,592 test rows over 47 sources:
 
