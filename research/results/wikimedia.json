@@ -1,0 +1,27 @@
+{
+ "cap_per_project": 60000,
+ "min_chars": 40,
+ "min_arabic_share": 0.6,
+ "languages": {
+  "pnb": {
+   "projects": {
+    "wiki": 60000,
+    "wiktionary": 1290
+   },
+   "total": 61290
+  },
+  "skr": {
+   "projects": {
+    "wiki": 60000,
+    "wiktionary": 60000
+   },
+   "total": 120000
+  },
+  "azb": {
+   "projects": {
+    "wiki": 60000
+   },
+   "total": 60000
+  }
+ }
+}

@@ -37,6 +37,18 @@ def doc() -> str:
 
 
 @pytest.fixture(scope="module")
+def flat(doc) -> str:
+    """The page with all runs of whitespace collapsed to one space.
+
+    Prose assertions use this; table-cell assertions use `doc`. A sentence that wraps
+    between two of its words is still on the page, and a test that fails because the
+    paragraph reflowed is testing the line width. One such assertion did fail that way,
+    on a sentence sitting correctly at line 50.
+    """
+    return " ".join(doc.split())
+
+
+@pytest.fixture(scope="module")
 def whole(data) -> dict:
     return data["by_length"]["whole"]
 
@@ -57,12 +69,12 @@ def test_the_coverage_table_is_the_artefacts(whole, data, doc):
     assert f"**{total} of {total}**" in doc, "this tool's own coverage row"
 
 
-def test_the_languages_each_baseline_cannot_name_are_the_ones_listed(whole, doc):
+def test_the_languages_each_baseline_cannot_name_are_the_ones_listed(whole, doc, flat):
     """Named in full, because the list IS the argument."""
     missing = whole["fasttext"]["has_no_label_for"]
     assert set(missing) == {"skr", "ks"}, missing
     assert "**Saraiki, Kashmiri**" in doc
-    assert "two of the three languages Urdu is most confusable with" in doc
+    assert "two of the three languages Urdu is most confusable with" in flat
 
     langdetect_missing = whole["langdetect"]["has_no_label_for"]
     assert len(langdetect_missing) == 8, langdetect_missing
@@ -118,7 +130,7 @@ def test_every_accuracy_cell_matches_the_artefact(data, doc):
     assert checked == len(rows) * len(lengths) == 20, checked
 
 
-def test_the_page_reports_both_readings_for_each_baseline(data, doc):
+def test_the_page_reports_both_readings_for_each_baseline(data, doc, flat):
     """A page quoting only the unrestricted number would misrepresent the baselines."""
     # The artefact's keys are not the document's names: it writes "fastText" with a
     # capital T, as the project does. Asserting the key verbatim failed on prose that was
@@ -128,11 +140,15 @@ def test_the_page_reports_both_readings_for_each_baseline(data, doc):
     for key, name in shown.items():
         assert f"{name}, all {len(data['languages'])} languages" in plain, key
         assert f"{name}, where it has a label" in plain, key
-    assert "it is the whole argument for a task-specific model" in doc or \
-           "the whole argument for a task-specific model" in doc
+    # Whitespace-collapsed before the check. The sentence is on line 50 and wraps
+    # between "task-specific" and "model", so a raw substring test fails on prose that
+    # is present and correct - and would keep failing, or start passing, purely on how
+    # the paragraph happens to reflow. The claim is that the page says this, not that it
+    # says it on one line.
+    assert "the whole argument for a task-specific model" in flat
 
 
-def test_langdetect_is_credited_where_it_is_better(whole, data, doc):
+def test_langdetect_is_credited_where_it_is_better(whole, data, doc, flat):
     """It beats this tool on the three languages it knows, and the page says so."""
     theirs = whole["langdetect"]["accuracy_where_it_has_a_label"]
     ours = whole["urdunlp"]["accuracy_all_languages"]
@@ -140,8 +156,8 @@ def test_langdetect_is_credited_where_it_is_better(whole, data, doc):
         "langdetect no longer beats this tool on its own labels; the sentence saying it "
         "does is now wrong"
     )
-    assert "better than this tool" in doc
-    assert "not a flaw in" in doc
+    assert "better than this tool" in flat
+    assert "not a flaw in" in flat
 
 
 def test_the_confusion_counts_are_the_measured_ones(whole, data, doc):

@@ -1,0 +1,264 @@
+{
+ "seed": 20261031,
+ "split": [
+  0.8,
+  0.1,
+  0.1
+ ],
+ "synthetic_included": false,
+ "languages": {
+  "ur": {
+   "sources": 3,
+   "counts": {
+    "train": {
+     "total": 288000,
+     "real": 288000,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 36000,
+     "real": 36000,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 36000,
+     "real": 36000,
+     "segmented": 0,
+     "synthetic": 0
+    }
+   }
+  },
+  "pnb": {
+   "sources": 3,
+   "counts": {
+    "train": {
+     "total": 239999,
+     "real": 97136,
+     "segmented": 142863,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 29999,
+     "real": 12142,
+     "segmented": 17857,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 30002,
+     "real": 12143,
+     "segmented": 17859,
+     "synthetic": 0
+    }
+   }
+  },
+  "skr": {
+   "sources": 3,
+   "counts": {
+    "train": {
+     "total": 240000,
+     "real": 192000,
+     "segmented": 48000,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 30000,
+     "real": 24000,
+     "segmented": 6000,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 30000,
+     "real": 24000,
+     "segmented": 6000,
+     "synthetic": 0
+    }
+   }
+  },
+  "sd": {
+   "sources": 3,
+   "counts": {
+    "train": {
+     "total": 288000,
+     "real": 288000,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 36000,
+     "real": 36000,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 36000,
+     "real": 36000,
+     "segmented": 0,
+     "synthetic": 0
+    }
+   }
+  },
+  "ps": {
+   "sources": 3,
+   "counts": {
+    "train": {
+     "total": 266194,
+     "real": 266194,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 33274,
+     "real": 33274,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 33275,
+     "real": 33275,
+     "segmented": 0,
+     "synthetic": 0
+    }
+   }
+  },
+  "ks": {
+   "sources": 4,
+   "counts": {
+    "train": {
+     "total": 36212,
+     "real": 15403,
+     "segmented": 20809,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 4525,
+     "real": 1924,
+     "segmented": 2601,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 4531,
+     "real": 1929,
+     "segmented": 2602,
+     "synthetic": 0
+    }
+   }
+  },
+  "fa": {
+   "sources": 4,
+   "counts": {
+    "train": {
+     "total": 321020,
+     "real": 321020,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 40127,
+     "real": 40127,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 40129,
+     "real": 40129,
+     "segmented": 0,
+     "synthetic": 0
+    }
+   }
+  },
+  "ar": {
+   "sources": 3,
+   "counts": {
+    "train": {
+     "total": 288000,
+     "real": 288000,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 36000,
+     "real": 36000,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 36000,
+     "real": 36000,
+     "segmented": 0,
+     "synthetic": 0
+    }
+   }
+  },
+  "ckb": {
+   "sources": 6,
+   "counts": {
+    "train": {
+     "total": 239998,
+     "real": 141002,
+     "segmented": 98996,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 29997,
+     "real": 17623,
+     "segmented": 12374,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 30005,
+     "real": 17629,
+     "segmented": 12376,
+     "synthetic": 0
+    }
+   }
+  },
+  "ug": {
+   "sources": 7,
+   "counts": {
+    "train": {
+     "total": 253722,
+     "real": 253722,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 31713,
+     "real": 31713,
+     "segmented": 0,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 31719,
+     "real": 31719,
+     "segmented": 0,
+     "synthetic": 0
+    }
+   }
+  },
+  "azb": {
+   "sources": 2,
+   "counts": {
+    "train": {
+     "total": 204675,
+     "real": 96000,
+     "segmented": 108675,
+     "synthetic": 0
+    },
+    "val": {
+     "total": 25584,
+     "real": 12000,
+     "segmented": 13584,
+     "synthetic": 0
+    },
+    "test": {
+     "total": 25585,
+     "real": 12000,
+     "segmented": 13585,
+     "synthetic": 0
+    }
+   }
+  }
+ }
+}

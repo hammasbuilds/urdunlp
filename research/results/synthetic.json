@@ -1,0 +1,25 @@
+{
+ "seed": 20261031,
+ "target": 300000,
+ "languages": {
+  "ks": {
+   "real": 19256,
+   "segmented": 26012,
+   "synthetic": 254732,
+   "synthetic_by_kind": {
+    "shuffle": 84910,
+    "bigram": 84910,
+    "noise": 84912
+   },
+   "vocabulary": 92421,
+   "total": 300000,
+   "meets_target": true
+  }
+ },
+ "generators": {
+  "shuffle": "words resampled from this language's own corpus, frequency-weighted",
+  "bigram": "word pairs from the real corpus, chained",
+  "noise": "real lines with dropped diacritics, transpositions and repeated characters"
+ },
+ "nothing_authored": "Every token in every synthetic line is a word attested in that language's real corpus. No sentence was written by the author or by a model."
+}

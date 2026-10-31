@@ -125,12 +125,22 @@ def split_of(paragraph: str) -> str:
     return "train" if h < 0.80 else ("val" if h < 0.95 else "test")
 
 
-def wiki_splits(wiki_dir: pathlib.Path | None = None) -> dict[str, dict[str, list[str]]]:
+def wiki_splits(wiki_dir: pathlib.Path | None = None,
+                max_lines: int | None = None) -> dict[str, dict[str, list[str]]]:
     """The splits, from `data/wiki` unless another corpus directory is named.
 
     The path was hard-coded, so a corpus built at a different size could not be
     trained on without overwriting the one the shipped model was built from - which
     is exactly the mistake FINGERPRINT.tsv exists to catch.
+
+    `max_lines` caps the paragraphs read per language. It exists because the
+    multi-source corpus is roughly twenty times the Wikipedia one and holding eleven
+    full n-gram counters at once is several gigabytes on a machine that is shared with
+    other work. The cap takes **every k-th line, not the first n**: the split files are
+    written one source after another, so the first n lines of a Kashmiri file are
+    entirely synthetic-shuffle rows and the first n of an Urdu file are entirely CC-100.
+    A head-of-file cap would therefore have trained each language on one source while
+    the file it came from spanned seven, and nothing downstream would have said so.
     """
     folder = wiki_dir or (DATA / "wiki")
     out: dict[str, dict[str, list[str]]] = {}
@@ -138,8 +148,12 @@ def wiki_splits(wiki_dir: pathlib.Path | None = None) -> dict[str, dict[str, lis
         path = folder / f"{code}.txt"
         if not path.exists():
             raise SystemExit(f"missing {path}: run scripts/fetch_wikipedia_samples.py")
+        lines = path.read_text(encoding="utf-8").splitlines()
+        if max_lines and len(lines) > max_lines:
+            step = len(lines) / max_lines
+            lines = [lines[int(i * step)] for i in range(max_lines)]
         parts: dict[str, list[str]] = collections.defaultdict(list)
-        for paragraph in path.read_text(encoding="utf-8").splitlines():
+        for paragraph in lines:
             text = clean(paragraph)
             if len(text) >= 20:
                 parts[split_of(paragraph)].append(text)
@@ -214,7 +228,8 @@ def window(text: str, length: int | None) -> str | None:
 
 def build_script_model(
     n_max: int = N_MAX, alpha: float = ALPHA, top_grams: int = TOP_GRAMS,
-    wiki_dir: pathlib.Path | None = None, out_dir: pathlib.Path | None = None
+    wiki_dir: pathlib.Path | None = None, out_dir: pathlib.Path | None = None,
+    max_lines: int | None = None,
 ) -> None:
     """Build the script model. `out_dir` defaults to the shipped src/urdunlp/data.
 
@@ -223,7 +238,7 @@ def build_script_model(
     the package installs on every iteration, and a sweep interrupted half way leaves the
     wheel carrying whichever candidate happened to run last.
     """
-    splits = wiki_splits(wiki_dir)
+    splits = wiki_splits(wiki_dir, max_lines)
     counts = {}
     for code, parts in splits.items():
         c: collections.Counter = collections.Counter()
@@ -403,6 +418,12 @@ if __name__ == "__main__":
         "separate from the one below. 60000 gives a 2.62 MB model instead of 7.25 MB, at "
         "0.7 points of 20-character accuracy; see the ladder in docs/CORPUS.md",
     )
+    ap.add_argument(
+        "--max-lines",
+        type=int,
+        help="cap paragraphs read per language, sampled evenly across the file so "
+        "every source in it is represented (default: no cap)",
+    )
     ap.add_argument("--skip-tagger", action="store_true", help="only the script model")
     ap.add_argument(
         "--out-dir",
@@ -419,6 +440,7 @@ if __name__ == "__main__":
     )
     a = ap.parse_args()
     build_script_model(n_max=a.n_max, alpha=a.alpha, top_grams=a.top_grams,
-                       wiki_dir=a.wiki_dir, out_dir=a.out_dir)
+                       wiki_dir=a.wiki_dir, out_dir=a.out_dir,
+                       max_lines=a.max_lines)
     if not a.skip_tagger:
         build_roman_tagger()

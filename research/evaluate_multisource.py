@@ -44,12 +44,17 @@ def wilson(k: int, n: int, z: float = 1.96) -> dict | None:
             "hi": round(min(1.0, c + h), 4), "n": n, "correct": k}
 
 
-def load_split() -> list[tuple[str, str, str]]:
-    """(language, source, text) for every test row."""
+def load_split(split: Path = SPLIT) -> list[tuple[str, str, str]]:
+    """(language, source, text) for every test row, as (language, kind|source, text).
+
+    The sidecar carries `kind\tsource` per row. Both are kept, joined, so accuracy on
+    **real** rows can be separated from accuracy on built ones - which is the entire
+    point of tagging them, and the only way the synthetic-data question is answerable.
+    """
     rows = []
     for language in ORDER:
-        text_path = SPLIT / f"{language}.txt"
-        src_path = SPLIT / f"{language}.src"
+        text_path = split / f"{language}.txt"
+        src_path = split / f"{language}.src"
         if not text_path.exists():
             continue
         texts = text_path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -61,28 +66,59 @@ def load_split() -> list[tuple[str, str, str]]:
                 "the sidecar and the text have gone out of step, and a per-source "
                 "accuracy computed from them would attribute rows to the wrong source"
             )
-        rows += [(language, s, t) for s, t in zip(sources, texts) if t.strip()]
+        rows += [(language, s.replace("\t", "|"), t)
+                 for s, t in zip(sources, texts) if t.strip()]
     return rows
 
 
+def kind_of(tagged_source: str) -> str:
+    """`real`, `segmented` or `synthetic` from a `kind|source` tag."""
+    return tagged_source.split("|", 1)[0]
+
+
 def score(rows: list[tuple[str, str, str]], predict) -> dict:
+    """Accuracy per language, per source, and - separately - per row kind.
+
+    The per-kind split is the one the synthetic experiment is decided on. If training
+    with built Kashmiri does not improve accuracy on **real** held-out Kashmiri, the
+    built rows have not earned their place, and that is the result rather than a
+    disappointment. Reporting one figure over real and built rows together would let a
+    model that had learned the generator's artefacts certify its own success.
+    """
     per_language: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     per_source: dict[tuple[str, str], list[int]] = defaultdict(lambda: [0, 0])
+    per_kind: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    real_only: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     confusions: dict[str, Counter] = defaultdict(Counter)
+
     for language, source, text in rows:
         got = predict(text)
         ok = int(got == language)
+        kind = kind_of(source)
         per_language[language][0] += ok
         per_language[language][1] += 1
         per_source[(language, source)][0] += ok
         per_source[(language, source)][1] += 1
+        per_kind[kind][0] += ok
+        per_kind[kind][1] += 1
+        if kind != "synthetic":
+            real_only[language][0] += ok
+            real_only[language][1] += 1
         if not ok:
             confusions[language][str(got)] += 1
+
     total_right = sum(v[0] for v in per_language.values())
     total = sum(v[1] for v in per_language.values())
+    real_right = sum(v[0] for v in real_only.values())
+    real_total = sum(v[1] for v in real_only.values())
+
     return {
         "overall": wilson(total_right, total),
+        "overall_real_rows_only": wilson(real_right, real_total),
         "per_language": {k: wilson(v[0], v[1]) for k, v in per_language.items()},
+        "per_language_real_rows_only": {k: wilson(v[0], v[1])
+                                        for k, v in real_only.items()},
+        "per_kind": {k: wilson(v[0], v[1]) for k, v in sorted(per_kind.items())},
         "per_source": {f"{k[0]}|{k[1]}": wilson(v[0], v[1])
                        for k, v in sorted(per_source.items())},
         "confusions": {k: dict(v.most_common(4)) for k, v in confusions.items()},
@@ -130,17 +166,26 @@ def main() -> int:
                     help="a model directory; omit for the shipped model")
     ap.add_argument("--label", default="shipped")
     ap.add_argument("--out", type=Path, default=OUT)
+    ap.add_argument("--split", type=Path, default=SPLIT,
+                    help="the test split directory (default data/multisource/test)")
     args = ap.parse_args()
 
-    rows = load_split()
+    rows = load_split(args.split)
     sources = {s for _, s, _ in rows}
     print(f"{len(rows):,} test row(s), {len(sources)} distinct source(s), "
           f"model: {args.label}\n")
 
     result = score(rows, predictor(args.model))
     o = result["overall"]
-    print(f"overall {o['rate']:.4f} [{o['lo']:.4f}, {o['hi']:.4f}] over {o['n']:,}\n")
-    print(f"  {'lang':6}{'n':>7}{'accuracy':>11}   per-source spread")
+    print(f"overall {o['rate']:.4f} [{o['lo']:.4f}, {o['hi']:.4f}] over {o['n']:,}")
+    r = result["overall_real_rows_only"]
+    if r and r["n"] != o["n"]:
+        print(f"real rows only {r['rate']:.4f} [{r['lo']:.4f}, {r['hi']:.4f}] over "
+              f"{r['n']:,}  <- the figure the synthetic question is decided on")
+    for kind, krow in result["per_kind"].items():
+        print(f"  {kind:11}{krow['rate']:>9.4f} over {krow['n']:>7,}")
+    print()
+    print(f"  {'lang':6}{'n':>7}{'accuracy':>11}{'real only':>11}   per-source spread")
     for language in ORDER:
         row = result["per_language"].get(language)
         if not row:
@@ -155,7 +200,9 @@ def main() -> int:
                       f"{hi[1]['rate']:.3f} ({hi[0]})")
         else:
             spread = f"one source only ({next(iter(mine), '-')})"
-        print(f"  {language:6}{row['n']:>7}{row['rate']:>11.4f}   {spread}")
+        real = result["per_language_real_rows_only"].get(language)
+        real_cell = "        —" if not real else f"{real['rate']:>11.4f}"
+        print(f"  {language:6}{row['n']:>7}{row['rate']:>11.4f}{real_cell}   {spread}")
 
     payload = {"model": args.label, "test_rows": len(rows),
                "sources": sorted(sources), **result}

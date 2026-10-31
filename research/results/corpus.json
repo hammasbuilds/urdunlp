@@ -1,0 +1,159 @@
+{
+ "languages": {
+  "ur": {
+   "real": 360000,
+   "segmented": 0,
+   "synthetic": 0,
+   "total": 360000,
+   "sources": [
+    "cc100-ur",
+    "opus-CCMatrix-ur",
+    "opus-NLLB-ur"
+   ]
+  },
+  "pnb": {
+   "real": 121421,
+   "segmented": 178579,
+   "synthetic": 0,
+   "total": 300000,
+   "sources": [
+    "wikimedia-wiki",
+    "wikimedia-wiktionary"
+   ]
+  },
+  "skr": {
+   "real": 240000,
+   "segmented": 60000,
+   "synthetic": 0,
+   "total": 300000,
+   "sources": [
+    "wikimedia-wiki",
+    "wikimedia-wiktionary"
+   ]
+  },
+  "sd": {
+   "real": 360000,
+   "segmented": 0,
+   "synthetic": 0,
+   "total": 360000,
+   "sources": [
+    "cc100-sd",
+    "opus-CCMatrix-sd",
+    "opus-NLLB-sd"
+   ]
+  },
+  "ps": {
+   "real": 332743,
+   "segmented": 0,
+   "synthetic": 0,
+   "total": 332743,
+   "sources": [
+    "cc100-ps",
+    "opus-CCAligned-ps",
+    "opus-NLLB-ps"
+   ]
+  },
+  "ks": {
+   "real": 19256,
+   "segmented": 26012,
+   "synthetic": 254732,
+   "total": 300000,
+   "sources": [
+    "opus-Mozilla-I10n-ks",
+    "wikimedia-wiki",
+    "wikimedia-wiktionary"
+   ]
+  },
+  "fa": {
+   "real": 401276,
+   "segmented": 0,
+   "synthetic": 0,
+   "total": 401276,
+   "sources": [
+    "cc100-fa",
+    "opus-CCAligned-fa",
+    "opus-CCMatrix-fa",
+    "opus-NLLB-fa"
+   ]
+  },
+  "ar": {
+   "real": 360000,
+   "segmented": 0,
+   "synthetic": 0,
+   "total": 360000,
+   "sources": [
+    "cc100-ar",
+    "opus-CCMatrix-ar",
+    "opus-NLLB-ar"
+   ]
+  },
+  "ckb": {
+   "real": 176254,
+   "segmented": 123746,
+   "synthetic": 0,
+   "total": 300000,
+   "sources": [
+    "opus-Mozilla-I10n-ckb",
+    "opus-Tanzil-ku",
+    "opus-TED2020-ku",
+    "wikimedia-wiki",
+    "wikimedia-wiktionary"
+   ]
+  },
+  "ug": {
+   "real": 317154,
+   "segmented": 0,
+   "synthetic": 0,
+   "total": 317154,
+   "sources": [
+    "cc100-ug",
+    "opus-GNOME-ug",
+    "opus-NLLB-ug",
+    "opus-Tanzil-ug",
+    "opus-TED2020-ug",
+    "opus-XLEnt-ug",
+    "wikimedia-wiki"
+   ]
+  },
+  "azb": {
+   "real": 120000,
+   "segmented": 135844,
+   "synthetic": 0,
+   "total": 255844,
+   "sources": [
+    "wikimedia-wiki"
+   ]
+  }
+ },
+ "distinct_sources": [
+  "cc100-ar",
+  "cc100-fa",
+  "cc100-ps",
+  "cc100-sd",
+  "cc100-ug",
+  "cc100-ur",
+  "opus-CCAligned-fa",
+  "opus-CCAligned-ps",
+  "opus-CCMatrix-ar",
+  "opus-CCMatrix-fa",
+  "opus-CCMatrix-sd",
+  "opus-CCMatrix-ur",
+  "opus-GNOME-ug",
+  "opus-Mozilla-I10n-ckb",
+  "opus-Mozilla-I10n-ks",
+  "opus-NLLB-ar",
+  "opus-NLLB-fa",
+  "opus-NLLB-ps",
+  "opus-NLLB-sd",
+  "opus-NLLB-ug",
+  "opus-NLLB-ur",
+  "opus-TED2020-ku",
+  "opus-TED2020-ug",
+  "opus-Tanzil-ku",
+  "opus-Tanzil-ug",
+  "opus-XLEnt-ug",
+  "wikimedia-wiki",
+  "wikimedia-wiktionary"
+ ],
+ "total_lines": 3587017
+}
