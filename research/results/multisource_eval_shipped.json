@@ -1,0 +1,605 @@
+{
+ "model": "shipped",
+ "test_rows": 74592,
+ "sources": [
+  "CCAligned:ar",
+  "CCAligned:fa",
+  "CCAligned:ps",
+  "CCAligned:ur",
+  "CCMatrix:ar",
+  "CCMatrix:fa",
+  "CCMatrix:sd",
+  "CCMatrix:ur",
+  "GNOME:ar",
+  "GNOME:fa",
+  "GNOME:ug",
+  "Mozilla-I10n:ar",
+  "Mozilla-I10n:ckb",
+  "Mozilla-I10n:fa",
+  "Mozilla-I10n:ks",
+  "Mozilla-I10n:ur",
+  "MultiCCAligned:ar",
+  "MultiCCAligned:fa",
+  "MultiCCAligned:ps",
+  "MultiCCAligned:ur",
+  "NLLB:ar",
+  "NLLB:fa",
+  "NLLB:ps",
+  "NLLB:sd",
+  "NLLB:ug",
+  "NLLB:ur",
+  "TED2020:ar",
+  "TED2020:fa",
+  "TED2020:ku",
+  "TED2020:ps",
+  "TED2020:ug",
+  "TED2020:ur",
+  "Tanzil:ar",
+  "Tanzil:fa",
+  "Tanzil:ku",
+  "Tanzil:sd",
+  "Tanzil:ug",
+  "Tanzil:ur",
+  "XLEnt:ar",
+  "XLEnt:fa",
+  "XLEnt:ps",
+  "XLEnt:sd",
+  "XLEnt:ug",
+  "bible-uedin:ar",
+  "infopankki:ar",
+  "infopankki:fa",
+  "wikipedia"
+ ],
+ "overall": {
+  "rate": 0.8946,
+  "lo": 0.8924,
+  "hi": 0.8968,
+  "n": 74592,
+  "correct": 66732
+ },
+ "per_language": {
+  "ur": {
+   "rate": 0.5369,
+   "lo": 0.5283,
+   "hi": 0.5454,
+   "n": 13003,
+   "correct": 6981
+  },
+  "pnb": {
+   "rate": 0.9725,
+   "lo": 0.9616,
+   "hi": 0.9804,
+   "n": 1200,
+   "correct": 1167
+  },
+  "skr": {
+   "rate": 0.9558,
+   "lo": 0.9427,
+   "hi": 0.9661,
+   "n": 1200,
+   "correct": 1147
+  },
+  "sd": {
+   "rate": 0.9672,
+   "lo": 0.9624,
+   "hi": 0.9714,
+   "n": 6001,
+   "correct": 5804
+  },
+  "ps": {
+   "rate": 0.9307,
+   "lo": 0.9247,
+   "hi": 0.9362,
+   "n": 7515,
+   "correct": 6994
+  },
+  "ks": {
+   "rate": 0.9735,
+   "lo": 0.9634,
+   "hi": 0.9809,
+   "n": 1322,
+   "correct": 1287
+  },
+  "fa": {
+   "rate": 0.9706,
+   "lo": 0.968,
+   "hi": 0.9731,
+   "n": 17089,
+   "correct": 16587
+  },
+  "ar": {
+   "rate": 0.981,
+   "lo": 0.9789,
+   "hi": 0.9829,
+   "n": 18214,
+   "correct": 17868
+  },
+  "ckb": {
+   "rate": 0.9729,
+   "lo": 0.9673,
+   "hi": 0.9775,
+   "n": 3905,
+   "correct": 3799
+  },
+  "ug": {
+   "rate": 0.9914,
+   "lo": 0.988,
+   "hi": 0.9938,
+   "n": 3943,
+   "correct": 3909
+  },
+  "azb": {
+   "rate": 0.9908,
+   "lo": 0.9837,
+   "hi": 0.9949,
+   "n": 1200,
+   "correct": 1189
+  }
+ },
+ "per_source": {
+  "ar|CCAligned:ar": {
+   "rate": 0.994,
+   "lo": 0.9895,
+   "hi": 0.9966,
+   "n": 2000,
+   "correct": 1988
+  },
+  "ar|CCMatrix:ar": {
+   "rate": 0.985,
+   "lo": 0.9787,
+   "hi": 0.9895,
+   "n": 2000,
+   "correct": 1970
+  },
+  "ar|GNOME:ar": {
+   "rate": 1.0,
+   "lo": 0.9273,
+   "hi": 1.0,
+   "n": 49,
+   "correct": 49
+  },
+  "ar|Mozilla-I10n:ar": {
+   "rate": 0.9972,
+   "lo": 0.9898,
+   "hi": 0.9992,
+   "n": 710,
+   "correct": 708
+  },
+  "ar|MultiCCAligned:ar": {
+   "rate": 0.984,
+   "lo": 0.9775,
+   "hi": 0.9886,
+   "n": 2000,
+   "correct": 1968
+  },
+  "ar|NLLB:ar": {
+   "rate": 0.9765,
+   "lo": 0.9689,
+   "hi": 0.9823,
+   "n": 2000,
+   "correct": 1953
+  },
+  "ar|TED2020:ar": {
+   "rate": 1.0,
+   "lo": 0.9981,
+   "hi": 1.0,
+   "n": 2000,
+   "correct": 2000
+  },
+  "ar|Tanzil:ar": {
+   "rate": 1.0,
+   "lo": 0.9964,
+   "hi": 1.0,
+   "n": 1068,
+   "correct": 1068
+  },
+  "ar|XLEnt:ar": {
+   "rate": 0.8965,
+   "lo": 0.8824,
+   "hi": 0.9091,
+   "n": 2000,
+   "correct": 1793
+  },
+  "ar|bible-uedin:ar": {
+   "rate": 0.9995,
+   "lo": 0.9972,
+   "hi": 0.9999,
+   "n": 2000,
+   "correct": 1999
+  },
+  "ar|infopankki:ar": {
+   "rate": 0.989,
+   "lo": 0.9814,
+   "hi": 0.9936,
+   "n": 1187,
+   "correct": 1174
+  },
+  "ar|wikipedia": {
+   "rate": 0.9983,
+   "lo": 0.9939,
+   "hi": 0.9995,
+   "n": 1200,
+   "correct": 1198
+  },
+  "azb|wikipedia": {
+   "rate": 0.9908,
+   "lo": 0.9837,
+   "hi": 0.9949,
+   "n": 1200,
+   "correct": 1189
+  },
+  "ckb|Mozilla-I10n:ckb": {
+   "rate": 1.0,
+   "lo": 0.9634,
+   "hi": 1.0,
+   "n": 101,
+   "correct": 101
+  },
+  "ckb|TED2020:ku": {
+   "rate": 0.995,
+   "lo": 0.9908,
+   "hi": 0.9973,
+   "n": 2000,
+   "correct": 1990
+  },
+  "ckb|Tanzil:ku": {
+   "rate": 0.846,
+   "lo": 0.8151,
+   "hi": 0.8726,
+   "n": 604,
+   "correct": 511
+  },
+  "ckb|wikipedia": {
+   "rate": 0.9975,
+   "lo": 0.9927,
+   "hi": 0.9991,
+   "n": 1200,
+   "correct": 1197
+  },
+  "fa|CCAligned:fa": {
+   "rate": 0.9915,
+   "lo": 0.9864,
+   "hi": 0.9947,
+   "n": 2000,
+   "correct": 1983
+  },
+  "fa|CCMatrix:fa": {
+   "rate": 0.9955,
+   "lo": 0.9915,
+   "hi": 0.9976,
+   "n": 2000,
+   "correct": 1991
+  },
+  "fa|GNOME:fa": {
+   "rate": 1.0,
+   "lo": 0.9244,
+   "hi": 1.0,
+   "n": 47,
+   "correct": 47
+  },
+  "fa|Mozilla-I10n:fa": {
+   "rate": 0.916,
+   "lo": 0.8925,
+   "hi": 0.9348,
+   "n": 667,
+   "correct": 611
+  },
+  "fa|MultiCCAligned:fa": {
+   "rate": 0.985,
+   "lo": 0.9787,
+   "hi": 0.9895,
+   "n": 2000,
+   "correct": 1970
+  },
+  "fa|NLLB:fa": {
+   "rate": 0.996,
+   "lo": 0.9921,
+   "hi": 0.998,
+   "n": 2000,
+   "correct": 1992
+  },
+  "fa|TED2020:fa": {
+   "rate": 0.9875,
+   "lo": 0.9816,
+   "hi": 0.9915,
+   "n": 2000,
+   "correct": 1975
+  },
+  "fa|Tanzil:fa": {
+   "rate": 0.979,
+   "lo": 0.9717,
+   "hi": 0.9844,
+   "n": 2000,
+   "correct": 1958
+  },
+  "fa|XLEnt:fa": {
+   "rate": 0.851,
+   "lo": 0.8347,
+   "hi": 0.8659,
+   "n": 2000,
+   "correct": 1702
+  },
+  "fa|infopankki:fa": {
+   "rate": 0.9889,
+   "lo": 0.9812,
+   "hi": 0.9935,
+   "n": 1175,
+   "correct": 1162
+  },
+  "fa|wikipedia": {
+   "rate": 0.9967,
+   "lo": 0.9915,
+   "hi": 0.9987,
+   "n": 1200,
+   "correct": 1196
+  },
+  "ks|Mozilla-I10n:ks": {
+   "rate": 0.7295,
+   "lo": 0.6446,
+   "hi": 0.8004,
+   "n": 122,
+   "correct": 89
+  },
+  "ks|wikipedia": {
+   "rate": 0.9983,
+   "lo": 0.9939,
+   "hi": 0.9995,
+   "n": 1200,
+   "correct": 1198
+  },
+  "pnb|wikipedia": {
+   "rate": 0.9725,
+   "lo": 0.9616,
+   "hi": 0.9804,
+   "n": 1200,
+   "correct": 1167
+  },
+  "ps|CCAligned:ps": {
+   "rate": 0.911,
+   "lo": 0.8977,
+   "hi": 0.9227,
+   "n": 2000,
+   "correct": 1822
+  },
+  "ps|MultiCCAligned:ps": {
+   "rate": 0.869,
+   "lo": 0.8535,
+   "hi": 0.8831,
+   "n": 2000,
+   "correct": 1738
+  },
+  "ps|NLLB:ps": {
+   "rate": 0.996,
+   "lo": 0.9921,
+   "hi": 0.998,
+   "n": 2000,
+   "correct": 1992
+  },
+  "ps|TED2020:ps": {
+   "rate": 1.0,
+   "lo": 0.9558,
+   "hi": 1.0,
+   "n": 83,
+   "correct": 83
+  },
+  "ps|XLEnt:ps": {
+   "rate": 0.7672,
+   "lo": 0.7088,
+   "hi": 0.817,
+   "n": 232,
+   "correct": 178
+  },
+  "ps|wikipedia": {
+   "rate": 0.9842,
+   "lo": 0.9754,
+   "hi": 0.9898,
+   "n": 1200,
+   "correct": 1181
+  },
+  "sd|CCMatrix:sd": {
+   "rate": 1.0,
+   "lo": 0.9981,
+   "hi": 1.0,
+   "n": 2000,
+   "correct": 2000
+  },
+  "sd|NLLB:sd": {
+   "rate": 0.926,
+   "lo": 0.9137,
+   "hi": 0.9367,
+   "n": 2000,
+   "correct": 1852
+  },
+  "sd|Tanzil:sd": {
+   "rate": 1.0,
+   "lo": 0.9929,
+   "hi": 1.0,
+   "n": 540,
+   "correct": 540
+  },
+  "sd|XLEnt:sd": {
+   "rate": 0.9502,
+   "lo": 0.9167,
+   "hi": 0.9707,
+   "n": 261,
+   "correct": 248
+  },
+  "sd|wikipedia": {
+   "rate": 0.97,
+   "lo": 0.9587,
+   "hi": 0.9783,
+   "n": 1200,
+   "correct": 1164
+  },
+  "skr|wikipedia": {
+   "rate": 0.9558,
+   "lo": 0.9427,
+   "hi": 0.9661,
+   "n": 1200,
+   "correct": 1147
+  },
+  "ug|GNOME:ug": {
+   "rate": 1.0,
+   "lo": 0.9417,
+   "hi": 1.0,
+   "n": 62,
+   "correct": 62
+  },
+  "ug|NLLB:ug": {
+   "rate": 0.9985,
+   "lo": 0.9956,
+   "hi": 0.9995,
+   "n": 2000,
+   "correct": 1997
+  },
+  "ug|TED2020:ug": {
+   "rate": 1.0,
+   "lo": 0.9607,
+   "hi": 1.0,
+   "n": 94,
+   "correct": 94
+  },
+  "ug|Tanzil:ug": {
+   "rate": 1.0,
+   "lo": 0.9932,
+   "hi": 1.0,
+   "n": 563,
+   "correct": 563
+  },
+  "ug|XLEnt:ug": {
+   "rate": 1.0,
+   "lo": 0.862,
+   "hi": 1.0,
+   "n": 24,
+   "correct": 24
+  },
+  "ug|wikipedia": {
+   "rate": 0.9742,
+   "lo": 0.9636,
+   "hi": 0.9817,
+   "n": 1200,
+   "correct": 1169
+  },
+  "ur|CCAligned:ur": {
+   "rate": 0.793,
+   "lo": 0.7747,
+   "hi": 0.8102,
+   "n": 2000,
+   "correct": 1586
+  },
+  "ur|CCMatrix:ur": {
+   "rate": 0.4255,
+   "lo": 0.404,
+   "hi": 0.4473,
+   "n": 2000,
+   "correct": 851
+  },
+  "ur|Mozilla-I10n:ur": {
+   "rate": 0.6643,
+   "lo": 0.624,
+   "hi": 0.7022,
+   "n": 557,
+   "correct": 370
+  },
+  "ur|MultiCCAligned:ur": {
+   "rate": 0.4125,
+   "lo": 0.3911,
+   "hi": 0.4342,
+   "n": 2000,
+   "correct": 825
+  },
+  "ur|NLLB:ur": {
+   "rate": 0.445,
+   "lo": 0.4233,
+   "hi": 0.4669,
+   "n": 2000,
+   "correct": 890
+  },
+  "ur|TED2020:ur": {
+   "rate": 0.6565,
+   "lo": 0.6297,
+   "hi": 0.6824,
+   "n": 1246,
+   "correct": 818
+  },
+  "ur|Tanzil:ur": {
+   "rate": 0.234,
+   "lo": 0.216,
+   "hi": 0.2531,
+   "n": 2000,
+   "correct": 468
+  },
+  "ur|wikipedia": {
+   "rate": 0.9775,
+   "lo": 0.9675,
+   "hi": 0.9845,
+   "n": 1200,
+   "correct": 1173
+  }
+ },
+ "confusions": {
+  "ur": {
+   "pnb": 5906,
+   "skr": 60,
+   "None": 20,
+   "ks": 18
+  },
+  "pnb": {
+   "ur": 13,
+   "skr": 8,
+   "None": 4,
+   "ar": 3
+  },
+  "skr": {
+   "pnb": 29,
+   "ur": 18,
+   "None": 3,
+   "ks": 1
+  },
+  "sd": {
+   "ar": 114,
+   "ps": 35,
+   "None": 29,
+   "fa": 11
+  },
+  "ps": {
+   "fa": 186,
+   "ar": 136,
+   "sd": 115,
+   "ur": 25
+  },
+  "ks": {
+   "ur": 29,
+   "pnb": 3,
+   "None": 3
+  },
+  "fa": {
+   "None": 267,
+   "ar": 50,
+   "azb": 43,
+   "ps": 41
+  },
+  "ar": {
+   "None": 203,
+   "pnb": 97,
+   "fa": 12,
+   "sd": 10
+  },
+  "ckb": {
+   "fa": 92,
+   "azb": 9,
+   "None": 3,
+   "ar": 2
+  },
+  "ug": {
+   "ar": 16,
+   "None": 12,
+   "pnb": 5,
+   "ps": 1
+  },
+  "azb": {
+   "None": 9,
+   "ar": 2
+  }
+ }
+}

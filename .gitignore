@@ -80,3 +80,5 @@ coverage.xml
 # Research experiments: a separate environment and third-party baselines, neither of
 # which the package depends on.
 .venv-research/
+data/multisource/
+data/wiki_augmented/

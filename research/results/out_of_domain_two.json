@@ -1,0 +1,162 @@
+{
+ "sources": {
+  "ur": "OPUS Tanzil ur (Quran translation)",
+  "sd": "OPUS Tanzil sd (Quran translation)",
+  "fa": "OPUS Tanzil fa (Quran translation)",
+  "ar": "OPUS Tanzil ar (Quran, original)",
+  "ug": "OPUS Tanzil ug (Quran translation)",
+  "ckb": "OPUS Tanzil ku (Quran translation, Arabic-script Kurdish)",
+  "ps": "OPUS TED2020 ps (transcribed talks)"
+ },
+ "rejected_on_script_or_absence": {
+  "azb": "OPUS Tanzil `az` is 100% Latin script - Azerbaijani, not South Azerbaijani in Perso-Arabic. No Perso-Arabic source found.",
+  "ks": "OPUS GNOME `ks` is 98% Devanagari - Kashmiri in Devanagari, not the Perso-Arabic orthography used here. Tatoeba's 210 sentences remain the only out-of-domain Kashmiri.",
+  "pnb": "No source found beyond Tatoeba's 1.3 KB.",
+  "skr": "No source found beyond Tatoeba's 2.0 KB."
+ },
+ "cap_per_language": 4000,
+ "min_n_for_a_rate": 30,
+ "per_language": {
+  "ur": {
+   "available": true,
+   "source": "OPUS Tanzil ur",
+   "what": "Quran translation",
+   "n": 4000,
+   "correct": 1026,
+   "arabic_share": 1.0,
+   "confusions": {
+    "pnb": 2972,
+    "skr": 2
+   },
+   "accuracy": {
+    "rate": 0.2565,
+    "lo": 0.2432,
+    "hi": 0.2703,
+    "n": 4000,
+    "correct": 1026
+   }
+  },
+  "sd": {
+   "available": true,
+   "source": "OPUS Tanzil sd",
+   "what": "Quran translation",
+   "n": 4000,
+   "correct": 4000,
+   "arabic_share": 1.0,
+   "confusions": {},
+   "accuracy": {
+    "rate": 1.0,
+    "lo": 0.999,
+    "hi": 1.0,
+    "n": 4000,
+    "correct": 4000
+   }
+  },
+  "fa": {
+   "available": true,
+   "source": "OPUS Tanzil fa",
+   "what": "Quran translation",
+   "n": 4000,
+   "correct": 3999,
+   "arabic_share": 1.0,
+   "confusions": {
+    "azb": 1
+   },
+   "accuracy": {
+    "rate": 0.9998,
+    "lo": 0.9986,
+    "hi": 1.0,
+    "n": 4000,
+    "correct": 3999
+   }
+  },
+  "ar": {
+   "available": true,
+   "source": "OPUS Tanzil ar",
+   "what": "Quran, original",
+   "n": 4000,
+   "correct": 4000,
+   "arabic_share": 1.0,
+   "confusions": {},
+   "accuracy": {
+    "rate": 1.0,
+    "lo": 0.999,
+    "hi": 1.0,
+    "n": 4000,
+    "correct": 4000
+   }
+  },
+  "ug": {
+   "available": true,
+   "source": "OPUS Tanzil ug",
+   "what": "Quran translation",
+   "n": 4000,
+   "correct": 3999,
+   "arabic_share": 1.0,
+   "confusions": {
+    "ar": 1
+   },
+   "accuracy": {
+    "rate": 0.9998,
+    "lo": 0.9986,
+    "hi": 1.0,
+    "n": 4000,
+    "correct": 3999
+   }
+  },
+  "ckb": {
+   "available": true,
+   "source": "OPUS Tanzil ku",
+   "what": "Quran translation, Arabic-script Kurdish",
+   "n": 4000,
+   "correct": 3473,
+   "arabic_share": 1.0,
+   "confusions": {
+    "fa": 516,
+    "azb": 9,
+    "ps": 2
+   },
+   "accuracy": {
+    "rate": 0.8682,
+    "lo": 0.8574,
+    "hi": 0.8784,
+    "n": 4000,
+    "correct": 3473
+   }
+  },
+  "ps": {
+   "available": true,
+   "source": "OPUS TED2020 ps",
+   "what": "transcribed talks",
+   "n": 1031,
+   "correct": 1031,
+   "arabic_share": 0.996,
+   "confusions": {},
+   "accuracy": {
+    "rate": 1.0,
+    "lo": 0.9963,
+    "hi": 1.0,
+    "n": 1031,
+    "correct": 1031
+   }
+  }
+ },
+ "urdu_adjudication": {
+  "tatoeba_urdu": {
+   "rate": 0.5302,
+   "lo": 0.5118,
+   "hi": 0.5486,
+   "n": 2812,
+   "correct": 1491
+  },
+  "tanzil_urdu": {
+   "rate": 0.2565,
+   "lo": 0.2432,
+   "hi": 0.2703,
+   "n": 4000,
+   "correct": 1026
+  },
+  "difference": -0.2737,
+  "reading": "The model does not transfer: Urdu is low on both independent out-of-domain sources."
+ }
+}

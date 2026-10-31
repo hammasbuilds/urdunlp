@@ -1,0 +1,468 @@
+{
+ "cap_per_source": 20000,
+ "split": [
+  0.8,
+  0.1,
+  0.1
+ ],
+ "seed": 20261031,
+ "languages": {
+  "ur": {
+   "sources_used": [
+    "CCAligned:ur",
+    "CCMatrix:ur",
+    "Mozilla-I10n:ur",
+    "MultiCCAligned:ur",
+    "NLLB:ur",
+    "TED2020:ur",
+    "Tanzil:ur",
+    "wikipedia"
+   ],
+   "sources_rejected": {
+    "XLEnt:ur": "48% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone"
+   },
+   "lines_total": 130030,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    },
+    "NLLB:ur": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "CCMatrix:ur": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "CCAligned:ur": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "MultiCCAligned:ur": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "Tanzil:ur": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "TED2020:ur": {
+     "train": 9968,
+     "val": 1246,
+     "test": 1246
+    },
+    "Mozilla-I10n:ur": {
+     "train": 4456,
+     "val": 557,
+     "test": 557
+    }
+   },
+   "meets_50k": true
+  },
+  "pnb": {
+   "sources_used": [
+    "wikipedia"
+   ],
+   "sources_rejected": {},
+   "lines_total": 12000,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    }
+   },
+   "meets_50k": false
+  },
+  "skr": {
+   "sources_used": [
+    "wikipedia"
+   ],
+   "sources_rejected": {},
+   "lines_total": 12000,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    }
+   },
+   "meets_50k": false
+  },
+  "sd": {
+   "sources_used": [
+    "CCMatrix:sd",
+    "NLLB:sd",
+    "Tanzil:sd",
+    "XLEnt:sd",
+    "wikipedia"
+   ],
+   "sources_rejected": {},
+   "lines_total": 59991,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    },
+    "NLLB:sd": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "CCMatrix:sd": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "XLEnt:sd": {
+     "train": 2076,
+     "val": 259,
+     "test": 261
+    },
+    "Tanzil:sd": {
+     "train": 4316,
+     "val": 539,
+     "test": 540
+    }
+   },
+   "meets_50k": true
+  },
+  "ps": {
+   "sources_used": [
+    "CCAligned:ps",
+    "MultiCCAligned:ps",
+    "NLLB:ps",
+    "TED2020:ps",
+    "XLEnt:ps",
+    "wikipedia"
+   ],
+   "sources_rejected": {},
+   "lines_total": 75135,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    },
+    "NLLB:ps": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "CCAligned:ps": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "MultiCCAligned:ps": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "XLEnt:ps": {
+     "train": 1849,
+     "val": 231,
+     "test": 232
+    },
+    "TED2020:ps": {
+     "train": 658,
+     "val": 82,
+     "test": 83
+    }
+   },
+   "meets_50k": true
+  },
+  "ks": {
+   "sources_used": [
+    "Mozilla-I10n:ks",
+    "wikipedia"
+   ],
+   "sources_rejected": {
+    "GNOME:ks": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone"
+   },
+   "lines_total": 13212,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    },
+    "Mozilla-I10n:ks": {
+     "train": 969,
+     "val": 121,
+     "test": 122
+    }
+   },
+   "meets_50k": false
+  },
+  "fa": {
+   "sources_used": [
+    "CCAligned:fa",
+    "CCMatrix:fa",
+    "GNOME:fa",
+    "Mozilla-I10n:fa",
+    "MultiCCAligned:fa",
+    "NLLB:fa",
+    "TED2020:fa",
+    "Tanzil:fa",
+    "XLEnt:fa",
+    "infopankki:fa",
+    "wikipedia"
+   ],
+   "sources_rejected": {},
+   "lines_total": 170861,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    },
+    "CCMatrix:fa": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "NLLB:fa": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "CCAligned:fa": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "MultiCCAligned:fa": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "XLEnt:fa": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "TED2020:fa": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "Tanzil:fa": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "infopankki:fa": {
+     "train": 9393,
+     "val": 1174,
+     "test": 1175
+    },
+    "Mozilla-I10n:fa": {
+     "train": 5326,
+     "val": 665,
+     "test": 667
+    },
+    "GNOME:fa": {
+     "train": 368,
+     "val": 46,
+     "test": 47
+    }
+   },
+   "meets_50k": true
+  },
+  "ar": {
+   "sources_used": [
+    "CCAligned:ar",
+    "CCMatrix:ar",
+    "GNOME:ar",
+    "Mozilla-I10n:ar",
+    "MultiCCAligned:ar",
+    "NLLB:ar",
+    "TED2020:ar",
+    "Tanzil:ar",
+    "XLEnt:ar",
+    "bible-uedin:ar",
+    "infopankki:ar",
+    "wikipedia"
+   ],
+   "sources_rejected": {},
+   "lines_total": 182116,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    },
+    "NLLB:ar": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "CCMatrix:ar": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "CCAligned:ar": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "MultiCCAligned:ar": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "XLEnt:ar": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "TED2020:ar": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "bible-uedin:ar": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "Tanzil:ar": {
+     "train": 8544,
+     "val": 1068,
+     "test": 1068
+    },
+    "infopankki:ar": {
+     "train": 9491,
+     "val": 1186,
+     "test": 1187
+    },
+    "Mozilla-I10n:ar": {
+     "train": 5671,
+     "val": 708,
+     "test": 710
+    },
+    "GNOME:ar": {
+     "train": 386,
+     "val": 48,
+     "test": 49
+    }
+   },
+   "meets_50k": true
+  },
+  "ckb": {
+   "sources_used": [
+    "Mozilla-I10n:ckb",
+    "TED2020:ku",
+    "Tanzil:ku",
+    "wikipedia"
+   ],
+   "sources_rejected": {
+    "CCAligned:ku": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone",
+    "MultiCCAligned:ku": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone"
+   },
+   "lines_total": 39044,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    },
+    "TED2020:ku": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "Tanzil:ku": {
+     "train": 4827,
+     "val": 603,
+     "test": 604
+    },
+    "Mozilla-I10n:ckb": {
+     "train": 808,
+     "val": 101,
+     "test": 101
+    }
+   },
+   "meets_50k": false
+  },
+  "ug": {
+   "sources_used": [
+    "GNOME:ug",
+    "NLLB:ug",
+    "TED2020:ug",
+    "Tanzil:ug",
+    "XLEnt:ug",
+    "wikipedia"
+   ],
+   "sources_rejected": {},
+   "lines_total": 39405,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    },
+    "NLLB:ug": {
+     "train": 16000,
+     "val": 2000,
+     "test": 2000
+    },
+    "Tanzil:ug": {
+     "train": 4500,
+     "val": 562,
+     "test": 563
+    },
+    "XLEnt:ug": {
+     "train": 186,
+     "val": 23,
+     "test": 24
+    },
+    "TED2020:ug": {
+     "train": 748,
+     "val": 93,
+     "test": 94
+    },
+    "GNOME:ug": {
+     "train": 489,
+     "val": 61,
+     "test": 62
+    }
+   },
+   "meets_50k": false
+  },
+  "azb": {
+   "sources_used": [
+    "wikipedia"
+   ],
+   "sources_rejected": {
+    "NLLB:az": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone",
+    "CCMatrix:az": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone",
+    "CCAligned:az": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone",
+    "MultiCCAligned:az": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone",
+    "XLEnt:az": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone",
+    "Tanzil:az": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone",
+    "TED2020:az": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone",
+    "Mozilla-I10n:az": "0% Perso-Arabic characters - wrong script for this language, so it would be separable by script alone"
+   },
+   "lines_total": 12000,
+   "per_source": {
+    "wikipedia": {
+     "train": 9600,
+     "val": 1200,
+     "test": 1200
+    }
+   },
+   "meets_50k": false
+  }
+ }
+}
