@@ -1,0 +1,61 @@
+{
+ "criterion": "line contains one of the Saraiki implosives \u067b\u0684\u06b3\u0759",
+ "why_not_the_model": "Filtering with the classifier would remove exactly the rows it gets wrong and inflate the result by construction. This criterion is orthographic and independent of any model.",
+ "is_an_upper_bound": "Lines carrying an implosive are longer and more distinctively Saraiki than the rest, so this is an upper bound on Saraiki accuracy, not a corrected figure. Both are reported.",
+ "per_source": {
+  "segmented|without": {
+   "rate": 0.8327,
+   "lo": 0.8193,
+   "hi": 0.8453,
+   "n": 3174
+  },
+  "segmented|with": {
+   "rate": 0.9894,
+   "lo": 0.9849,
+   "hi": 0.9926,
+   "n": 2826
+  },
+  "wikimedia-wiki|without": {
+   "rate": 0.8099,
+   "lo": 0.7982,
+   "hi": 0.8211,
+   "n": 4519
+  },
+  "wikimedia-wiki|with": {
+   "rate": 0.9913,
+   "lo": 0.9889,
+   "hi": 0.9932,
+   "n": 7481
+  },
+  "wikimedia-wiktionary|without": {
+   "rate": 0.5853,
+   "lo": 0.5726,
+   "hi": 0.5979,
+   "n": 5814
+  },
+  "wikimedia-wiktionary|with": {
+   "rate": 0.9935,
+   "lo": 0.9912,
+   "hi": 0.9952,
+   "n": 6186
+  }
+ },
+ "with_implosive": {
+  "rate": 0.9918,
+  "lo": 0.9903,
+  "hi": 0.9931,
+  "n": 16493
+ },
+ "without_implosive": {
+  "rate": 0.7186,
+  "lo": 0.7109,
+  "hi": 0.7261,
+  "n": 13507
+ },
+ "whole": {
+  "rate": 0.8688,
+  "lo": 0.8649,
+  "hi": 0.8726,
+  "n": 30000
+ }
+}

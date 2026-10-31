@@ -1,0 +1,120 @@
+{
+ "rows": 4531,
+ "widths": {
+  "10": {
+   "no_synthetic": {
+    "rate": 0.8755,
+    "lo": 0.8656,
+    "hi": 0.8848,
+    "n": 4531,
+    "correct": 3967
+   },
+   "with_synthetic": {
+    "rate": 0.8572,
+    "lo": 0.8467,
+    "hi": 0.8671,
+    "n": 4531,
+    "correct": 3884
+   },
+   "mcnemar": {
+    "a_only": 98,
+    "b_only": 15,
+    "discordant": 113,
+    "log10_p_value": -15.39,
+    "p_value": 4.098728148755567e-16
+   }
+  },
+  "20": {
+   "no_synthetic": {
+    "rate": 0.9559,
+    "lo": 0.9495,
+    "hi": 0.9615,
+    "n": 4531,
+    "correct": 4331
+   },
+   "with_synthetic": {
+    "rate": 0.9433,
+    "lo": 0.9362,
+    "hi": 0.9496,
+    "n": 4531,
+    "correct": 4274
+   },
+   "mcnemar": {
+    "a_only": 60,
+    "b_only": 3,
+    "discordant": 63,
+    "log10_p_value": -14.04,
+    "p_value": 9.048317650694652e-15
+   }
+  },
+  "50": {
+   "no_synthetic": {
+    "rate": 0.9863,
+    "lo": 0.9825,
+    "hi": 0.9893,
+    "n": 4531,
+    "correct": 4469
+   },
+   "with_synthetic": {
+    "rate": 0.9841,
+    "lo": 0.98,
+    "hi": 0.9874,
+    "n": 4531,
+    "correct": 4459
+   },
+   "mcnemar": {
+    "a_only": 10,
+    "b_only": 0,
+    "discordant": 10,
+    "log10_p_value": -2.71,
+    "p_value": 0.001953125
+   }
+  },
+  "100": {
+   "no_synthetic": {
+    "rate": 0.9901,
+    "lo": 0.9867,
+    "hi": 0.9926,
+    "n": 4531,
+    "correct": 4486
+   },
+   "with_synthetic": {
+    "rate": 0.9894,
+    "lo": 0.986,
+    "hi": 0.992,
+    "n": 4531,
+    "correct": 4483
+   },
+   "mcnemar": {
+    "a_only": 3,
+    "b_only": 0,
+    "discordant": 3,
+    "log10_p_value": -0.6,
+    "p_value": 0.25000000000000006
+   }
+  },
+  "whole": {
+   "no_synthetic": {
+    "rate": 0.9903,
+    "lo": 0.987,
+    "hi": 0.9928,
+    "n": 4531,
+    "correct": 4487
+   },
+   "with_synthetic": {
+    "rate": 0.9898,
+    "lo": 0.9865,
+    "hi": 0.9924,
+    "n": 4531,
+    "correct": 4485
+   },
+   "mcnemar": {
+    "a_only": 2,
+    "b_only": 0,
+    "discordant": 2,
+    "log10_p_value": -0.3,
+    "p_value": 0.5
+   }
+  }
+ }
+}

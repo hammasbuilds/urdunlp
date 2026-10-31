@@ -101,3 +101,8 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `slow` rebuilds the language model from the committed corpus to check it reproduces
+# bit-identically. Deselected by default because it takes minutes; run it with
+# `pytest -m slow`. Registered here so the marker is not silently a typo.
+addopts = "-m 'not slow'"
+markers = ["slow: rebuilds a model or otherwise takes minutes"]

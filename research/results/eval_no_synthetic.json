@@ -1,0 +1,609 @@
+{
+ "model": "no_synthetic",
+ "test_rows": 358720,
+ "sources": [
+  "real|cc100-ar",
+  "real|cc100-fa",
+  "real|cc100-ps",
+  "real|cc100-sd",
+  "real|cc100-ug",
+  "real|cc100-ur",
+  "real|opus-CCAligned-fa",
+  "real|opus-CCAligned-ps",
+  "real|opus-CCMatrix-ar",
+  "real|opus-CCMatrix-fa",
+  "real|opus-CCMatrix-sd",
+  "real|opus-CCMatrix-ur",
+  "real|opus-GNOME-ug",
+  "real|opus-Mozilla-I10n-ckb",
+  "real|opus-Mozilla-I10n-ks",
+  "real|opus-NLLB-ar",
+  "real|opus-NLLB-fa",
+  "real|opus-NLLB-ps",
+  "real|opus-NLLB-sd",
+  "real|opus-NLLB-ug",
+  "real|opus-NLLB-ur",
+  "real|opus-TED2020-ku",
+  "real|opus-TED2020-ug",
+  "real|opus-Tanzil-ku",
+  "real|opus-Tanzil-ug",
+  "real|opus-XLEnt-ug",
+  "real|wikimedia-wiki",
+  "real|wikimedia-wiktionary",
+  "segmented|segmented",
+  "synthetic|synthetic-bigram",
+  "synthetic|synthetic-noise",
+  "synthetic|synthetic-shuffle"
+ ],
+ "overall": {
+  "rate": 0.978,
+  "lo": 0.9775,
+  "hi": 0.9785,
+  "n": 358720,
+  "correct": 350831
+ },
+ "overall_real_rows_only": {
+  "rate": 0.9772,
+  "lo": 0.9767,
+  "hi": 0.9777,
+  "n": 333246,
+  "correct": 325640
+ },
+ "per_language": {
+  "ur": {
+   "rate": 0.99,
+   "lo": 0.9889,
+   "hi": 0.991,
+   "n": 36000,
+   "correct": 35639
+  },
+  "pnb": {
+   "rate": 0.9714,
+   "lo": 0.9695,
+   "hi": 0.9733,
+   "n": 30002,
+   "correct": 29145
+  },
+  "skr": {
+   "rate": 0.8683,
+   "lo": 0.8644,
+   "hi": 0.872,
+   "n": 30000,
+   "correct": 26048
+  },
+  "sd": {
+   "rate": 0.9764,
+   "lo": 0.9748,
+   "hi": 0.978,
+   "n": 36000,
+   "correct": 35152
+  },
+  "ps": {
+   "rate": 0.9688,
+   "lo": 0.9669,
+   "hi": 0.9706,
+   "n": 33275,
+   "correct": 32236
+  },
+  "ks": {
+   "rate": 0.9891,
+   "lo": 0.9879,
+   "hi": 0.9902,
+   "n": 30005,
+   "correct": 29678
+  },
+  "fa": {
+   "rate": 0.9971,
+   "lo": 0.9965,
+   "hi": 0.9976,
+   "n": 40129,
+   "correct": 40012
+  },
+  "ar": {
+   "rate": 0.9999,
+   "lo": 0.9997,
+   "hi": 1.0,
+   "n": 36000,
+   "correct": 35996
+  },
+  "ckb": {
+   "rate": 0.9962,
+   "lo": 0.9955,
+   "hi": 0.9969,
+   "n": 30005,
+   "correct": 29892
+  },
+  "ug": {
+   "rate": 0.9967,
+   "lo": 0.996,
+   "hi": 0.9973,
+   "n": 31719,
+   "correct": 31614
+  },
+  "azb": {
+   "rate": 0.9935,
+   "lo": 0.9925,
+   "hi": 0.9944,
+   "n": 25585,
+   "correct": 25419
+  }
+ },
+ "per_language_real_rows_only": {
+  "ur": {
+   "rate": 0.99,
+   "lo": 0.9889,
+   "hi": 0.991,
+   "n": 36000,
+   "correct": 35639
+  },
+  "pnb": {
+   "rate": 0.9714,
+   "lo": 0.9695,
+   "hi": 0.9733,
+   "n": 30002,
+   "correct": 29145
+  },
+  "skr": {
+   "rate": 0.8683,
+   "lo": 0.8644,
+   "hi": 0.872,
+   "n": 30000,
+   "correct": 26048
+  },
+  "sd": {
+   "rate": 0.9764,
+   "lo": 0.9748,
+   "hi": 0.978,
+   "n": 36000,
+   "correct": 35152
+  },
+  "ps": {
+   "rate": 0.9688,
+   "lo": 0.9669,
+   "hi": 0.9706,
+   "n": 33275,
+   "correct": 32236
+  },
+  "ks": {
+   "rate": 0.9903,
+   "lo": 0.987,
+   "hi": 0.9928,
+   "n": 4531,
+   "correct": 4487
+  },
+  "fa": {
+   "rate": 0.9971,
+   "lo": 0.9965,
+   "hi": 0.9976,
+   "n": 40129,
+   "correct": 40012
+  },
+  "ar": {
+   "rate": 0.9999,
+   "lo": 0.9997,
+   "hi": 1.0,
+   "n": 36000,
+   "correct": 35996
+  },
+  "ckb": {
+   "rate": 0.9962,
+   "lo": 0.9955,
+   "hi": 0.9969,
+   "n": 30005,
+   "correct": 29892
+  },
+  "ug": {
+   "rate": 0.9967,
+   "lo": 0.996,
+   "hi": 0.9973,
+   "n": 31719,
+   "correct": 31614
+  },
+  "azb": {
+   "rate": 0.9935,
+   "lo": 0.9925,
+   "hi": 0.9944,
+   "n": 25585,
+   "correct": 25419
+  }
+ },
+ "per_kind": {
+  "real": {
+   "rate": 0.9761,
+   "lo": 0.9756,
+   "hi": 0.9767,
+   "n": 280824,
+   "correct": 274124
+  },
+  "segmented": {
+   "rate": 0.9827,
+   "lo": 0.9816,
+   "hi": 0.9838,
+   "n": 52422,
+   "correct": 51516
+  },
+  "synthetic": {
+   "rate": 0.9889,
+   "lo": 0.9875,
+   "hi": 0.9901,
+   "n": 25474,
+   "correct": 25191
+  }
+ },
+ "per_source": {
+  "ar|real|cc100-ar": {
+   "rate": 0.9998,
+   "lo": 0.9994,
+   "hi": 1.0,
+   "n": 12000,
+   "correct": 11998
+  },
+  "ar|real|opus-CCMatrix-ar": {
+   "rate": 1.0,
+   "lo": 0.9997,
+   "hi": 1.0,
+   "n": 12000,
+   "correct": 12000
+  },
+  "ar|real|opus-NLLB-ar": {
+   "rate": 0.9998,
+   "lo": 0.9994,
+   "hi": 1.0,
+   "n": 12000,
+   "correct": 11998
+  },
+  "azb|real|wikimedia-wiki": {
+   "rate": 0.9902,
+   "lo": 0.9882,
+   "hi": 0.9918,
+   "n": 12000,
+   "correct": 11882
+  },
+  "azb|segmented|segmented": {
+   "rate": 0.9965,
+   "lo": 0.9953,
+   "hi": 0.9973,
+   "n": 13585,
+   "correct": 13537
+  },
+  "ckb|real|opus-Mozilla-I10n-ckb": {
+   "rate": 1.0,
+   "lo": 0.9558,
+   "hi": 1.0,
+   "n": 83,
+   "correct": 83
+  },
+  "ckb|real|opus-TED2020-ku": {
+   "rate": 1.0,
+   "lo": 0.9992,
+   "hi": 1.0,
+   "n": 4555,
+   "correct": 4555
+  },
+  "ckb|real|opus-Tanzil-ku": {
+   "rate": 1.0,
+   "lo": 0.9937,
+   "hi": 1.0,
+   "n": 604,
+   "correct": 604
+  },
+  "ckb|real|wikimedia-wiki": {
+   "rate": 0.9924,
+   "lo": 0.9907,
+   "hi": 0.9938,
+   "n": 12000,
+   "correct": 11909
+  },
+  "ckb|real|wikimedia-wiktionary": {
+   "rate": 0.9922,
+   "lo": 0.9775,
+   "hi": 0.9974,
+   "n": 387,
+   "correct": 384
+  },
+  "ckb|segmented|segmented": {
+   "rate": 0.9985,
+   "lo": 0.9976,
+   "hi": 0.999,
+   "n": 12376,
+   "correct": 12357
+  },
+  "fa|real|cc100-fa": {
+   "rate": 0.9976,
+   "lo": 0.9955,
+   "hi": 0.9987,
+   "n": 4129,
+   "correct": 4119
+  },
+  "fa|real|opus-CCAligned-fa": {
+   "rate": 0.9968,
+   "lo": 0.9956,
+   "hi": 0.9976,
+   "n": 12000,
+   "correct": 11961
+  },
+  "fa|real|opus-CCMatrix-fa": {
+   "rate": 0.9986,
+   "lo": 0.9977,
+   "hi": 0.9991,
+   "n": 12000,
+   "correct": 11983
+  },
+  "fa|real|opus-NLLB-fa": {
+   "rate": 0.9958,
+   "lo": 0.9944,
+   "hi": 0.9968,
+   "n": 12000,
+   "correct": 11949
+  },
+  "ks|real|opus-Mozilla-I10n-ks": {
+   "rate": 1.0,
+   "lo": 0.9644,
+   "hi": 1.0,
+   "n": 104,
+   "correct": 104
+  },
+  "ks|real|wikimedia-wiki": {
+   "rate": 0.9836,
+   "lo": 0.9766,
+   "hi": 0.9886,
+   "n": 1773,
+   "correct": 1744
+  },
+  "ks|real|wikimedia-wiktionary": {
+   "rate": 0.9808,
+   "lo": 0.8988,
+   "hi": 0.9966,
+   "n": 52,
+   "correct": 51
+  },
+  "ks|segmented|segmented": {
+   "rate": 0.9946,
+   "lo": 0.991,
+   "hi": 0.9968,
+   "n": 2602,
+   "correct": 2588
+  },
+  "ks|synthetic|synthetic-bigram": {
+   "rate": 0.9889,
+   "lo": 0.9865,
+   "hi": 0.9909,
+   "n": 8491,
+   "correct": 8397
+  },
+  "ks|synthetic|synthetic-noise": {
+   "rate": 0.9777,
+   "lo": 0.9744,
+   "hi": 0.9807,
+   "n": 8492,
+   "correct": 8303
+  },
+  "ks|synthetic|synthetic-shuffle": {
+   "rate": 1.0,
+   "lo": 0.9995,
+   "hi": 1.0,
+   "n": 8491,
+   "correct": 8491
+  },
+  "pnb|real|wikimedia-wiki": {
+   "rate": 0.951,
+   "lo": 0.947,
+   "hi": 0.9547,
+   "n": 12000,
+   "correct": 11412
+  },
+  "pnb|real|wikimedia-wiktionary": {
+   "rate": 0.9441,
+   "lo": 0.8935,
+   "hi": 0.9714,
+   "n": 143,
+   "correct": 135
+  },
+  "pnb|segmented|segmented": {
+   "rate": 0.9854,
+   "lo": 0.9835,
+   "hi": 0.987,
+   "n": 17859,
+   "correct": 17598
+  },
+  "ps|real|cc100-ps": {
+   "rate": 0.9998,
+   "lo": 0.9994,
+   "hi": 1.0,
+   "n": 12000,
+   "correct": 11998
+  },
+  "ps|real|opus-CCAligned-ps": {
+   "rate": 0.8985,
+   "lo": 0.8922,
+   "hi": 0.9045,
+   "n": 9275,
+   "correct": 8334
+  },
+  "ps|real|opus-NLLB-ps": {
+   "rate": 0.992,
+   "lo": 0.9902,
+   "hi": 0.9934,
+   "n": 12000,
+   "correct": 11904
+  },
+  "sd|real|cc100-sd": {
+   "rate": 0.9998,
+   "lo": 0.9993,
+   "hi": 0.9999,
+   "n": 12000,
+   "correct": 11997
+  },
+  "sd|real|opus-CCMatrix-sd": {
+   "rate": 0.9998,
+   "lo": 0.9994,
+   "hi": 1.0,
+   "n": 12000,
+   "correct": 11998
+  },
+  "sd|real|opus-NLLB-sd": {
+   "rate": 0.9297,
+   "lo": 0.925,
+   "hi": 0.9342,
+   "n": 12000,
+   "correct": 11157
+  },
+  "skr|real|wikimedia-wiki": {
+   "rate": 0.922,
+   "lo": 0.9171,
+   "hi": 0.9267,
+   "n": 12000,
+   "correct": 11064
+  },
+  "skr|real|wikimedia-wiktionary": {
+   "rate": 0.7957,
+   "lo": 0.7884,
+   "hi": 0.8028,
+   "n": 12000,
+   "correct": 9548
+  },
+  "skr|segmented|segmented": {
+   "rate": 0.906,
+   "lo": 0.8984,
+   "hi": 0.9131,
+   "n": 6000,
+   "correct": 5436
+  },
+  "ug|real|cc100-ug": {
+   "rate": 1.0,
+   "lo": 0.9997,
+   "hi": 1.0,
+   "n": 12000,
+   "correct": 12000
+  },
+  "ug|real|opus-GNOME-ug": {
+   "rate": 1.0,
+   "lo": 0.9398,
+   "hi": 1.0,
+   "n": 60,
+   "correct": 60
+  },
+  "ug|real|opus-NLLB-ug": {
+   "rate": 0.9977,
+   "lo": 0.9966,
+   "hi": 0.9984,
+   "n": 12000,
+   "correct": 11972
+  },
+  "ug|real|opus-TED2020-ug": {
+   "rate": 1.0,
+   "lo": 0.9607,
+   "hi": 1.0,
+   "n": 94,
+   "correct": 94
+  },
+  "ug|real|opus-Tanzil-ug": {
+   "rate": 1.0,
+   "lo": 0.9923,
+   "hi": 1.0,
+   "n": 496,
+   "correct": 496
+  },
+  "ug|real|opus-XLEnt-ug": {
+   "rate": 0.9545,
+   "lo": 0.782,
+   "hi": 0.9919,
+   "n": 22,
+   "correct": 21
+  },
+  "ug|real|wikimedia-wiki": {
+   "rate": 0.9892,
+   "lo": 0.9865,
+   "hi": 0.9914,
+   "n": 7047,
+   "correct": 6971
+  },
+  "ur|real|cc100-ur": {
+   "rate": 0.996,
+   "lo": 0.9947,
+   "hi": 0.997,
+   "n": 12000,
+   "correct": 11952
+  },
+  "ur|real|opus-CCMatrix-ur": {
+   "rate": 0.9912,
+   "lo": 0.9894,
+   "hi": 0.9928,
+   "n": 12000,
+   "correct": 11895
+  },
+  "ur|real|opus-NLLB-ur": {
+   "rate": 0.9827,
+   "lo": 0.9802,
+   "hi": 0.9849,
+   "n": 12000,
+   "correct": 11792
+  }
+ },
+ "confusions": {
+  "ur": {
+   "pnb": 198,
+   "skr": 61,
+   "ar": 47,
+   "ks": 45
+  },
+  "pnb": {
+   "ur": 439,
+   "skr": 241,
+   "ks": 66,
+   "ar": 55
+  },
+  "skr": {
+   "ur": 2848,
+   "pnb": 987,
+   "ks": 55,
+   "fa": 39
+  },
+  "sd": {
+   "ar": 360,
+   "fa": 295,
+   "ps": 177,
+   "ks": 11
+  },
+  "ps": {
+   "fa": 911,
+   "sd": 46,
+   "ar": 35,
+   "azb": 18
+  },
+  "ks": {
+   "ar": 214,
+   "ur": 65,
+   "pnb": 21,
+   "skr": 12
+  },
+  "fa": {
+   "azb": 64,
+   "ar": 29,
+   "ps": 14,
+   "ks": 6
+  },
+  "ar": {
+   "fa": 3,
+   "ps": 1
+  },
+  "ckb": {
+   "ar": 60,
+   "fa": 33,
+   "ks": 13,
+   "azb": 3
+  },
+  "ug": {
+   "ar": 91,
+   "ckb": 6,
+   "fa": 3,
+   "sd": 2
+  },
+  "azb": {
+   "fa": 135,
+   "ar": 20,
+   "sd": 7,
+   "ps": 3
+  }
+ }
+}
