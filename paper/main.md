@@ -55,6 +55,25 @@ Perso-Arabic language labels, and it is the right comparator: it covers the task
 paper measures against it and against the two general-purpose detectors, and then turns
 the same instruments on its own result and finds it wanting.
 
+**Prior work on the domain problem.** The general phenomenon in §5 is known and we do not
+claim it. ConLID [@conlid] argues that cross-entropy-trained LID learns a domain's style
+rather than a language's identity, which bites hardest for low-resource languages whose
+training data comes from a single source, and reports gains out of domain from contrastive
+training. DIVERS-Bench [@divers] evaluates LID across domains and finds systems — fastText
+`lid.176` among them, itself largely Wikipedia-trained — failing to generalise out of
+domain and in low-resource settings. An earlier draft of this paper claimed no such study
+existed. It was wrong, as a comparable absence-based claim in a sibling project was also
+wrong, and the two together are a reason to distrust the form of argument rather than
+just to patch the sentence.
+
+What is specific here is the instance and its mechanism: *which* languages collapse into
+*which* others, measured on a script where the label sets of general-purpose detectors do
+not even cover the task. The failure is not diffuse degradation but a single dominant
+confusion — three quarters of out-of-domain Urdu labelled Shahmukhi Punjabi — and §6 shows
+that rebuilding the corpus repairs it, at a cost that falls precisely on the two languages
+with no second source to add. That cost is the part a general result cannot give, because
+it is a property of what exists for these languages and not of the method.
+
 # 2. Method
 
 ## 2.1 The task and the label set
@@ -187,10 +206,21 @@ restricted counterparts rather than alone.
 
 ## 4.3 A confound stated rather than discovered
 
-PALI's training corpora are Wikipedia dumps for several of these languages, and this test
-set is Wikipedia. These test paragraphs may therefore appear in PALI's training data. The
-bias runs **in PALI's favour**, so a lead for this tool over PALI is conservative, and a
-lead for PALI could not be read as clean. This is the reason §5 exists.
+**Possible train/test overlap with PALI, which we cannot rule out or confirm.** This test
+set is Wikipedia. PALI's repository ships its training corpora but does not document
+where they came from; neither the paper's abstract nor the repository names Wikipedia as
+a source. An earlier draft of this paper asserted that PALI trains on Wikipedia dumps.
+That assertion had no source and has been withdrawn — what can be said is that PALI's
+provenance is undocumented, so overlap with these paragraphs is possible and unverified.
+
+The direction matters more than the fact. Any overlap would run **in PALI's favour**, so
+this tool's lead over PALI is conservative under it, and a lead for PALI could not have
+been read as clean. Nothing in §4 depends on the overlap existing.
+
+A second caveat on PALI's labels, from its own repository: it documents `sdh` as Southern
+Kurdish while the distributed model's label list treats it inconsistently. The mapping in
+§4 therefore uses identity wherever PALI has our code and reports the alternative beside
+it, rather than resolving an ambiguity in another project's label set by assertion.
 
 # 5. The result that matters: 0.9925 does not survive leaving Wikipedia
 
@@ -301,17 +331,33 @@ Nothing in `research/` ships in the distributed package.
 
 # References
 
-- [@pali] Ahmadi, S. et al. *PALI: A Language Identification Benchmark for Perso-Arabic Scripts.* arXiv:2304.01322. Model and data: <https://github.com/sinaahmadi/PersoArabicLID> (MIT).
+- [@pali] Ahmadi, S., Agarwal, M. and Anastasopoulos, A. *PALI: A Language Identification Benchmark for Perso-Arabic Scripts.* VarDial @ EACL 2023; arXiv:2304.01322. Model and data: <https://github.com/sinaahmadi/PersoArabicLID> (MIT). 19 language labels; the distributed model is a quantised fastText classifier (`LID_model_merged.ftz`).
 - [@fasttext-lid] Joulin, A. et al. *Bag of Tricks for Efficient Text Classification.* arXiv:1607.01759. Model `lid.176.ftz`.
 - [@langdetect] Shuyo, N. *Language Detection Library for Java*, 2010; `langdetect` 1.0.9 is the Python port.
 - [@cc100] Conneau, A. et al. *Unsupervised Cross-lingual Representation Learning at Scale.* arXiv:1911.02116. CC-100 corpus.
 - [@opus] Tiedemann, J. *Parallel Data, Tools and Interfaces in OPUS.* LREC 2012.
+- [@conlid] *ConLID: Supervised Contrastive Learning for Low-Resource Language Identification.* arXiv:2506.15304.
+- [@divers] *DIVERS-Bench: Evaluating Language Identification Across Domains.* arXiv:2509.17768.
 - Tatoeba sentence exports, CC-BY 2.0 FR. <https://downloads.tatoeba.org/>
 
-> **Citation status.** The references above were located by literature search and their
-> claims are quoted from search summaries rather than from the full texts, with the
-> exception of PALI, whose model file, label set and licence were read directly from the
-> repository because the comparison depends on them. Before submission each must be read
-> and verified. The search found **no prior study measuring in-domain against
-> out-of-domain accuracy for Perso-Arabic language identification**; the framing in §1
-> rests on that absence and needs one further confirmatory pass.
+> **Citation status.** PALI's bibliographic details, label set, architecture and licence
+> were read from its arXiv page and its repository, because the comparison depends on
+> them. Reading them corrected two things: the venue (VarDial @ EACL 2023, not arXiv
+> alone) and, more importantly, §4.3 — an earlier draft asserted that PALI trains on
+> Wikipedia, which neither the abstract nor the repository supports. Its paper's full
+> text has not been read, and its reported accuracies are not quoted here.
+>
+> The remaining references are quoted from search summaries rather than from full texts
+> and must each be read before submission.
+>
+> That confirmatory pass **was** done and it overturned the claim. An earlier draft said
+> the search had found no prior study measuring in-domain against out-of-domain accuracy
+> for language identification. ConLID [@conlid] and DIVERS-Bench [@divers] both do, and
+> DIVERS-Bench tests the Wikipedia-trained fastText model directly. §1 now cites them and
+> claims the instance rather than the phenomenon. Both are summarised from search results
+> and abstracts, not read in full; their reported figures are not quoted here and should
+> be checked before submission.
+>
+> This is the second absence-based novelty claim in this body of work to fail on a second
+> search. Neither affected a measured result — both were claims about the literature, not
+> about the data — but the pattern is recorded here rather than quietly fixed.
