@@ -41,8 +41,12 @@ def pair(a_only: int, b_only: int, both: int, neither: int) -> tuple[bytes, byte
 
 def setting(top: int, mean: float, size: int, outcomes: bytes, skr: float = 0.8) -> dict:
     return {
-        "n_max": 6, "alpha": 0.03, "top": top,
-        "val_mean": mean, "val_skr_20": skr, "json_bytes": size,
+        "n_max": 6,
+        "alpha": 0.03,
+        "top": top,
+        "val_mean": mean,
+        "val_skr_20": skr,
+        "json_bytes": size,
         "outcomes": {w: outcomes for w in WINDOWS},
     }
 
@@ -114,10 +118,8 @@ def test_a_candidate_that_wins_a_length_is_not_excluded_for_it() -> None:
 
 def test_rows_without_outcomes_fall_back_to_the_tolerance_band() -> None:
     """A report reloaded from disk has no outcome vectors; it must still be choosable."""
-    small = {k: v for k, v in setting(60000, 0.9530, 20019085, b"").items()
-             if k != "outcomes"}
-    big = {k: v for k, v in setting(180000, 0.9545, 66300000, b"").items()
-           if k != "outcomes"}
+    small = {k: v for k, v in setting(60000, 0.9530, 20019085, b"").items() if k != "outcomes"}
+    big = {k: v for k, v in setting(180000, 0.9545, 66300000, b"").items() if k != "outcomes"}
     assert choose([small, big])["top"] == 60000
     far = {**small, "val_mean": 0.9400}
     assert choose([far, big])["top"] == 180000

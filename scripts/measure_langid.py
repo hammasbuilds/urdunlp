@@ -83,17 +83,19 @@ def margin_deciles(margins: list[tuple[float, bool]]) -> list[dict]:
     n = len(rows)
     out = []
     for i in range(10):
-        chunk = rows[i * n // 10:(i + 1) * n // 10]
+        chunk = rows[i * n // 10 : (i + 1) * n // 10]
         if not chunk:
             continue
-        out.append({
-            "decile": i + 1,
-            "margin_from": round(chunk[0][0], 4),
-            "margin_to": round(chunk[-1][0], 4),
-            "n": len(chunk),
-            "accuracy": round(sum(ok for _, ok in chunk) / len(chunk), 4),
-            "errors": sum(1 for _, ok in chunk if not ok),
-        })
+        out.append(
+            {
+                "decile": i + 1,
+                "margin_from": round(chunk[0][0], 4),
+                "margin_to": round(chunk[-1][0], 4),
+                "n": len(chunk),
+                "accuracy": round(sum(ok for _, ok in chunk) / len(chunk), 4),
+                "errors": sum(1 for _, ok in chunk if not ok),
+            }
+        )
     return out
 
 
@@ -110,18 +112,20 @@ def error_retention(margins: list[tuple[float, bool]]) -> list[dict]:
     total_errors = sum(1 for _, ok in rows if not ok)
     out = []
     for keep in (0.5, 0.75, 0.9, 0.95, 0.99):
-        kept = rows[int(n * (1 - keep)):]
+        kept = rows[int(n * (1 - keep)) :]
         if not kept:
             continue
         errors = sum(1 for _, ok in kept if not ok)
-        out.append({
-            "keep": keep,
-            "n": len(kept),
-            "accuracy": round(sum(ok for _, ok in kept) / len(kept), 4),
-            "errors_kept": errors,
-            "errors_total": total_errors,
-            "errors_kept_share": round(errors / total_errors, 4) if total_errors else None,
-        })
+        out.append(
+            {
+                "keep": keep,
+                "n": len(kept),
+                "accuracy": round(sum(ok for _, ok in kept) / len(kept), 4),
+                "errors_kept": errors,
+                "errors_total": total_errors,
+                "errors_kept_share": round(errors / total_errors, 4) if total_errors else None,
+            }
+        )
     return out
 
 
@@ -141,9 +145,7 @@ def script_report(wiki_dir: Path | None = None) -> dict:
         "paragraphs": {k: {s: len(v) for s, v in d.items()} for k, d in splits.items()},
     }
 
-    raw = {
-        code: (folder / f"{code}.txt").read_text("utf-8").splitlines() for code in LANGUAGES
-    }
+    raw = {code: (folder / f"{code}.txt").read_text("utf-8").splitlines() for code in LANGUAGES}
     report["is_urdu_says_yes"] = {
         code: round(sum(is_urdu(p) for p in rows) / len(rows), 4) for code, rows in raw.items()
     }
@@ -198,14 +200,18 @@ def script_report(wiki_dir: Path | None = None) -> dict:
             if part == "test" and length == 20:
                 print("      margin decile (1 = lowest margin)")
                 for row in deciles:
-                    print(f"        {row['decile']:>2}  {row['margin_from']:7.3f}-"
-                          f"{row['margin_to']:<8.3f} {row['n']:>5} texts, accuracy "
-                          f"{row['accuracy']:.3f}, {row['errors']:>3} errors")
+                    print(
+                        f"        {row['decile']:>2}  {row['margin_from']:7.3f}-"
+                        f"{row['margin_to']:<8.3f} {row['n']:>5} texts, accuracy "
+                        f"{row['accuracy']:.3f}, {row['errors']:>3} errors"
+                    )
                 for row in retention:
-                    print(f"      keeping the top {row['keep']:>4.0%} by margin: accuracy "
-                          f"{row['accuracy']:.4f}, {row['errors_kept']} of "
-                          f"{row['errors_total']} errors kept "
-                          f"({row['errors_kept_share']:.1%})")
+                    print(
+                        f"      keeping the top {row['keep']:>4.0%} by margin: accuracy "
+                        f"{row['accuracy']:.4f}, {row['errors_kept']} of "
+                        f"{row['errors_total']} errors kept "
+                        f"({row['errors_kept_share']:.1%})"
+                    )
     return report
 
 

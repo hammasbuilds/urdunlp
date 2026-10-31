@@ -14,10 +14,30 @@ above 200 characters and **0.193 below 80**, which is where a bare gloss sits.
 
 Filtering those rows with the classifier would be circular - it would remove exactly the
 rows the model gets wrong and inflate the score by construction. So the criterion here is
-lexical and model-independent: the four implosive letters that are distinctive to Saraiki
-among these eleven languages. They appear in 38% of Saraiki Wikipedia lines and in 0.01%
-of Shahmukhi Punjabi and 0.00% of Urdu, so a line carrying one is Saraiki on orthographic
-grounds alone, whatever any model says.
+lexical and model-independent: the implosive letters Saraiki writes and its confusable
+neighbours do not.
+
+**Three of those four letters are not Saraiki-exclusive, and an earlier version of this
+script said they were.** It compared their frequency against Shahmukhi Punjabi (0.01%) and
+Urdu (0.00%), the two languages Saraiki is actually confused with, and never checked
+Sindhi - which writes three of them about as often as Saraiki does. Share of each
+language's training lines carrying the letter:
+
+    letter             skr      sd    next highest
+    U+067B  BEEH      13.1%   20.7%   ks 0.00%
+    U+0684  DYEH      12.3%   10.7%   ks 0.00%
+    U+06B3  GUEH      35.3%   23.1%   ks 0.01%
+    U+0759  DUL       25.8%    0.0%   ks 0.01%   <- the only exclusive one
+
+So "a line carrying one is Saraiki on orthographic grounds alone" was false: a Sindhi line
+would pass it too. What the split still does, and all it ever needed to do, is separate
+orthographically **marked** Saraiki rows from unmarked ones - it is applied inside the
+Saraiki test set, so the question is which of those rows carry the marking, not which
+language they belong to. The risk the wider criterion leaves open is a mislabelled
+*Sindhi* row passing as marked Saraiki, so both splits are reported: all four letters, and
+U+0759 alone, which no other language here writes. `research/orthographic_audit.py`
+derives the inventory for all eleven languages from the corpus instead of asserting it,
+which is how this was caught.
 
 This reports accuracy on that subset beside the whole. The subset is biased towards
 longer and more distinctively Saraiki text, so it is an **upper** bound, not a corrected
@@ -36,6 +56,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 IMPLOSIVES = set("ٻڄڳݙ")
+# The one of the four that no other language in this corpus writes: Sindhi carries
+# the other three. Reported as a second, strictly narrower split so the four-letter
+# figure can be checked against a criterion that cannot admit a Sindhi line.
+EXCLUSIVE = set("ݙ")
 MODEL = ROOT / "models" / "with_synthetic" / "langid.json.gz"
 
 
@@ -64,12 +88,16 @@ def main() -> int:
 
     buckets: dict[tuple[str, bool], list[int]] = collections.defaultdict(
         lambda: [0, 0])
-    for text, tag in zip(texts, tags):
+    narrow: dict[bool, list[int]] = collections.defaultdict(lambda: [0, 0])
+    for text, tag in zip(texts, tags, strict=True):
         source = tag.split("\t")[-1]
-        marked = bool(IMPLOSIVES & set(text))
+        chars = set(text)
+        marked = bool(IMPLOSIVES & chars)
         ok = int(langid.identify_language(text).language == "skr")
         buckets[(source, marked)][0] += ok
         buckets[(source, marked)][1] += 1
+        narrow[bool(EXCLUSIVE & chars)][0] += ok
+        narrow[bool(EXCLUSIVE & chars)][1] += 1
 
     report: dict = {
         "criterion": "line contains one of the Saraiki implosives " + "".join(
@@ -103,6 +131,15 @@ def main() -> int:
     report["with_implosive"] = a
     report["without_implosive"] = b
     report["whole"] = whole
+    report["with_exclusive_letter"] = wilson(narrow[True][0], narrow[True][1])
+    report["without_exclusive_letter"] = wilson(narrow[False][0], narrow[False][1])
+    report["exclusive_letter"] = "".join(sorted(EXCLUSIVE))
+    report["why_two_criteria"] = (
+        "Three of the four implosives are also written in Sindhi, so the four-letter "
+        "split admits a mislabelled Sindhi row. U+0759 is the one no other language in "
+        "this corpus writes; if the two splits agree, the wider one is not being carried "
+        "by Sindhi text."
+    )
 
     print(f"\n  whole skr test split         {whole['rate']:.4f} "
           f"[{whole['lo']:.4f}, {whole['hi']:.4f}]  n={whole['n']:,}")
@@ -110,6 +147,12 @@ def main() -> int:
           f"[{a['lo']:.4f}, {a['hi']:.4f}]  n={a['n']:,}   <- upper bound")
     print(f"  lines without one            {b['rate']:.4f} "
           f"[{b['lo']:.4f}, {b['hi']:.4f}]  n={b['n']:,}")
+    e, f = report["with_exclusive_letter"], report["without_exclusive_letter"]
+    print("\n  the narrower criterion - U+0759 alone, which no other language here writes:")
+    print(f"  lines with U+0759            {e['rate']:.4f} "
+          f"[{e['lo']:.4f}, {e['hi']:.4f}]  n={e['n']:,}")
+    print(f"  lines without it             {f['rate']:.4f} "
+          f"[{f['lo']:.4f}, {f['hi']:.4f}]  n={f['n']:,}")
 
     out = ROOT / "research" / "results" / "skr_sensitivity.json"
     out.write_text(json.dumps(report, indent=1), encoding="utf-8")

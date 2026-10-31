@@ -57,5 +57,19 @@
   "lo": 0.8649,
   "hi": 0.8726,
   "n": 30000
- }
+ },
+ "with_exclusive_letter": {
+  "rate": 0.9898,
+  "lo": 0.9873,
+  "hi": 0.9918,
+  "n": 7654
+ },
+ "without_exclusive_letter": {
+  "rate": 0.8274,
+  "lo": 0.8223,
+  "hi": 0.8323,
+  "n": 22346
+ },
+ "exclusive_letter": "\u0759",
+ "why_two_criteria": "Three of the four implosives are also written in Sindhi, so the four-letter split admits a mislabelled Sindhi row. U+0759 is the one no other language in this corpus writes; if the two splits agree, the wider one is not being carried by Sindhi text."
 }

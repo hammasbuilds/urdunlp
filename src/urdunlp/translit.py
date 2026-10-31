@@ -50,7 +50,15 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from . import _channel
-from .normalize import _CONTROL_CHARACTERS, IDENTIFIER, ZWJ, ZWNJ, _is_urdu_letter, _require_str, normalize
+from .normalize import (
+    _CONTROL_CHARACTERS,
+    IDENTIFIER,
+    ZWJ,
+    ZWNJ,
+    _is_urdu_letter,
+    _require_str,
+    normalize,
+)
 
 # --- Stage 1: lexicon -------------------------------------------------------------
 # High-frequency Roman Urdu, mapped to correct Urdu script. Deliberately weighted

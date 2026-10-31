@@ -428,10 +428,10 @@ that no augmentation could.
 Saraiki is the one language that stays low on the multi-source split — 0.8688 while every
 other language is above 0.96 — and the reason is worth separating from the model.
 
-Saraiki writes four implosive letters, `ٻ ڄ ڳ ݙ`, that are distinctive to it among these
-eleven: they appear in 37.9% of Saraiki Wikipedia lines, 0.01% of Shahmukhi Punjabi and
-0.00% of Urdu. Splitting the test rows on whether a line carries one — an **orthographic**
-criterion, independent of any model — gives:
+Saraiki writes four implosive letters, `ٻ ڄ ڳ ݙ`. They appear in 37.9% of Saraiki
+Wikipedia lines, 0.01% of Shahmukhi Punjabi and 0.00% of Urdu. Splitting the test rows on
+whether a line carries one — an **orthographic** criterion, independent of any model —
+gives:
 
 | source | without an implosive | with one |
 |---|---:|---:|
@@ -455,6 +455,27 @@ than in place of it.
 wrong, using that model, inflates its score by construction. The implosive criterion is
 orthographic and decided before any prediction is read.
 
+**Three of the four letters are not Saraiki-exclusive, and an earlier draft said they
+were.** The frequencies above are Shahmukhi Punjabi and Urdu, the two languages Saraiki is
+confused with; Sindhi was never checked, and Sindhi writes `ٻ` in 20.7% of its training
+lines, `ڄ` in 10.7% and `ڳ` in 23.1% — for two of the three, more often than Saraiki
+does. "A line carrying one is Saraiki on orthographic grounds alone", which the draft
+asserted, is false: a Sindhi line passes it too. The split itself survives, because it is
+applied *inside* the Saraiki test rows and so asks which of them carry the marking rather
+than which language they are. What it leaves open is a mislabelled Sindhi row counted as
+marked Saraiki, so we report the narrower split as well: `ݙ`, which no other language in
+this corpus writes at all, gives **0.9898** [0.9873, 0.9918] on 7,654 rows against 0.8274
+on the remaining 22,346. The two criteria agree to two decimal places, so the 0.9918 is not
+being carried by Sindhi text.
+
+The inventory is now derived rather than asserted. `research/orthographic_audit.py` reads
+the character frequencies of all eleven languages off the training split and keeps a letter
+only where it appears in at least 2% of its own language's lines and at most 0.1% of every
+other's, which is what caught this. It also reports what the instrument cannot do: several
+of the eleven have **no** such letter in this corpus, so for those languages the criterion
+does not exist — and that is precisely why the defect below, Urdu glosses under a Saraiki
+label, is invisible to an orthographic audit.
+
 **The Saraiki Wiktionary is a bilingual dictionary and we labelled all of it `skr`.** An
 entry gives a Saraiki definition and an Urdu gloss, and our extractor takes each line
 separately, so a share of the 120,000 Wiktionary lines are genuinely Urdu text carrying a
@@ -467,6 +488,90 @@ gap is 0.047 above 200 characters and 0.193 below 80.
 This is the §7 threat "test labels are source labels" made concrete, and it is ours, not
 the source's. Saraiki's true figure lies between 0.8688 and 0.9918 and this corpus cannot
 locate it more precisely without hand-labelled Saraiki, which we do not have.
+
+## 6.3 The other thirty-five pairs, audited
+
+§6.2 found one mislabelled source by looking at a surprising number. An earlier draft of
+§7 then admitted that the remaining source-language pairs had never been checked the same
+way, which is a gap a reader cannot do anything with. Two audits now cover all 41 sources,
+and both are decided without consulting the classifier.
+
+**Cross-label duplication** (`research/label_audit.py`). If one and the same line is filed
+under two language labels, at most one of those labels is right, whatever any model thinks.
+Lines are compared after NFC, whitespace collapse, tatweel removal and combining-mark
+stripping, so two projects that differ only in whether they kept vowel marks are not read
+as two different lines; lines under 24 characters are excluded from the headline rate,
+because a shared date or numeral is not a mislabelled sentence. Over 3,332,284 corpus
+lines, **445 distinct lines carry two or more labels, accounting for 900 lines, 0.027% of
+the corpus**. 25 of the 41 sources have none at all. The largest rates are:
+
+| source | lines | cross-labelled | rate | other label |
+|---|---:|---:|---:|---|
+| `skr.segmented` | 60,000 | 157 | 0.0026 | pnb (157) |
+| `skr.wikimedia-wiki` | 119,999 | 244 | 0.0020 | pnb (217), ks (15), azb (11) |
+| `pnb.wikimedia-wiki` | 120,000 | 235 | 0.0020 | skr (218), ur (12), ks (6) |
+| `ks.wikimedia-wiki` | 17,718 | 17 | 0.0010 | skr (15), pnb (6) |
+| `pnb.segmented` | 178,579 | 162 | 0.0009 | skr (156) |
+
+The pattern is Saraiki against Shahmukhi Punjabi in both directions on the Wikipedias —
+the same sentence appearing on both wikis, which two closely related languages sharing a
+volunteer community will produce — and it is small.
+
+**It does not clear the Saraiki Wiktionary, and that is the point.** The one source we
+*know* is contaminated scores **0.0000** on this audit. An Urdu gloss inside a Saraiki
+dictionary entry is Urdu text, but it is not a line that also appears in our Urdu corpus,
+so exact duplication cannot see it. The detector was checked against planted duplicates
+before its null result was believed — `tests/test_label_audit.py` plants them, including
+the diacritic and tatweel cases, and the audit finds each — so the zero is the detector
+working and the mechanism being out of its reach. **A low duplication rate is evidence
+against one mislabelling mechanism and is not a clean bill of health.**
+
+**Orthographic attribution** (`research/orthographic_audit.py`) is the §6.2 instrument
+generalised: character frequencies read off the *training* split, a letter kept as
+distinctive to a language where it appears in at least 2% of that language's lines and at
+most 0.1% of every other's, and then the *test* rows split on it. It is what caught the
+exclusivity error corrected in §6.2 — and the generalisation changes what §6.2 means.
+
+Six of the eleven languages have a distinctive inventory. For every one of them, the
+marked half is at or above 0.99:
+
+| language | distinctive letters | marked share | marked | unmarked | gap |
+|---|---|---:|---:|---:|---:|
+| Pashto | `ټ ځ څ ډ ړ ږ ښ ړ ڼ` | 89.3% | **0.9998** | 0.7102 | 0.290 |
+| Sindhi | `ٺ ٽ ٿ ڀ ڃ ڇ ڊ ڌ ڍ ڏ ڙ ڦ ڱ ڻ` | 90.3% | **0.9998** | 0.7611 | 0.239 |
+| Saraiki | `ݙ` | **25.5%** | 0.9898 | 0.8274 | 0.162 |
+| Kashmiri | `ؠ ٲ ۄ` | 80.3% | **0.9995** | 0.9427 | 0.057 |
+| Uyghur | `ڭ ۈ ۋ` | 87.6% | **0.9998** | 0.9746 | 0.025 |
+| Sorani | `ڕ ڤ ڵ` | 83.2% | **0.9997** | 0.9790 | 0.021 |
+
+Read down the marked column: identifying an orthographically marked line is nearly solved
+for every language that has marking, and **what differs between languages is how much of
+their text is marked**. That reframes §6.2. Saraiki is not the language whose unmarked text
+is hardest — Pashto's unmarked half scores 0.7102 and Sindhi's 0.7611, both below Saraiki's
+0.8274. Saraiki is the language with the *smallest marked share*: 25.5% against 80–90% for
+every other marked language, because only one of its four implosives is exclusive to it
+here. Pashto and Sindhi look healthy in aggregate because nine lines in ten carry their
+marking; Saraiki does not, so its whole-language figure sits near its unmarked half.
+Saraiki's 0.8688 is therefore a statement about Saraiki orthography as this corpus samples
+it, and the per-language accuracies in §4.1 are in large part a ranking of orthographic
+markedness rather than of modelling difficulty.
+
+The audit also reports where it cannot be applied. Arabic, Persian, Urdu, Shahmukhi
+Punjabi and South Azerbaijani have **no** distinctive letter at these thresholds — they are
+the unmarked cases against which the other six are marked — so for them no orthographic
+criterion exists, and Shahmukhi Punjabi's 0.9725 and Urdu's 0.9904 cannot be decomposed
+this way at all. Urdu being one of them closes the loop: the defect §6.2 found is
+undetectable by *either* audit, and we know of it only because we looked at a number that
+was out of line.
+
+One direct, model-free signal does come out of it: test rows that carry no distinctive
+letter of their own label but do carry another language's. 23 Saraiki rows carry Sindhi
+letters, 18 Kashmiri rows carry Sindhi letters, 12 Sindhi rows carry Pashto letters and 11
+Arabic rows carry Sorani letters. These are the rows whose label the corpus itself
+contradicts. **124 distinct rows of 358,720, 0.035%** — counted as rows rather than summed
+over the per-language breakdown, which double-counts the five rows carrying two foreign
+inventories. The same order as the duplication finding, and too few to move any figure in
+this paper.
 
 # 7. Threats to validity
 
@@ -483,9 +588,12 @@ that did not.
 is a bilingual dictionary whose Urdu glosses we extracted and labelled `skr`, which alone
 accounts for much of the gap between Saraiki's 0.8688 and the 0.9918 it reaches on
 orthographically unambiguous lines. We found one such case by looking at a surprising
-number. **We have not audited the other thirty-five source–language pairs the same way**,
-and the same failure mode — a source whose label is the project's name rather than the
-text's language — is available to any of them. For the Urdu/Punjabi pair in particular,
+number. All 41 sources are now audited two ways (§6.3) — cross-label duplication, which
+finds 0.027% of the corpus carrying two labels, and orthographic attribution — and
+**neither audit can see the defect we already know about**, because an Urdu gloss is
+neither a duplicated line nor a line carrying a distinctive letter. The failure mode
+remains available to any pair whose true language is one of the orthographically unmarked
+ones. For the Urdu/Punjabi pair in particular,
 some fraction of any crawled corpus is plausibly mislabelled, and the direction of that
 error is unknown.
 
@@ -530,7 +638,10 @@ an earlier guard asserted that a formatted value appeared *anywhere* in the docu
 passed with two planted wrong numbers. `research/pali_baseline.py`,
 `research/out_of_domain.py` and `research/out_of_domain_two.py` rebuild §4 and §5;
 `research/build_corpus.py`, `research/make_splits.py` and
-`research/evaluate_multisource.py` rebuild §6. Corpus construction is documented in
+`research/evaluate_multisource.py` rebuild §6; `research/skr_sensitivity.py` rebuilds §6.2
+and `research/label_audit.py` and `research/orthographic_audit.py` rebuild §6.3, the second
+of which derives its criterion from the train split and scores on the test split so the
+two cannot be confused. Corpus construction is documented in
 `docs/CORPUS.md` with the per-source line counts and every rejection and its reason.
 
 Nothing in `research/` ships in the distributed package.

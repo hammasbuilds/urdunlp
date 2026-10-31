@@ -1,0 +1,740 @@
+{
+ "min_share": 0.02,
+ "max_other_share": 0.001,
+ "criterion_derived_from": "train split",
+ "accuracies_measured_on": "test split",
+ "why_not_the_model": "The split is orthographic and fixed before any prediction is read. Choosing rows with the classifier would remove exactly the rows it gets wrong.",
+ "is_an_upper_bound": "Lines carrying a distinctive letter are longer and more distinctively written than the rest, so the with-letter figure is an upper bound on the language's accuracy rather than a corrected value. Both halves and the whole are reported.",
+ "what_this_cannot_see": "A language with no distinctive letter has no criterion here, and a line mislabelled as such a language is undetectable by this instrument. Urdu is that case, which is why section 6.2's Urdu glosses under a Saraiki label do not show up in the foreign-letter counts.",
+ "train_lines": {
+  "ar": 288000,
+  "azb": 204675,
+  "ckb": 239998,
+  "fa": 321020,
+  "ks": 239997,
+  "pnb": 239999,
+  "ps": 266194,
+  "sd": 288000,
+  "skr": 240000,
+  "ug": 253722,
+  "ur": 288000
+ },
+ "foreign_letter_lines_total": 124,
+ "per_language": {
+  "ar": {
+   "distinctive_letters": "",
+   "has_criterion": false,
+   "with_a_distinctive_letter": null,
+   "without_one": {
+    "rate": 0.9999,
+    "lo": 0.9997,
+    "hi": 1.0,
+    "n": 36000
+   },
+   "whole": {
+    "rate": 0.9999,
+    "lo": 0.9997,
+    "hi": 1.0,
+    "n": 36000
+   },
+   "unmarked_lines_carrying_another_languages_letter": {
+    "ckb": 11,
+    "ps": 1
+   },
+   "unmarked_lines_carrying_any_foreign_letter": 12
+  },
+  "azb": {
+   "distinctive_letters": "",
+   "has_criterion": false,
+   "with_a_distinctive_letter": null,
+   "without_one": {
+    "rate": 0.9935,
+    "lo": 0.9925,
+    "hi": 0.9944,
+    "n": 25585
+   },
+   "whole": {
+    "rate": 0.9935,
+    "lo": 0.9925,
+    "hi": 0.9944,
+    "n": 25585
+   },
+   "unmarked_lines_carrying_another_languages_letter": {
+    "ug": 12
+   },
+   "unmarked_lines_carrying_any_foreign_letter": 12
+  },
+  "ckb": {
+   "distinctive_letters": "ڕڤڵ",
+   "has_criterion": true,
+   "with_a_distinctive_letter": {
+    "rate": 0.9997,
+    "lo": 0.9994,
+    "hi": 0.9999,
+    "n": 24958
+   },
+   "without_one": {
+    "rate": 0.979,
+    "lo": 0.9747,
+    "hi": 0.9826,
+    "n": 5047
+   },
+   "whole": {
+    "rate": 0.9962,
+    "lo": 0.9955,
+    "hi": 0.9969,
+    "n": 30005
+   },
+   "unmarked_lines_carrying_another_languages_letter": {},
+   "unmarked_lines_carrying_any_foreign_letter": 0
+  },
+  "fa": {
+   "distinctive_letters": "",
+   "has_criterion": false,
+   "with_a_distinctive_letter": null,
+   "without_one": {
+    "rate": 0.9971,
+    "lo": 0.9966,
+    "hi": 0.9976,
+    "n": 40129
+   },
+   "whole": {
+    "rate": 0.9971,
+    "lo": 0.9966,
+    "hi": 0.9976,
+    "n": 40129
+   },
+   "unmarked_lines_carrying_another_languages_letter": {
+    "ps": 5,
+    "ks": 2,
+    "sd": 1,
+    "ug": 1
+   },
+   "unmarked_lines_carrying_any_foreign_letter": 8
+  },
+  "ks": {
+   "distinctive_letters": "ؠٲۄ",
+   "has_criterion": true,
+   "with_a_distinctive_letter": {
+    "rate": 0.9995,
+    "lo": 0.9992,
+    "hi": 0.9997,
+    "n": 24092
+   },
+   "without_one": {
+    "rate": 0.9427,
+    "lo": 0.9365,
+    "hi": 0.9483,
+    "n": 5913
+   },
+   "whole": {
+    "rate": 0.9883,
+    "lo": 0.9871,
+    "hi": 0.9895,
+    "n": 30005
+   },
+   "unmarked_lines_carrying_another_languages_letter": {
+    "sd": 18,
+    "ps": 1,
+    "skr": 1
+   },
+   "unmarked_lines_carrying_any_foreign_letter": 20
+  },
+  "pnb": {
+   "distinctive_letters": "",
+   "has_criterion": false,
+   "with_a_distinctive_letter": null,
+   "without_one": {
+    "rate": 0.9725,
+    "lo": 0.9706,
+    "hi": 0.9743,
+    "n": 30002
+   },
+   "whole": {
+    "rate": 0.9725,
+    "lo": 0.9706,
+    "hi": 0.9743,
+    "n": 30002
+   },
+   "unmarked_lines_carrying_another_languages_letter": {
+    "sd": 3,
+    "ug": 2,
+    "ps": 2
+   },
+   "unmarked_lines_carrying_any_foreign_letter": 7
+  },
+  "ps": {
+   "distinctive_letters": "ټځڅډړږښګڼ",
+   "has_criterion": true,
+   "with_a_distinctive_letter": {
+    "rate": 0.9998,
+    "lo": 0.9995,
+    "hi": 0.9999,
+    "n": 29721
+   },
+   "without_one": {
+    "rate": 0.7102,
+    "lo": 0.695,
+    "hi": 0.7249,
+    "n": 3554
+   },
+   "whole": {
+    "rate": 0.9688,
+    "lo": 0.9669,
+    "hi": 0.9706,
+    "n": 33275
+   },
+   "unmarked_lines_carrying_another_languages_letter": {
+    "ckb": 2,
+    "sd": 1
+   },
+   "unmarked_lines_carrying_any_foreign_letter": 3
+  },
+  "sd": {
+   "distinctive_letters": "ٺٽٿڀڃڇڊڌڍڏڙڦڱڻ",
+   "has_criterion": true,
+   "with_a_distinctive_letter": {
+    "rate": 0.9998,
+    "lo": 0.9996,
+    "hi": 0.9999,
+    "n": 32492
+   },
+   "without_one": {
+    "rate": 0.7611,
+    "lo": 0.7467,
+    "hi": 0.7749,
+    "n": 3508
+   },
+   "whole": {
+    "rate": 0.9766,
+    "lo": 0.975,
+    "hi": 0.9781,
+    "n": 36000
+   },
+   "unmarked_lines_carrying_another_languages_letter": {
+    "ps": 12,
+    "ug": 10,
+    "ckb": 5,
+    "ks": 2
+   },
+   "unmarked_lines_carrying_any_foreign_letter": 26
+  },
+  "skr": {
+   "distinctive_letters": "ݙ",
+   "has_criterion": true,
+   "with_a_distinctive_letter": {
+    "rate": 0.9898,
+    "lo": 0.9873,
+    "hi": 0.9918,
+    "n": 7654
+   },
+   "without_one": {
+    "rate": 0.8274,
+    "lo": 0.8223,
+    "hi": 0.8323,
+    "n": 22346
+   },
+   "whole": {
+    "rate": 0.8688,
+    "lo": 0.8649,
+    "hi": 0.8726,
+    "n": 30000
+   },
+   "unmarked_lines_carrying_another_languages_letter": {
+    "sd": 23,
+    "ps": 2
+   },
+   "unmarked_lines_carrying_any_foreign_letter": 25
+  },
+  "ug": {
+   "distinctive_letters": "ڭۈۋ",
+   "has_criterion": true,
+   "with_a_distinctive_letter": {
+    "rate": 0.9998,
+    "lo": 0.9996,
+    "hi": 0.9999,
+    "n": 27784
+   },
+   "without_one": {
+    "rate": 0.9746,
+    "lo": 0.9692,
+    "hi": 0.9791,
+    "n": 3935
+   },
+   "whole": {
+    "rate": 0.9967,
+    "lo": 0.996,
+    "hi": 0.9973,
+    "n": 31719
+   },
+   "unmarked_lines_carrying_another_languages_letter": {
+    "ckb": 5
+   },
+   "unmarked_lines_carrying_any_foreign_letter": 5
+  },
+  "ur": {
+   "distinctive_letters": "",
+   "has_criterion": false,
+   "with_a_distinctive_letter": null,
+   "without_one": {
+    "rate": 0.9904,
+    "lo": 0.9893,
+    "hi": 0.9913,
+    "n": 36000
+   },
+   "whole": {
+    "rate": 0.9904,
+    "lo": 0.9893,
+    "hi": 0.9913,
+    "n": 36000
+   },
+   "unmarked_lines_carrying_another_languages_letter": {
+    "sd": 3,
+    "ps": 2,
+    "ks": 1,
+    "ug": 1
+   },
+   "unmarked_lines_carrying_any_foreign_letter": 6
+  }
+ },
+ "per_source": {
+  "ar.cc100-ar|without": {
+   "rate": 0.9998,
+   "lo": 0.9994,
+   "hi": 1.0,
+   "n": 12000
+  },
+  "ar.opus-CCMatrix-ar|without": {
+   "rate": 1.0,
+   "lo": 0.9997,
+   "hi": 1.0,
+   "n": 12000
+  },
+  "ar.opus-NLLB-ar|without": {
+   "rate": 0.9998,
+   "lo": 0.9994,
+   "hi": 1.0,
+   "n": 12000
+  },
+  "azb.segmented|without": {
+   "rate": 0.9965,
+   "lo": 0.9953,
+   "hi": 0.9973,
+   "n": 13585
+  },
+  "azb.wikimedia-wiki|without": {
+   "rate": 0.9902,
+   "lo": 0.9882,
+   "hi": 0.9918,
+   "n": 12000
+  },
+  "ckb.opus-Mozilla-I10n-ckb|without": {
+   "rate": 1.0,
+   "lo": 0.8668,
+   "hi": 1.0,
+   "n": 25
+  },
+  "ckb.opus-Mozilla-I10n-ckb|with": {
+   "rate": 1.0,
+   "lo": 0.9379,
+   "hi": 1.0,
+   "n": 58
+  },
+  "ckb.opus-TED2020-ku|without": {
+   "rate": 1.0,
+   "lo": 0.9961,
+   "hi": 1.0,
+   "n": 977
+  },
+  "ckb.opus-TED2020-ku|with": {
+   "rate": 1.0,
+   "lo": 0.9989,
+   "hi": 1.0,
+   "n": 3578
+  },
+  "ckb.opus-Tanzil-ku|without": {
+   "rate": 1.0,
+   "lo": 0.9442,
+   "hi": 1.0,
+   "n": 65
+  },
+  "ckb.opus-Tanzil-ku|with": {
+   "rate": 1.0,
+   "lo": 0.9929,
+   "hi": 1.0,
+   "n": 539
+  },
+  "ckb.segmented|without": {
+   "rate": 0.9907,
+   "lo": 0.9855,
+   "hi": 0.994,
+   "n": 2043
+  },
+  "ckb.segmented|with": {
+   "rate": 1.0,
+   "lo": 0.9996,
+   "hi": 1.0,
+   "n": 10333
+  },
+  "ckb.wikimedia-wiki|without": {
+   "rate": 0.9542,
+   "lo": 0.9437,
+   "hi": 0.9629,
+   "n": 1835
+  },
+  "ckb.wikimedia-wiki|with": {
+   "rate": 0.9993,
+   "lo": 0.9986,
+   "hi": 0.9997,
+   "n": 10165
+  },
+  "ckb.wikimedia-wiktionary|without": {
+   "rate": 0.9706,
+   "lo": 0.9171,
+   "hi": 0.9899,
+   "n": 102
+  },
+  "ckb.wikimedia-wiktionary|with": {
+   "rate": 1.0,
+   "lo": 0.9867,
+   "hi": 1.0,
+   "n": 285
+  },
+  "fa.cc100-fa|without": {
+   "rate": 0.9976,
+   "lo": 0.9955,
+   "hi": 0.9987,
+   "n": 4129
+  },
+  "fa.opus-CCAligned-fa|without": {
+   "rate": 0.9968,
+   "lo": 0.9957,
+   "hi": 0.9977,
+   "n": 12000
+  },
+  "fa.opus-CCMatrix-fa|without": {
+   "rate": 0.9986,
+   "lo": 0.9977,
+   "hi": 0.9991,
+   "n": 12000
+  },
+  "fa.opus-NLLB-fa|without": {
+   "rate": 0.9958,
+   "lo": 0.9945,
+   "hi": 0.9968,
+   "n": 12000
+  },
+  "ks.opus-Mozilla-I10n-ks|without": {
+   "rate": 1.0,
+   "lo": 0.9626,
+   "hi": 1.0,
+   "n": 99
+  },
+  "ks.opus-Mozilla-I10n-ks|with": {
+   "rate": 1.0,
+   "lo": 0.5655,
+   "hi": 1.0,
+   "n": 5
+  },
+  "ks.segmented|without": {
+   "rate": 0.9727,
+   "lo": 0.9547,
+   "hi": 0.9837,
+   "n": 513
+  },
+  "ks.segmented|with": {
+   "rate": 0.9995,
+   "lo": 0.9973,
+   "hi": 0.9999,
+   "n": 2089
+  },
+  "ks.synthetic-bigram|without": {
+   "rate": 0.9394,
+   "lo": 0.9258,
+   "hi": 0.9507,
+   "n": 1419
+  },
+  "ks.synthetic-bigram|with": {
+   "rate": 0.999,
+   "lo": 0.998,
+   "hi": 0.9995,
+   "n": 7072
+  },
+  "ks.synthetic-noise|without": {
+   "rate": 0.9078,
+   "lo": 0.8952,
+   "hi": 0.919,
+   "n": 2267
+  },
+  "ks.synthetic-noise|with": {
+   "rate": 0.9997,
+   "lo": 0.9988,
+   "hi": 0.9999,
+   "n": 6225
+  },
+  "ks.synthetic-shuffle|without": {
+   "rate": 1.0,
+   "lo": 0.9971,
+   "hi": 1.0,
+   "n": 1318
+  },
+  "ks.synthetic-shuffle|with": {
+   "rate": 1.0,
+   "lo": 0.9995,
+   "hi": 1.0,
+   "n": 7173
+  },
+  "ks.wikimedia-wiki|without": {
+   "rate": 0.8986,
+   "lo": 0.8582,
+   "hi": 0.9285,
+   "n": 286
+  },
+  "ks.wikimedia-wiki|with": {
+   "rate": 0.9993,
+   "lo": 0.9962,
+   "hi": 0.9999,
+   "n": 1487
+  },
+  "ks.wikimedia-wiktionary|without": {
+   "rate": 0.9091,
+   "lo": 0.6226,
+   "hi": 0.9838,
+   "n": 11
+  },
+  "ks.wikimedia-wiktionary|with": {
+   "rate": 1.0,
+   "lo": 0.9143,
+   "hi": 1.0,
+   "n": 41
+  },
+  "pnb.segmented|without": {
+   "rate": 0.9855,
+   "lo": 0.9836,
+   "hi": 0.9871,
+   "n": 17859
+  },
+  "pnb.wikimedia-wiki|without": {
+   "rate": 0.9535,
+   "lo": 0.9496,
+   "hi": 0.9571,
+   "n": 12000
+  },
+  "pnb.wikimedia-wiktionary|without": {
+   "rate": 0.9441,
+   "lo": 0.8935,
+   "hi": 0.9714,
+   "n": 143
+  },
+  "ps.cc100-ps|without": {
+   "rate": 1.0,
+   "lo": 0.9906,
+   "hi": 1.0,
+   "n": 404
+  },
+  "ps.cc100-ps|with": {
+   "rate": 0.9998,
+   "lo": 0.9994,
+   "hi": 1.0,
+   "n": 11596
+  },
+  "ps.opus-CCAligned-ps|without": {
+   "rate": 0.5556,
+   "lo": 0.5343,
+   "hi": 0.5767,
+   "n": 2104
+  },
+  "ps.opus-CCAligned-ps|with": {
+   "rate": 0.9994,
+   "lo": 0.9986,
+   "hi": 0.9998,
+   "n": 7171
+  },
+  "ps.opus-NLLB-ps|without": {
+   "rate": 0.9092,
+   "lo": 0.8902,
+   "hi": 0.9251,
+   "n": 1046
+  },
+  "ps.opus-NLLB-ps|with": {
+   "rate": 0.9999,
+   "lo": 0.9995,
+   "hi": 1.0,
+   "n": 10954
+  },
+  "sd.cc100-sd|without": {
+   "rate": 0.9934,
+   "lo": 0.9809,
+   "hi": 0.9978,
+   "n": 457
+  },
+  "sd.cc100-sd|with": {
+   "rate": 1.0,
+   "lo": 0.9997,
+   "hi": 1.0,
+   "n": 11543
+  },
+  "sd.opus-CCMatrix-sd|without": {
+   "rate": 0.9979,
+   "lo": 0.9924,
+   "hi": 0.9994,
+   "n": 952
+  },
+  "sd.opus-CCMatrix-sd|with": {
+   "rate": 1.0,
+   "lo": 0.9997,
+   "hi": 1.0,
+   "n": 11048
+  },
+  "sd.opus-NLLB-sd|without": {
+   "rate": 0.6031,
+   "lo": 0.582,
+   "hi": 0.6239,
+   "n": 2099
+  },
+  "sd.opus-NLLB-sd|with": {
+   "rate": 0.9995,
+   "lo": 0.9988,
+   "hi": 0.9998,
+   "n": 9901
+  },
+  "skr.segmented|without": {
+   "rate": 0.8729,
+   "lo": 0.8625,
+   "hi": 0.8825,
+   "n": 4271
+  },
+  "skr.segmented|with": {
+   "rate": 0.9896,
+   "lo": 0.9836,
+   "hi": 0.9934,
+   "n": 1729
+  },
+  "skr.wikimedia-wiki|without": {
+   "rate": 0.8741,
+   "lo": 0.8661,
+   "hi": 0.8817,
+   "n": 6982
+  },
+  "skr.wikimedia-wiki|with": {
+   "rate": 0.991,
+   "lo": 0.988,
+   "hi": 0.9933,
+   "n": 5018
+  },
+  "skr.wikimedia-wiktionary|without": {
+   "rate": 0.7804,
+   "lo": 0.7726,
+   "hi": 0.788,
+   "n": 11093
+  },
+  "skr.wikimedia-wiktionary|with": {
+   "rate": 0.9835,
+   "lo": 0.9729,
+   "hi": 0.99,
+   "n": 907
+  },
+  "ug.cc100-ug|without": {
+   "rate": 1.0,
+   "lo": 0.9965,
+   "hi": 1.0,
+   "n": 1088
+  },
+  "ug.cc100-ug|with": {
+   "rate": 1.0,
+   "lo": 0.9996,
+   "hi": 1.0,
+   "n": 10912
+  },
+  "ug.opus-GNOME-ug|without": {
+   "rate": 1.0,
+   "lo": 0.7961,
+   "hi": 1.0,
+   "n": 15
+  },
+  "ug.opus-GNOME-ug|with": {
+   "rate": 1.0,
+   "lo": 0.9213,
+   "hi": 1.0,
+   "n": 45
+  },
+  "ug.opus-NLLB-ug|without": {
+   "rate": 0.9889,
+   "lo": 0.9836,
+   "hi": 0.9925,
+   "n": 2166
+  },
+  "ug.opus-NLLB-ug|with": {
+   "rate": 0.9996,
+   "lo": 0.999,
+   "hi": 0.9998,
+   "n": 9834
+  },
+  "ug.opus-TED2020-ug|without": {
+   "rate": 1.0,
+   "lo": 0.7225,
+   "hi": 1.0,
+   "n": 10
+  },
+  "ug.opus-TED2020-ug|with": {
+   "rate": 1.0,
+   "lo": 0.9563,
+   "hi": 1.0,
+   "n": 84
+  },
+  "ug.opus-Tanzil-ug|without": {
+   "rate": 1.0,
+   "lo": 0.8794,
+   "hi": 1.0,
+   "n": 28
+  },
+  "ug.opus-Tanzil-ug|with": {
+   "rate": 1.0,
+   "lo": 0.9919,
+   "hi": 1.0,
+   "n": 468
+  },
+  "ug.opus-XLEnt-ug|without": {
+   "rate": 0.8,
+   "lo": 0.3755,
+   "hi": 0.9638,
+   "n": 5
+  },
+  "ug.opus-XLEnt-ug|with": {
+   "rate": 1.0,
+   "lo": 0.8157,
+   "hi": 1.0,
+   "n": 17
+  },
+  "ug.wikimedia-wiki|without": {
+   "rate": 0.8796,
+   "lo": 0.8517,
+   "hi": 0.9029,
+   "n": 623
+  },
+  "ug.wikimedia-wiki|with": {
+   "rate": 0.9998,
+   "lo": 0.9991,
+   "hi": 1.0,
+   "n": 6424
+  },
+  "ur.cc100-ur|without": {
+   "rate": 0.9962,
+   "lo": 0.995,
+   "hi": 0.9972,
+   "n": 12000
+  },
+  "ur.opus-CCMatrix-ur|without": {
+   "rate": 0.9915,
+   "lo": 0.9897,
+   "hi": 0.993,
+   "n": 12000
+  },
+  "ur.opus-NLLB-ur|without": {
+   "rate": 0.9833,
+   "lo": 0.9809,
+   "hi": 0.9855,
+   "n": 12000
+  }
+ }
+}

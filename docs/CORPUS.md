@@ -967,3 +967,61 @@ python research/synthesise.py --languages ks --target 300000
 python research/make_splits.py --out data/splits
 python research/make_splits.py --out data/splits_no_synthetic --no-synthetic
 ```
+
+## 14.5 Auditing the labels of all 41 sources
+
+A source's label is the project's name, not a judgement about its text. One source turned
+out to be mislabelled in part - the Saraiki Wiktionary is a bilingual dictionary and its
+Urdu glosses were extracted and labelled `skr` - and it was found by noticing that
+Saraiki's accuracy was out of line. Two audits now cover every source, and neither
+consults the language classifier.
+
+**Cross-label duplication** (`research/label_audit.py`). The same line filed under two
+language labels cannot be right under both. Lines are compared after NFC, whitespace
+collapse, tatweel removal and combining-mark stripping, so a corpus that keeps vowel marks
+is not read as different text from one that drops them; lines under 24 characters are kept
+out of the headline rate, because a shared date or numeral means nothing.
+
+| finding | value |
+|---|---|
+| corpus lines compared | 3,332,284 |
+| distinct lines under more than one label | 445 |
+| lines affected | 900 (**0.027%**) |
+| sources with none at all | 25 of 41 |
+| largest rate | `skr.segmented` 0.0026, all of it against `pnb` |
+
+The pattern is Saraiki against Shahmukhi Punjabi on the two Wikipedias, in both
+directions - two closely related languages with an overlapping volunteer community
+carrying the same sentence onto both wikis.
+
+**It does not clear the source we know is contaminated.** `skr.wikimedia-wiktionary`
+scores 0.0000: an Urdu gloss inside a Saraiki entry is Urdu text, but it is not a line that
+also appears in the Urdu corpus. The detector was checked against planted duplicates
+first - `tests/test_label_audit.py` plants them, including the diacritic and tatweel
+cases - so the zero is the detector working on a mechanism out of its reach. A low
+duplication rate rules out one mechanism and is not a clean bill of health.
+
+**Orthographic attribution** (`research/orthographic_audit.py`). Character frequencies are
+read off the **train** split; a letter is distinctive to a language where it appears in at
+least 2% of that language's lines and at most 0.1% of every other's; the **test** rows are
+then split on it. Six of the eleven languages have such an inventory, and for all six the
+marked half scores at or above 0.99 - what differs between languages is how much of their
+text is marked (89-90% for Pashto and Sindhi, 25.5% for Saraiki). Arabic, Persian, Urdu,
+Shahmukhi Punjabi and South Azerbaijani have no distinctive letter at these thresholds, so
+for them the criterion does not exist. It also flags, without any model, the 124 test rows
+of 358,720 (0.035%) that carry no distinctive letter of their own label and do carry
+another language's - 23 Saraiki rows with Sindhi letters, 18 Kashmiri with Sindhi, 12
+Sindhi with Pashto, 11 Arabic with Sorani. Those are rows whose label the corpus itself
+contradicts, counted as rows rather than summed over the breakdown, which double-counts
+the five carrying two foreign inventories.
+
+This is also how an error in this document's own reasoning was caught. The four Saraiki
+implosives were described as distinctive to Saraiki among the eleven, on frequencies
+measured against Shahmukhi Punjabi and Urdu; Sindhi writes three of them about as often as
+Saraiki does, and only `ݙ` is exclusive here. Deriving the inventory compares against
+every language by construction and cannot leave one out.
+
+```bash
+python research/label_audit.py
+python research/orthographic_audit.py
+```

@@ -46,6 +46,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from measure_langid import LANGUAGES, wiki_splits  # noqa: E402
+
 from urdunlp.langid import identify_language  # noqa: E402
 
 VENV = ROOT / ".venv-baselines"
@@ -53,7 +54,7 @@ MODEL = ROOT / ".baselines" / "lid.176.ftz"
 LENGTHS = (None, 50, 20, 10)
 
 # Runs in the baselines' interpreter: both detectors over the same rows, one subprocess.
-BASELINE_SIDE = '''
+BASELINE_SIDE = """
 import json, sys, time
 
 payload = json.loads(open(sys.argv[1], encoding="utf-8").read())
@@ -99,7 +100,7 @@ out["predictions"]["fasttext"] = preds
 out["seconds"]["fasttext"] = round(time.perf_counter() - start, 1)
 
 print("__JSON__" + json.dumps(out))
-'''
+"""
 
 
 def python_in(venv: Path) -> Path:
@@ -112,13 +113,20 @@ def ensure_baselines() -> dict[str, str]:
         subprocess.run([sys.executable, "-m", "venv", str(VENV)], check=True)
     versions = {}
     for package in ("langdetect", "fasttext-wheel"):
-        shown = subprocess.run([str(python), "-m", "pip", "show", package],
-                               capture_output=True, text=True)
+        shown = subprocess.run(
+            [str(python), "-m", "pip", "show", package], capture_output=True, text=True
+        )
         if shown.returncode != 0:
-            subprocess.run([str(python), "-m", "pip", "install", "-q",
-                            "--disable-pip-version-check", package], check=True)
-            shown = subprocess.run([str(python), "-m", "pip", "show", package],
-                                   capture_output=True, text=True, check=True)
+            subprocess.run(
+                [str(python), "-m", "pip", "install", "-q", "--disable-pip-version-check", package],
+                check=True,
+            )
+            shown = subprocess.run(
+                [str(python), "-m", "pip", "show", package],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
         for line in shown.stdout.splitlines():
             if line.startswith("Version:"):
                 versions[package] = line.split(":", 1)[1].strip()
@@ -139,13 +147,16 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--wiki-dir", type=Path, default=ROOT / "data" / "wiki_large")
     ap.add_argument("--out", type=Path, default=ROOT / "docs" / "langid-comparison.json")
-    ap.add_argument("--predictions", type=Path,
-                    default=ROOT / "research" / "results" / "predictions.json.gz",
-                    help="per-item predictions for every tool and length, gzipped. The "
-                         "aggregates in --out are what the package's guard tests read; "
-                         "this is experiment input - a confusion matrix, a per-class "
-                         "recall, a bootstrap interval and a McNemar test all need to "
-                         "know what each tool said about each item")
+    ap.add_argument(
+        "--predictions",
+        type=Path,
+        default=ROOT / "research" / "results" / "predictions.json.gz",
+        help="per-item predictions for every tool and length, gzipped. The "
+        "aggregates in --out are what the package's guard tests read; "
+        "this is experiment input - a confusion matrix, a per-class "
+        "recall, a bootstrap interval and a McNemar test all need to "
+        "know what each tool said about each item",
+    )
     ap.add_argument("--no-predictions", action="store_true")
     args = ap.parse_args()
 
@@ -156,8 +167,11 @@ def main() -> int:
         for paragraph in parts["test"]:
             truth.append(code)
             rows.append(paragraph)
-    print(f"{len(rows):,} test paragraph(s) over {len(splits)} language(s) "
-          f"from {args.wiki_dir.name}\n", flush=True)
+    print(
+        f"{len(rows):,} test paragraph(s) over {len(splits)} language(s) "
+        f"from {args.wiki_dir.name}\n",
+        flush=True,
+    )
 
     per_item: dict = {"truth": truth, "languages": sorted(splits), "by_length": {}}
     result: dict = {
@@ -186,19 +200,18 @@ def main() -> int:
         payload.write_text(json.dumps({"rows": texts}), encoding="utf-8")
         proc = subprocess.run(
             [str(python_in(VENV)), "-c", BASELINE_SIDE, str(payload), str(MODEL)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         payload.unlink(missing_ok=True)
         marker = proc.stdout.find("__JSON__")
         if marker < 0:
-            raise SystemExit(
-                f"baseline side failed:\n{(proc.stderr or proc.stdout)[-800:]}"
-            )
-        side = json.loads(proc.stdout[marker + len("__JSON__"):].splitlines()[0])
+            raise SystemExit(f"baseline side failed:\n{(proc.stderr or proc.stdout)[-800:]}")
+        side = json.loads(proc.stdout[marker + len("__JSON__") :].splitlines()[0])
 
         entry: dict = {"n": len(rows), "assay": None}
         # --- this tool ---------------------------------------------------------
-        right = sum(1 for got, want in zip(ours, truth) if got == want)
+        right = sum(1 for got, want in zip(ours, truth, strict=True) if got == want)
         entry["urdunlp"] = {
             "accuracy_all_languages": round(right / len(rows), 4),
             "seconds": round(our_seconds, 1),
@@ -210,13 +223,13 @@ def main() -> int:
             known = {code for code in splits if code in set(side["labels"][name])}
             unknown = [code for code in splits if code not in known]
 
-            all_right = sum(1 for got, want in zip(preds, truth) if got == want)
-            in_known = [(g, w) for g, w in zip(preds, truth) if w in known]
+            all_right = sum(1 for got, want in zip(preds, truth, strict=True) if got == want)
+            in_known = [(g, w) for g, w in zip(preds, truth, strict=True) if w in known]
             known_right = sum(1 for g, w in in_known if g == w)
             says_for_unknown: dict[str, dict[str, int]] = {}
             for code in unknown:
                 counts = collections.Counter(
-                    g for g, w in zip(preds, truth) if w == code
+                    g for g, w in zip(preds, truth, strict=True) if w == code
                 )
                 says_for_unknown[code] = dict(counts.most_common(3))
 
@@ -239,12 +252,14 @@ def main() -> int:
         }
         result["by_length"][label] = entry
 
-        print(f"  {label:<10} urdunlp {entry['urdunlp']['accuracy_all_languages']:.4f}"
-              f" | langdetect {entry['langdetect']['accuracy_all_languages']:.4f}"
-              f" ({entry['langdetect']['accuracy_where_it_has_a_label']} where labelled)"
-              f" | fasttext {entry['fasttext']['accuracy_all_languages']:.4f}"
-              f" ({entry['fasttext']['accuracy_where_it_has_a_label']} where labelled)",
-              flush=True)
+        print(
+            f"  {label:<10} urdunlp {entry['urdunlp']['accuracy_all_languages']:.4f}"
+            f" | langdetect {entry['langdetect']['accuracy_all_languages']:.4f}"
+            f" ({entry['langdetect']['accuracy_where_it_has_a_label']} where labelled)"
+            f" | fasttext {entry['fasttext']['accuracy_all_languages']:.4f}"
+            f" ({entry['fasttext']['accuracy_where_it_has_a_label']} where labelled)",
+            flush=True,
+        )
 
     args.out.write_text(json.dumps(result, indent=1), encoding="utf-8")
     if not args.no_predictions:
@@ -254,14 +269,18 @@ def main() -> int:
         with gzip.GzipFile(args.predictions, "wb", mtime=0) as fh:
             fh.write(json.dumps(per_item).encode("utf-8"))
         rows = len(truth) * len(per_item["by_length"]) * 3
-        print(f"{rows:,} per-item prediction(s) -> {args.predictions.name} "
-              f"({args.predictions.stat().st_size / 1024:.0f} KB)")
+        print(
+            f"{rows:,} per-item prediction(s) -> {args.predictions.name} "
+            f"({args.predictions.stat().st_size / 1024:.0f} KB)"
+        )
     whole = result["by_length"]["whole"]
     print("\nlabel coverage of the 11-language task:")
     for name in ("langdetect", "fasttext"):
         row = whole[name]
-        print(f"  {name:<11} {len(row['has_a_label_for'])}/{len(splits)} "
-              f"- no label for: {', '.join(row['has_no_label_for']) or 'none'}")
+        print(
+            f"  {name:<11} {len(row['has_a_label_for'])}/{len(splits)} "
+            f"- no label for: {', '.join(row['has_no_label_for']) or 'none'}"
+        )
     print(f"\nwritten to {args.out.name}")
     return 0
 

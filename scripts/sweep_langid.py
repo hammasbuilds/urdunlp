@@ -133,13 +133,13 @@ def mcnemar(a: bytes, b: bytes) -> tuple[int, int, float]:
             f"outcome vectors of different lengths ({len(a)} and {len(b)}) cannot be "
             f"paired - the scored paragraphs must be the same ones in the same order"
         )
-    a_only = sum(1 for x, y in zip(a, b) if x and not y)
-    b_only = sum(1 for x, y in zip(a, b) if y and not x)
+    a_only = sum(1 for x, y in zip(a, b, strict=True) if x and not y)
+    b_only = sum(1 for x, y in zip(a, b, strict=True) if y and not x)
     discordant = a_only + b_only
     if not discordant:
         return a_only, b_only, 1.0
     k = min(a_only, b_only)
-    tail = sum(math.comb(discordant, i) for i in range(k + 1)) / 2 ** discordant
+    tail = sum(math.comb(discordant, i) for i in range(k + 1)) / 2**discordant
     return a_only, b_only, min(1.0, 2 * tail)
 
 
@@ -162,8 +162,7 @@ def separable(candidate: dict, ceiling: dict) -> dict | None:
     tests.sort(key=lambda t: t[0])
     for i, (p, length, wins, losses) in enumerate(tests):
         if p <= ALPHA_LEVEL / (len(tests) - i):
-            return {"length": length, "p": p, "candidate_wins": wins,
-                    "ceiling_wins": losses}
+            return {"length": length, "p": p, "candidate_wins": wins, "ceiling_wins": losses}
     return None
 
 
@@ -289,9 +288,7 @@ def main() -> int:
             "by_window": {},
         }
         for w in WINDOWS:
-            wins, losses, pvalue = mcnemar(
-                best["outcomes"][w], ceiling["outcomes"][w]
-            )
+            wins, losses, pvalue = mcnemar(best["outcomes"][w], ceiling["outcomes"][w])
             chosen_against_ceiling["by_window"][str(w)] = {
                 "chosen_only_right": wins,
                 "ceiling_only_right": losses,

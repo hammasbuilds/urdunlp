@@ -1,0 +1,613 @@
+{
+ "min_interesting": 24,
+ "files": 41,
+ "distinct_shared_lines": 445,
+ "note": "shared_rate_long is the headline: the share of this source's lines that appear verbatim under another language label, counting only lines of at least min_interesting characters. A lower bound on mislabelling - a translated gloss is not a duplicated line - so a low value is not a clean bill of health.",
+ "sources": {
+  "ar.cc100-ar": {
+   "language": "ar",
+   "source": "cc100-ar",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ar.opus-CCMatrix-ar": {
+   "language": "ar",
+   "source": "opus-CCMatrix-ar",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ar.opus-NLLB-ar": {
+   "language": "ar",
+   "source": "opus-NLLB-ar",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 119999,
+   "shared_lines": 1,
+   "shared_rate": 8e-06,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {
+    "sd": 1
+   },
+   "by_other_language_long": {}
+  },
+  "azb.segmented": {
+   "language": "azb",
+   "source": "segmented",
+   "lines": 135844,
+   "lines_at_least_min_interesting": 135844,
+   "shared_lines": 6,
+   "shared_rate": 4.4e-05,
+   "shared_lines_long": 6,
+   "shared_rate_long": 4.4e-05,
+   "by_other_language": {
+    "pnb": 6
+   },
+   "by_other_language_long": {
+    "pnb": 6
+   }
+  },
+  "azb.wikimedia-wiki": {
+   "language": "azb",
+   "source": "wikimedia-wiki",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 26,
+   "shared_rate": 0.000217,
+   "shared_lines_long": 26,
+   "shared_rate_long": 0.000217,
+   "by_other_language": {
+    "ckb": 12,
+    "skr": 11,
+    "ug": 4,
+    "pnb": 4
+   },
+   "by_other_language_long": {
+    "ckb": 12,
+    "skr": 11,
+    "ug": 4,
+    "pnb": 4
+   }
+  },
+  "ckb.opus-Mozilla-I10n-ckb": {
+   "language": "ckb",
+   "source": "opus-Mozilla-I10n-ckb",
+   "lines": 825,
+   "lines_at_least_min_interesting": 825,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ckb.opus-TED2020-ku": {
+   "language": "ckb",
+   "source": "opus-TED2020-ku",
+   "lines": 45536,
+   "lines_at_least_min_interesting": 45536,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ckb.opus-Tanzil-ku": {
+   "language": "ckb",
+   "source": "opus-Tanzil-ku",
+   "lines": 6034,
+   "lines_at_least_min_interesting": 6034,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ckb.segmented": {
+   "language": "ckb",
+   "source": "segmented",
+   "lines": 123746,
+   "lines_at_least_min_interesting": 123746,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ckb.wikimedia-wiki": {
+   "language": "ckb",
+   "source": "wikimedia-wiki",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 12,
+   "shared_rate": 0.0001,
+   "shared_lines_long": 12,
+   "shared_rate_long": 0.0001,
+   "by_other_language": {
+    "azb": 11,
+    "skr": 3,
+    "pnb": 1
+   },
+   "by_other_language_long": {
+    "azb": 11,
+    "skr": 3,
+    "pnb": 1
+   }
+  },
+  "ckb.wikimedia-wiktionary": {
+   "language": "ckb",
+   "source": "wikimedia-wiktionary",
+   "lines": 3859,
+   "lines_at_least_min_interesting": 3859,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "fa.cc100-fa": {
+   "language": "fa",
+   "source": "cc100-fa",
+   "lines": 41276,
+   "lines_at_least_min_interesting": 41276,
+   "shared_lines": 2,
+   "shared_rate": 4.8e-05,
+   "shared_lines_long": 2,
+   "shared_rate_long": 4.8e-05,
+   "by_other_language": {
+    "ps": 2
+   },
+   "by_other_language_long": {
+    "ps": 2
+   }
+  },
+  "fa.opus-CCAligned-fa": {
+   "language": "fa",
+   "source": "opus-CCAligned-fa",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "fa.opus-CCMatrix-fa": {
+   "language": "fa",
+   "source": "opus-CCMatrix-fa",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "fa.opus-NLLB-fa": {
+   "language": "fa",
+   "source": "opus-NLLB-fa",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ks.opus-Mozilla-I10n-ks": {
+   "language": "ks",
+   "source": "opus-Mozilla-I10n-ks",
+   "lines": 1026,
+   "lines_at_least_min_interesting": 1026,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ks.segmented": {
+   "language": "ks",
+   "source": "segmented",
+   "lines": 26012,
+   "lines_at_least_min_interesting": 26012,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ks.wikimedia-wiki": {
+   "language": "ks",
+   "source": "wikimedia-wiki",
+   "lines": 17718,
+   "lines_at_least_min_interesting": 17718,
+   "shared_lines": 17,
+   "shared_rate": 0.000959,
+   "shared_lines_long": 17,
+   "shared_rate_long": 0.000959,
+   "by_other_language": {
+    "skr": 15,
+    "pnb": 6
+   },
+   "by_other_language_long": {
+    "skr": 15,
+    "pnb": 6
+   }
+  },
+  "ks.wikimedia-wiktionary": {
+   "language": "ks",
+   "source": "wikimedia-wiktionary",
+   "lines": 512,
+   "lines_at_least_min_interesting": 512,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "pnb.segmented": {
+   "language": "pnb",
+   "source": "segmented",
+   "lines": 178579,
+   "lines_at_least_min_interesting": 178579,
+   "shared_lines": 162,
+   "shared_rate": 0.000907,
+   "shared_lines_long": 162,
+   "shared_rate_long": 0.000907,
+   "by_other_language": {
+    "skr": 156,
+    "azb": 6
+   },
+   "by_other_language_long": {
+    "skr": 156,
+    "azb": 6
+   }
+  },
+  "pnb.wikimedia-wiki": {
+   "language": "pnb",
+   "source": "wikimedia-wiki",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 235,
+   "shared_rate": 0.001958,
+   "shared_lines_long": 235,
+   "shared_rate_long": 0.001958,
+   "by_other_language": {
+    "skr": 218,
+    "ur": 12,
+    "ks": 6,
+    "azb": 4,
+    "ug": 3,
+    "ckb": 1
+   },
+   "by_other_language_long": {
+    "skr": 218,
+    "ur": 12,
+    "ks": 6,
+    "azb": 4,
+    "ug": 3,
+    "ckb": 1
+   }
+  },
+  "pnb.wikimedia-wiktionary": {
+   "language": "pnb",
+   "source": "wikimedia-wiktionary",
+   "lines": 1421,
+   "lines_at_least_min_interesting": 1421,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ps.cc100-ps": {
+   "language": "ps",
+   "source": "cc100-ps",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 3,
+   "shared_rate": 2.5e-05,
+   "shared_lines_long": 3,
+   "shared_rate_long": 2.5e-05,
+   "by_other_language": {
+    "sd": 2,
+    "ur": 1
+   },
+   "by_other_language_long": {
+    "sd": 2,
+    "ur": 1
+   }
+  },
+  "ps.opus-CCAligned-ps": {
+   "language": "ps",
+   "source": "opus-CCAligned-ps",
+   "lines": 92743,
+   "lines_at_least_min_interesting": 92743,
+   "shared_lines": 6,
+   "shared_rate": 6.5e-05,
+   "shared_lines_long": 6,
+   "shared_rate_long": 6.5e-05,
+   "by_other_language": {
+    "sd": 4,
+    "fa": 2
+   },
+   "by_other_language_long": {
+    "sd": 4,
+    "fa": 2
+   }
+  },
+  "ps.opus-NLLB-ps": {
+   "language": "ps",
+   "source": "opus-NLLB-ps",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "sd.cc100-sd": {
+   "language": "sd",
+   "source": "cc100-sd",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "sd.opus-CCMatrix-sd": {
+   "language": "sd",
+   "source": "opus-CCMatrix-sd",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "sd.opus-NLLB-sd": {
+   "language": "sd",
+   "source": "opus-NLLB-sd",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 119999,
+   "shared_lines": 8,
+   "shared_rate": 6.7e-05,
+   "shared_lines_long": 7,
+   "shared_rate_long": 5.8e-05,
+   "by_other_language": {
+    "ps": 6,
+    "ar": 1,
+    "ur": 1
+   },
+   "by_other_language_long": {
+    "ps": 6,
+    "ur": 1
+   }
+  },
+  "skr.segmented": {
+   "language": "skr",
+   "source": "segmented",
+   "lines": 60000,
+   "lines_at_least_min_interesting": 60000,
+   "shared_lines": 157,
+   "shared_rate": 0.002617,
+   "shared_lines_long": 157,
+   "shared_rate_long": 0.002617,
+   "by_other_language": {
+    "pnb": 157
+   },
+   "by_other_language_long": {
+    "pnb": 157
+   }
+  },
+  "skr.wikimedia-wiki": {
+   "language": "skr",
+   "source": "wikimedia-wiki",
+   "lines": 119999,
+   "lines_at_least_min_interesting": 119999,
+   "shared_lines": 244,
+   "shared_rate": 0.002033,
+   "shared_lines_long": 244,
+   "shared_rate_long": 0.002033,
+   "by_other_language": {
+    "pnb": 217,
+    "ks": 15,
+    "azb": 11,
+    "ur": 6,
+    "ckb": 3
+   },
+   "by_other_language_long": {
+    "pnb": 217,
+    "ks": 15,
+    "azb": 11,
+    "ur": 6,
+    "ckb": 3
+   }
+  },
+  "skr.wikimedia-wiktionary": {
+   "language": "skr",
+   "source": "wikimedia-wiktionary",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ug.cc100-ug": {
+   "language": "ug",
+   "source": "cc100-ug",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ug.opus-GNOME-ug": {
+   "language": "ug",
+   "source": "opus-GNOME-ug",
+   "lines": 594,
+   "lines_at_least_min_interesting": 594,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ug.opus-NLLB-ug": {
+   "language": "ug",
+   "source": "opus-NLLB-ug",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ug.opus-TED2020-ug": {
+   "language": "ug",
+   "source": "opus-TED2020-ug",
+   "lines": 929,
+   "lines_at_least_min_interesting": 929,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ug.opus-Tanzil-ug": {
+   "language": "ug",
+   "source": "opus-Tanzil-ug",
+   "lines": 4949,
+   "lines_at_least_min_interesting": 4949,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ug.opus-XLEnt-ug": {
+   "language": "ug",
+   "source": "opus-XLEnt-ug",
+   "lines": 220,
+   "lines_at_least_min_interesting": 220,
+   "shared_lines": 0,
+   "shared_rate": 0.0,
+   "shared_lines_long": 0,
+   "shared_rate_long": 0.0,
+   "by_other_language": {},
+   "by_other_language_long": {}
+  },
+  "ug.wikimedia-wiki": {
+   "language": "ug",
+   "source": "wikimedia-wiki",
+   "lines": 70462,
+   "lines_at_least_min_interesting": 70462,
+   "shared_lines": 4,
+   "shared_rate": 5.7e-05,
+   "shared_lines_long": 4,
+   "shared_rate_long": 5.7e-05,
+   "by_other_language": {
+    "azb": 4,
+    "pnb": 3
+   },
+   "by_other_language_long": {
+    "azb": 4,
+    "pnb": 3
+   }
+  },
+  "ur.cc100-ur": {
+   "language": "ur",
+   "source": "cc100-ur",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 7,
+   "shared_rate": 5.8e-05,
+   "shared_lines_long": 7,
+   "shared_rate_long": 5.8e-05,
+   "by_other_language": {
+    "pnb": 4,
+    "skr": 3
+   },
+   "by_other_language_long": {
+    "pnb": 4,
+    "skr": 3
+   }
+  },
+  "ur.opus-CCMatrix-ur": {
+   "language": "ur",
+   "source": "opus-CCMatrix-ur",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 11,
+   "shared_rate": 9.2e-05,
+   "shared_lines_long": 11,
+   "shared_rate_long": 9.2e-05,
+   "by_other_language": {
+    "pnb": 8,
+    "skr": 3,
+    "sd": 1
+   },
+   "by_other_language_long": {
+    "pnb": 8,
+    "skr": 3,
+    "sd": 1
+   }
+  },
+  "ur.opus-NLLB-ur": {
+   "language": "ur",
+   "source": "opus-NLLB-ur",
+   "lines": 120000,
+   "lines_at_least_min_interesting": 120000,
+   "shared_lines": 1,
+   "shared_rate": 8e-06,
+   "shared_lines_long": 1,
+   "shared_rate_long": 8e-06,
+   "by_other_language": {
+    "ps": 1
+   },
+   "by_other_language_long": {
+    "ps": 1
+   }
+  }
+ }
+}

@@ -162,8 +162,10 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 1
-        print(f"all {len(rows)} corpus file(s) match the committed fingerprint, "
-              f"and every file under data/ is either tracked or explicitly ignored.")
+        print(
+            f"all {len(rows)} corpus file(s) match the committed fingerprint, "
+            f"and every file under data/ is either tracked or explicitly ignored."
+        )
         return 0
 
     OUT.write_text(

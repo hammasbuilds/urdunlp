@@ -119,7 +119,7 @@ def _pruning_table() -> list[str]:
     )
     assert start is not None, "CORPUS.md has no pruning table header"
     out = []
-    for line in lines[start + 1:]:
+    for line in lines[start + 1 :]:
         if not line.strip().startswith("|"):
             break
         out.append(line)
@@ -412,11 +412,11 @@ def test_the_builders_defaults_are_the_setting_that_shipped() -> None:
     import build_langid_models as builder
 
     chosen = json.loads(SWEEP.read_text(encoding="utf-8"))["chosen"]
-    assert builder.N_MAX == chosen["n_max"], (
+    assert chosen["n_max"] == builder.N_MAX, (
         f"the builder defaults to n_max {builder.N_MAX}, the sweep chose {chosen['n_max']}"
     )
-    assert builder.ALPHA == chosen["alpha"]
-    assert builder.TOP_GRAMS == chosen["top"], (
+    assert chosen["alpha"] == builder.ALPHA
+    assert chosen["top"] == builder.TOP_GRAMS, (
         f"the builder defaults to {builder.TOP_GRAMS:,} grams, the sweep chose "
         f"{chosen['top']:,} - a default build would replace the shipped model"
     )
@@ -452,14 +452,13 @@ def test_the_readme_states_the_real_bundled_size() -> None:
     # What the wheel carries: __pycache__ is 0.62 MB here and is not shipped, so a total
     # over every file on disk would make the figure depend on whether the tests had run.
     total = sum(
-        f.stat().st_size
-        for f in data.rglob("*")
-        if f.is_file() and "__pycache__" not in f.parts
+        f.stat().st_size for f in data.rglob("*") if f.is_file() and "__pycache__" not in f.parts
     )
-    stated = re.search(r"Bundled statistical tables \(([\d.]+) MB in the wheel\)",
-                       README.read_text(encoding="utf-8"))
+    stated = re.search(
+        r"Bundled statistical tables \(([\d.]+) MB in the wheel\)",
+        README.read_text(encoding="utf-8"),
+    )
     assert stated, "the README no longer states the bundled size in the known shape"
     assert float(stated.group(1)) == pytest.approx(round(total / 1e6, 1), abs=0.15), (
-        f"the README says {stated.group(1)} MB, src/urdunlp holds "
-        f"{total / 1e6:.1f} MB"
+        f"the README says {stated.group(1)} MB, src/urdunlp holds {total / 1e6:.1f} MB"
     )

@@ -233,7 +233,10 @@ def resolve_arabic_heh(text: str) -> str:
 # terminal, where the terminal - not this library - decides what it means.
 # Format characters (Cf) are NOT touched here: ZWNJ and ZWJ carry meaning in Urdu
 # and are handled above by their own options.
-_CONTROL_CHARACTERS = re.compile("[" + "".join(chr(c) for c in list(range(0, 9)) + [11, 12] + list(range(14, 32)) + list(range(127, 160))) + "]")
+# Written as explicit ranges rather than one unreadable expression: C0 minus tab,
+# newline and carriage return, then DEL and the C1 block.
+_CONTROL_CODEPOINTS = list(range(0, 9)) + [11, 12] + list(range(14, 32)) + list(range(127, 160))
+_CONTROL_CHARACTERS = re.compile("[" + "".join(chr(c) for c in _CONTROL_CODEPOINTS) + "]")
 
 
 def normalize(

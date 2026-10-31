@@ -30,10 +30,10 @@ held-out numbers.
 from __future__ import annotations
 
 import collections
-import pathlib
 import gzip
 import hashlib
 import json
+import pathlib
 import re
 import sys
 import unicodedata
@@ -125,8 +125,9 @@ def split_of(paragraph: str) -> str:
     return "train" if h < 0.80 else ("val" if h < 0.95 else "test")
 
 
-def wiki_splits(wiki_dir: pathlib.Path | None = None,
-                max_lines: int | None = None) -> dict[str, dict[str, list[str]]]:
+def wiki_splits(
+    wiki_dir: pathlib.Path | None = None, max_lines: int | None = None
+) -> dict[str, dict[str, list[str]]]:
     """The splits, from `data/wiki` unless another corpus directory is named.
 
     The path was hard-coded, so a corpus built at a different size could not be
@@ -227,8 +228,11 @@ def window(text: str, length: int | None) -> str | None:
 
 
 def build_script_model(
-    n_max: int = N_MAX, alpha: float = ALPHA, top_grams: int = TOP_GRAMS,
-    wiki_dir: pathlib.Path | None = None, out_dir: pathlib.Path | None = None,
+    n_max: int = N_MAX,
+    alpha: float = ALPHA,
+    top_grams: int = TOP_GRAMS,
+    wiki_dir: pathlib.Path | None = None,
+    out_dir: pathlib.Path | None = None,
     max_lines: int | None = None,
 ) -> None:
     """Build the script model. `out_dir` defaults to the shipped src/urdunlp/data.
@@ -297,8 +301,9 @@ def build_script_model(
         "vocabulary_size": model.vocabulary_size,
         "counts": model.counts,
         "distinctive": distinctive,
-        "inputs": inputs_digest(DATA / "FINGERPRINT.tsv", n_max, alpha, top_grams,
-                                (wiki_dir or (DATA / "wiki")).name),
+        "inputs": inputs_digest(
+            DATA / "FINGERPRINT.tsv", n_max, alpha, top_grams, (wiki_dir or (DATA / "wiki")).name
+        ),
         "corpus": (wiki_dir or (DATA / "wiki")).name,
         "source": "Wikipedia article intros, one random sample per language (CC BY-SA 4.0)",
     }
@@ -439,8 +444,13 @@ if __name__ == "__main__":
         "model and FINGERPRINT.tsv were built from",
     )
     a = ap.parse_args()
-    build_script_model(n_max=a.n_max, alpha=a.alpha, top_grams=a.top_grams,
-                       wiki_dir=a.wiki_dir, out_dir=a.out_dir,
-                       max_lines=a.max_lines)
+    build_script_model(
+        n_max=a.n_max,
+        alpha=a.alpha,
+        top_grams=a.top_grams,
+        wiki_dir=a.wiki_dir,
+        out_dir=a.out_dir,
+        max_lines=a.max_lines,
+    )
     if not a.skip_tagger:
         build_roman_tagger()

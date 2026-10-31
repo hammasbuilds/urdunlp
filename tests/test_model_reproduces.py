@@ -46,17 +46,26 @@ def test_retraining_reproduces_the_shipped_model(tmp_path):
     out = tmp_path / "model"
     out.mkdir()
     result = subprocess.run(
-        [sys.executable, str(BUILDER),
-         "--wiki-dir", str(CORPUS), "--out-dir", str(out), "--skip-tagger"],
-        capture_output=True, text=True, cwd=str(ROOT), timeout=3600,
+        [
+            sys.executable,
+            str(BUILDER),
+            "--wiki-dir",
+            str(CORPUS),
+            "--out-dir",
+            str(out),
+            "--skip-tagger",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(ROOT),
+        timeout=3600,
     )
     assert result.returncode == 0, (
         f"the builder failed:\n{result.stdout[-3000:]}\n{result.stderr[-3000:]}"
     )
     rebuilt = out / "langid.json.gz"
     assert rebuilt.is_file(), (
-        f"the builder exited 0 but wrote no model to {out}. "
-        f"stdout:\n{result.stdout[-2000:]}"
+        f"the builder exited 0 but wrote no model to {out}. stdout:\n{result.stdout[-2000:]}"
     )
 
     got, got_n = payload_digest(rebuilt)

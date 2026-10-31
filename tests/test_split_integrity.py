@@ -45,7 +45,7 @@ def rows(base: Path, part: str, language: str) -> list[tuple[str, str, str]]:
         f"wrong source."
     )
     out = []
-    for text, tag in zip(texts, tags):
+    for text, tag in zip(texts, tags, strict=True):
         kind, _, source = tag.partition("\t")
         out.append((kind, source, text))
     return out
@@ -81,7 +81,8 @@ def test_the_real_training_rows_are_identical_too(language):
 def test_only_kashmiri_has_synthetic_rows():
     """Stated so that a later language gaining synthetic data cannot pass unnoticed."""
     with_synth = {
-        language for language in LANGUAGES
+        language
+        for language in LANGUAGES
         for part in ("train", "val", "test")
         if any(r[0] == "synthetic" for r in rows(WITH, part, language))
     }
@@ -90,7 +91,8 @@ def test_only_kashmiri_has_synthetic_rows():
         f"both describe Kashmiri as the only language that needed them"
     )
     without = {
-        language for language in LANGUAGES
+        language
+        for language in LANGUAGES
         for part in ("train", "val", "test")
         if any(r[0] == "synthetic" for r in rows(WITHOUT, part, language))
     }
@@ -106,8 +108,9 @@ def test_every_source_reaches_every_split(language):
     in-domain score sat next to 0.2565 out of domain precisely because train and test
     came from one domain, and no number in that setup could have said so.
     """
-    per_part = {part: {r[1] for r in rows(WITH, part, language)}
-                for part in ("train", "val", "test")}
+    per_part = {
+        part: {r[1] for r in rows(WITH, part, language)} for part in ("train", "val", "test")
+    }
     assert per_part["train"], f"{language}: no training rows"
     assert per_part["train"] == per_part["val"] == per_part["test"], (
         f"{language}: sources differ across splits.\n"

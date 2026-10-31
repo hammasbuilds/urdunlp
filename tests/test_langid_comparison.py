@@ -54,8 +54,9 @@ def whole(data) -> dict:
 
 
 def test_the_run_the_page_describes_is_the_run_in_the_artefact(data, doc):
-    assert f"**{data['test_paragraphs']:,} paragraphs over " \
-           f"{len(data['languages'])} languages**" in doc
+    assert (
+        f"**{data['test_paragraphs']:,} paragraphs over {len(data['languages'])} languages**" in doc
+    )
     assert f"`langdetect` {data['baseline_versions']['langdetect']}" in doc
     assert f"`lid.176.ftz` {data['baseline_versions']['fasttext-wheel']}" in doc
 
@@ -64,6 +65,7 @@ def test_the_coverage_table_is_the_artefacts(whole, data, doc):
     total = len(data["languages"])
     for name, shown in (("langdetect", "`langdetect`"), ("fasttext", "fastText")):
         row = whole[name]
+        assert shown in doc, f"the coverage table has no row for {name}"
         assert f"| {row['labels_in_model']} |" in doc, name
         assert f"{len(row['has_a_label_for'])} of {total}" in doc, name
     assert f"**{total} of {total}**" in doc, "this tool's own coverage row"
@@ -78,8 +80,16 @@ def test_the_languages_each_baseline_cannot_name_are_the_ones_listed(whole, doc,
 
     langdetect_missing = whole["langdetect"]["has_no_label_for"]
     assert len(langdetect_missing) == 8, langdetect_missing
-    for english in ("Punjabi", "Saraiki", "Sindhi", "Pashto", "Kashmiri", "Sorani",
-                    "Uyghur", "South Azerbaijani"):
+    for english in (
+        "Punjabi",
+        "Saraiki",
+        "Sindhi",
+        "Pashto",
+        "Kashmiri",
+        "Sorani",
+        "Uyghur",
+        "South Azerbaijani",
+    ):
         assert english in doc, english
 
 
@@ -107,21 +117,21 @@ def test_every_accuracy_cell_matches_the_artefact(data, doc):
     # above it too, so an unscoped search found two rows for one label - the same
     # "the first line that matches is not the row I mean" problem as the pruning
     # table and the two corpora.
-    heading = chr(10) + '## Accuracy' + chr(10)
+    heading = chr(10) + "## Accuracy" + chr(10)
     assert doc.count(heading) == 1, "the Accuracy heading moved"
-    section = doc.split(heading, 1)[1].split(chr(10) + '## ', 1)[0]
-    table = [line for line in section.splitlines() if line.strip().startswith('|')]
+    section = doc.split(heading, 1)[1].split(chr(10) + "## ", 1)[0]
+    table = [line for line in section.splitlines() if line.strip().startswith("|")]
     checked = 0
     for (tool, key), label in rows.items():
-        matching = [line for line in table if line.strip().strip("|").split("|")[0].strip() == label]
+        matching = [
+            line for line in table if line.strip().strip("|").split("|")[0].strip() == label
+        ]
         assert len(matching) == 1, (
             f"expected exactly one table row labelled {label!r}, found {len(matching)}"
         )
         cells = [c.strip().strip("*") for c in matching[0].strip().strip("|").split("|")][1:]
-        assert len(cells) == len(lengths), (
-            f"{label}: {len(cells)} cells for {len(lengths)} lengths"
-        )
-        for length, cell in zip(lengths, cells):
+        assert len(cells) == len(lengths), f"{label}: {len(cells)} cells for {len(lengths)} lengths"
+        for length, cell in zip(lengths, cells, strict=True):
             want = data["by_length"][length][tool][key]
             assert cell == f"{want:.4f}", (
                 f"{label}, {length}: the page says {cell}, the artefact says {want:.4f}"
@@ -166,8 +176,7 @@ def test_the_confusion_counts_are_the_measured_ones(whole, data, doc):
     sizes = {code: 0 for code in says}
     for code in says:
         sizes[code] = sum(says[code].values())
-    for code, english in (("pnb", "Shahmukhi Punjabi"), ("skr", "Saraiki"),
-                          ("ks", "Kashmiri")):
+    for code, english in (("pnb", "Shahmukhi Punjabi"), ("skr", "Saraiki"), ("ks", "Kashmiri")):
         urdu = says[code].get("ur", 0)
         assert f"`ur` {urdu}**" in doc, f"{english}: {urdu} is not quoted"
         assert f"| {sizes[code]} |" in doc, f"{english}: denominator {sizes[code]}"
@@ -175,7 +184,7 @@ def test_the_confusion_counts_are_the_measured_ones(whole, data, doc):
     assert all(s > 0.95 for s in shares), shares
     quoted = re.search(r"labelled Urdu ([\d.]+)%, ([\d.]+)% and ([\d.]+)%", doc)
     assert quoted, "the three shares are no longer quoted as percentages"
-    for got, claimed in zip(shares, quoted.groups()):
+    for got, claimed in zip(shares, quoted.groups(), strict=True):
         assert abs(got * 100 - float(claimed)) < 0.6, (
             f"the page says {claimed}%, the artefact says {got * 100:.1f}%"
         )
@@ -206,8 +215,12 @@ def test_the_limits_section_admits_the_home_ground_advantage(doc):
     """The objection a reviewer raises first, in the document rather than waiting for them."""
     limits = doc.split("## What this does not show", 1)
     assert len(limits) == 2, "the limits section is gone"
-    for phrase in ("own training distribution", "it flatters this tool",
-                   "not in the repository", "no confidence intervals"):
+    for phrase in (
+        "own training distribution",
+        "it flatters this tool",
+        "not in the repository",
+        "no confidence intervals",
+    ):
         assert phrase in limits[1], f"the limits no longer say: {phrase}"
 
 
