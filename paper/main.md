@@ -498,9 +498,19 @@ collapse in §5 is a property of this model trained on that corpus; whether a tr
 trained on the same Wikipedia-only corpus would collapse the same way is untested and is
 the obvious next experiment.
 
-**Truncation is synthetic.** The 50-, 20- and 10-character rows cut whole paragraphs.
-Real short text is not a truncated paragraph, and the degradation curve should be read as
-an ordering of systems rather than as deployment accuracy.
+**Truncation is synthetic, and §6.1's negative result depends on it.** The 50-, 20- and
+10-character rows cut whole paragraphs. Real short text is not a truncated paragraph, so
+the degradation curve should be read as an ordering of systems rather than as deployment
+accuracy.
+
+This matters most for the conclusion we draw hardest. The finding that built Kashmiri
+rows *harm* the model is significant only on truncated windows — p = 10⁻¹⁵ at 10
+characters, p = 0.25 at 100, and no effect on whole paragraphs. If the deployment input
+is whole paragraphs, the built rows are harmless rather than harmful, and the honest
+summary is "no benefit". The harmful reading is correct for a system that sees short
+text, which is the regime this toolkit documents accuracy for and the one the margin and
+selective-prediction results in §4.5 are aimed at. We state the window with the claim
+everywhere rather than reporting the worst row alone.
 
 # 8. Reproducibility
 
