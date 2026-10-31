@@ -17,6 +17,8 @@ wrote that the library was not built from.
 | `transliterate_to_roman` | Urdu → Roman Urdu spelled the way people spell it; `method="rules"` for the letter-by-letter mapping. |
 | `roman_key`, `group_roman_variants` | Group Roman spellings by the Urdu word they spell. |
 | `identify_language` | Which of eleven Perso-Arabic-script languages: Urdu, Punjabi (Shahmukhi), Saraiki, Sindhi, Pashto, Kashmiri, Persian, Arabic, Central Kurdish, Uyghur, South Azerbaijani. |
+
+&#9878; **[Measured against general-purpose detectors &rarr;](https://github.com/hammasbuilds/urdunlp/blob/main/docs/COMPARISON.md)** On the same 6,136 test paragraphs: **0.9925** here, 0.7140 for fastText `lid.176`, 0.2699 for `langdetect`. The gap is mostly coverage - `langdetect` has a label for **3 of the 11** languages and fastText misses Saraiki and Kashmiri - and it labels Punjabi, Saraiki and Kashmiri as **Urdu** 97%, 99% and 99.8% of the time. On the three languages it does know, `langdetect` scores 0.9982, better than this tool.
 | `tag_roman_tokens` | Every token of Roman Urdu text tagged `ur`/`en` (words) or `num`/`punct`/`id`/`code`/`other`. |
 | `parse_number`, `parse_ordinal`, `find_numbers`, `number_to_words`, `format_number` | Urdu and Roman Urdu number words both ways, with ڈیڑھ ڈھائی سوا ساڑھے پونے, counted fractions (تین چوتھائی, دو تہائی) and lakh/crore; the English number words Roman Urdu mixes in (`eight hundred`, `six thousand eight sau`) and the chat thousand (`15k`); ordinals (تیسرا, `teesra`, `5th`); lakh-style grouping. |
 | `stem`, `stem_tokens` | Rule-based suffix stripping for retrieval keys. |

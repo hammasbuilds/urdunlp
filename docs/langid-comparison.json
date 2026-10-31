@@ -1,0 +1,450 @@
+{
+ "measured": "2026-10-29",
+ "corpus": "wiki_large",
+ "languages": {
+  "ur": "Urdu",
+  "pnb": "Punjabi (Shahmukhi)",
+  "skr": "Saraiki",
+  "sd": "Sindhi",
+  "ps": "Pashto",
+  "ks": "Kashmiri",
+  "fa": "Persian",
+  "ar": "Arabic",
+  "ckb": "Central Kurdish",
+  "ug": "Uyghur",
+  "azb": "South Azerbaijani"
+ },
+ "test_paragraphs": 6136,
+ "baseline_versions": {
+  "langdetect": "1.0.9",
+  "fasttext-wheel": "0.9.2"
+ },
+ "fasttext_model": "lid.176.ftz",
+ "by_length": {
+  "whole": {
+   "n": 6136,
+   "assay": null,
+   "urdunlp": {
+    "accuracy_all_languages": 0.9925,
+    "seconds": 37.3,
+    "labels_covering_the_task": 11
+   },
+   "langdetect": {
+    "labels_in_model": 55,
+    "has_a_label_for": [
+     "ar",
+     "fa",
+     "ur"
+    ],
+    "has_no_label_for": [
+     "pnb",
+     "skr",
+     "sd",
+     "ps",
+     "ks",
+     "ckb",
+     "ug",
+     "azb"
+    ],
+    "accuracy_all_languages": 0.2699,
+    "accuracy_where_it_has_a_label": 0.9982,
+    "n_where_it_has_a_label": 1659,
+    "what_it_says_instead": {
+     "pnb": {
+      "ur": 523,
+      "ar": 12,
+      "fa": 2
+     },
+     "skr": {
+      "ur": 543,
+      "fa": 4,
+      "ar": 2
+     },
+     "sd": {
+      "fa": 329,
+      "ur": 162,
+      "ar": 19
+     },
+     "ps": {
+      "fa": 560,
+      "ar": 15,
+      "ur": 3
+     },
+     "ks": {
+      "ur": 568,
+      "fa": 1
+     },
+     "ckb": {
+      "fa": 454,
+      "ur": 113
+     },
+     "ug": {
+      "ar": 573,
+      "ur": 13,
+      "fa": 6
+     },
+     "azb": {
+      "fa": 572,
+      "ar": 3
+     }
+    },
+    "seconds": 17.4
+   },
+   "fasttext": {
+    "labels_in_model": 176,
+    "has_a_label_for": [
+     "ar",
+     "azb",
+     "ckb",
+     "fa",
+     "pnb",
+     "ps",
+     "sd",
+     "ug",
+     "ur"
+    ],
+    "has_no_label_for": [
+     "skr",
+     "ks"
+    ],
+    "accuracy_all_languages": 0.714,
+    "accuracy_where_it_has_a_label": 0.8731,
+    "n_where_it_has_a_label": 5018,
+    "what_it_says_instead": {
+     "skr": {
+      "pnb": 401,
+      "ur": 140,
+      "fa": 8
+     },
+     "ks": {
+      "ur": 310,
+      "pnb": 186,
+      "fa": 73
+     }
+    },
+    "seconds": 0.5
+   }
+  },
+  "50 chars": {
+   "n": 6136,
+   "assay": null,
+   "urdunlp": {
+    "accuracy_all_languages": 0.9798,
+    "seconds": 8.8,
+    "labels_covering_the_task": 11
+   },
+   "langdetect": {
+    "labels_in_model": 55,
+    "has_a_label_for": [
+     "ar",
+     "fa",
+     "ur"
+    ],
+    "has_no_label_for": [
+     "pnb",
+     "skr",
+     "sd",
+     "ps",
+     "ks",
+     "ckb",
+     "ug",
+     "azb"
+    ],
+    "accuracy_all_languages": 0.2678,
+    "accuracy_where_it_has_a_label": 0.9904,
+    "n_where_it_has_a_label": 1659,
+    "what_it_says_instead": {
+     "pnb": {
+      "ur": 521,
+      "ar": 14,
+      "fa": 2
+     },
+     "skr": {
+      "ur": 541,
+      "ar": 4,
+      "fa": 4
+     },
+     "sd": {
+      "ur": 241,
+      "fa": 228,
+      "ar": 41
+     },
+     "ps": {
+      "fa": 529,
+      "ar": 33,
+      "ur": 16
+     },
+     "ks": {
+      "ur": 550,
+      "fa": 12,
+      "ar": 7
+     },
+     "ckb": {
+      "fa": 396,
+      "ur": 167,
+      "ar": 4
+     },
+     "ug": {
+      "ar": 557,
+      "fa": 18,
+      "ur": 17
+     },
+     "azb": {
+      "fa": 561,
+      "ar": 10,
+      "ur": 4
+     }
+    },
+    "seconds": 12.1
+   },
+   "fasttext": {
+    "labels_in_model": 176,
+    "has_a_label_for": [
+     "ar",
+     "azb",
+     "ckb",
+     "fa",
+     "pnb",
+     "ps",
+     "sd",
+     "ug",
+     "ur"
+    ],
+    "has_no_label_for": [
+     "skr",
+     "ks"
+    ],
+    "accuracy_all_languages": 0.641,
+    "accuracy_where_it_has_a_label": 0.7838,
+    "n_where_it_has_a_label": 5018,
+    "what_it_says_instead": {
+     "skr": {
+      "pnb": 353,
+      "ur": 164,
+      "fa": 30
+     },
+     "ks": {
+      "ur": 241,
+      "fa": 176,
+      "pnb": 148
+     }
+    },
+    "seconds": 0.2
+   }
+  },
+  "20 chars": {
+   "n": 6136,
+   "assay": null,
+   "urdunlp": {
+    "accuracy_all_languages": 0.926,
+    "seconds": 3.9,
+    "labels_covering_the_task": 11
+   },
+   "langdetect": {
+    "labels_in_model": 55,
+    "has_a_label_for": [
+     "ar",
+     "fa",
+     "ur"
+    ],
+    "has_no_label_for": [
+     "pnb",
+     "skr",
+     "sd",
+     "ps",
+     "ks",
+     "ckb",
+     "ug",
+     "azb"
+    ],
+    "accuracy_all_languages": 0.2518,
+    "accuracy_where_it_has_a_label": 0.9313,
+    "n_where_it_has_a_label": 1659,
+    "what_it_says_instead": {
+     "pnb": {
+      "ur": 492,
+      "ar": 23,
+      "fa": 22
+     },
+     "skr": {
+      "ur": 500,
+      "fa": 33,
+      "ar": 16
+     },
+     "sd": {
+      "ur": 232,
+      "fa": 193,
+      "ar": 85
+     },
+     "ps": {
+      "fa": 456,
+      "ar": 71,
+      "ur": 51
+     },
+     "ks": {
+      "ur": 494,
+      "fa": 52,
+      "ar": 23
+     },
+     "ckb": {
+      "fa": 355,
+      "ur": 187,
+      "ar": 25
+     },
+     "ug": {
+      "ar": 484,
+      "ur": 56,
+      "fa": 50
+     },
+     "azb": {
+      "fa": 506,
+      "ur": 48,
+      "ar": 21
+     }
+    },
+    "seconds": 14.9
+   },
+   "fasttext": {
+    "labels_in_model": 176,
+    "has_a_label_for": [
+     "ar",
+     "azb",
+     "ckb",
+     "fa",
+     "pnb",
+     "ps",
+     "sd",
+     "ug",
+     "ur"
+    ],
+    "has_no_label_for": [
+     "skr",
+     "ks"
+    ],
+    "accuracy_all_languages": 0.5106,
+    "accuracy_where_it_has_a_label": 0.6244,
+    "n_where_it_has_a_label": 5018,
+    "what_it_says_instead": {
+     "skr": {
+      "pnb": 237,
+      "ur": 213,
+      "fa": 84
+     },
+     "ks": {
+      "fa": 231,
+      "ur": 184,
+      "pnb": 138
+     }
+    },
+    "seconds": 0.1
+   }
+  },
+  "10 chars": {
+   "n": 6136,
+   "assay": null,
+   "urdunlp": {
+    "accuracy_all_languages": 0.7909,
+    "seconds": 2.4,
+    "labels_covering_the_task": 11
+   },
+   "langdetect": {
+    "labels_in_model": 55,
+    "has_a_label_for": [
+     "ar",
+     "fa",
+     "ur"
+    ],
+    "has_no_label_for": [
+     "pnb",
+     "skr",
+     "sd",
+     "ps",
+     "ks",
+     "ckb",
+     "ug",
+     "azb"
+    ],
+    "accuracy_all_languages": 0.2226,
+    "accuracy_where_it_has_a_label": 0.8234,
+    "n_where_it_has_a_label": 1659,
+    "what_it_says_instead": {
+     "pnb": {
+      "ur": 412,
+      "fa": 71,
+      "ar": 54
+     },
+     "skr": {
+      "ur": 445,
+      "fa": 67,
+      "ar": 37
+     },
+     "sd": {
+      "ur": 208,
+      "fa": 191,
+      "ar": 110
+     },
+     "ps": {
+      "fa": 380,
+      "ar": 107,
+      "ur": 91
+     },
+     "ks": {
+      "ur": 410,
+      "fa": 111,
+      "ar": 48
+     },
+     "ckb": {
+      "fa": 307,
+      "ur": 209,
+      "ar": 51
+     },
+     "ug": {
+      "ar": 405,
+      "ur": 99,
+      "fa": 83
+     },
+     "azb": {
+      "fa": 336,
+      "ur": 151,
+      "ar": 88
+     }
+    },
+    "seconds": 22.0
+   },
+   "fasttext": {
+    "labels_in_model": 176,
+    "has_a_label_for": [
+     "ar",
+     "azb",
+     "ckb",
+     "fa",
+     "pnb",
+     "ps",
+     "sd",
+     "ug",
+     "ur"
+    ],
+    "has_no_label_for": [
+     "skr",
+     "ks"
+    ],
+    "accuracy_all_languages": 0.4379,
+    "accuracy_where_it_has_a_label": 0.5355,
+    "n_where_it_has_a_label": 5018,
+    "what_it_says_instead": {
+     "skr": {
+      "ur": 226,
+      "fa": 136,
+      "pnb": 136
+     },
+     "ks": {
+      "fa": 258,
+      "ur": 169,
+      "pnb": 81
+     }
+    },
+    "seconds": 0.1
+   }
+  }
+ }
+}

@@ -71,3 +71,8 @@ demo/
 .coverage.*
 htmlcov/
 coverage.xml
+
+# The langid baselines and the fastText model live outside the package; neither is a
+# dependency, and the model is 938 KB of somebody else's weights.
+.venv-baselines/
+.baselines/
