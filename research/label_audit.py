@@ -97,8 +97,11 @@ def index(files: list[tuple[str, str, Path]], limit: int | None):
                 counts[d] += 1
                 labels[d].add(language)
         per_file[(language, source)] = counts
-        print(f"  {language:5s} {source:28s} {sum(counts.values()):>9,} lines, "
-              f"{len(counts):>9,} distinct", flush=True)
+        print(
+            f"  {language:5s} {source:28s} {sum(counts.values()):>9,} lines, "
+            f"{len(counts):>9,} distinct",
+            flush=True,
+        )
     return per_file, labels
 
 
@@ -135,8 +138,9 @@ def audit(limit: int | None = None, corpus: Path = CORPUS) -> dict:
     report = {}
     for (language, source), counts in sorted(per_file.items()):
         total = sum(counts.values())
-        long_total = sum(c for d, c in counts.items()
-                         if size.get(d, MIN_INTERESTING) >= MIN_INTERESTING)
+        long_total = sum(
+            c for d, c in counts.items() if size.get(d, MIN_INTERESTING) >= MIN_INTERESTING
+        )
         # `size` only holds shared digests; an unshared line is not in it and cannot be
         # cross-labelled, so counting it as long is harmless and avoids a second pass
         # over every line in the corpus.
@@ -151,8 +155,9 @@ def audit(limit: int | None = None, corpus: Path = CORPUS) -> dict:
                 if size.get(d, 0) >= MIN_INTERESTING:
                     hit_long[other] += c
         any_other = sum(c for d, c in counts.items() if d in shared)
-        any_other_long = sum(c for d, c in counts.items()
-                             if d in shared and size.get(d, 0) >= MIN_INTERESTING)
+        any_other_long = sum(
+            c for d, c in counts.items() if d in shared and size.get(d, 0) >= MIN_INTERESTING
+        )
         report[f"{language}.{source}"] = {
             "language": language,
             "source": source,
@@ -181,8 +186,7 @@ def audit(limit: int | None = None, corpus: Path = CORPUS) -> dict:
 
 
 def show(data: dict) -> None:
-    rows = sorted(data["sources"].values(),
-                  key=lambda r: -(r["shared_rate_long"] or 0))
+    rows = sorted(data["sources"].values(), key=lambda r: -(r["shared_rate_long"] or 0))
     print(f"\n  {'source':34}{'lines':>10}{'shared':>9}{'rate':>9}   worst other label")
     for r in rows:
         worst = next(iter(r["by_other_language_long"].items()), None)
@@ -191,14 +195,15 @@ def show(data: dict) -> None:
             other, n = worst
             tail = f"{other} ({n:,})"
         rate = r["shared_rate_long"]
-        print(f"  {r['language'] + '.' + r['source']:34}{r['lines']:>10,}"
-              f"{r['shared_lines_long']:>9,}{(rate if rate is not None else 0):>9.4f}   {tail}")
+        print(
+            f"  {r['language'] + '.' + r['source']:34}{r['lines']:>10,}"
+            f"{r['shared_lines_long']:>9,}{(rate if rate is not None else 0):>9.4f}   {tail}"
+        )
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--limit", type=int, default=None,
-                    help="lines per file, for a smoke run")
+    ap.add_argument("--limit", type=int, default=None, help="lines per file, for a smoke run")
     ap.add_argument("--json", type=Path, default=OUT)
     ap.add_argument("--corpus", type=Path, default=CORPUS)
     args = ap.parse_args()

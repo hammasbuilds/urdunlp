@@ -32,17 +32,24 @@ BLUE, ORANGE, GREEN, GREY = "#0072B2", "#E69F00", "#009E73", "#999999"
 TOOL_COLOUR = {"urdunlp": BLUE, "fasttext": ORANGE, "langdetect": GREEN}
 TOOL_MARKER = {"urdunlp": "o", "fasttext": "s", "langdetect": "^"}
 TOOL_HATCH = {"urdunlp": "", "fasttext": "//", "langdetect": ".."}
-TOOL_NAME = {"urdunlp": "urdunlp", "fasttext": "fastText lid.176",
-             "langdetect": "langdetect"}
+TOOL_NAME = {"urdunlp": "urdunlp", "fasttext": "fastText lid.176", "langdetect": "langdetect"}
 
 # The eleven, in the order the paper uses: Urdu first, then the languages it is confused
 # with, then the rest of the script family. Not alphabetical - the ordering is the
 # argument, because the confusion is concentrated in the first six.
 ORDER = ["ur", "pnb", "skr", "sd", "ps", "ks", "fa", "ar", "ckb", "ug", "azb"]
 ENGLISH = {
-    "ur": "Urdu", "pnb": "Punjabi (Shahmukhi)", "skr": "Saraiki", "sd": "Sindhi",
-    "ps": "Pashto", "ks": "Kashmiri", "fa": "Persian", "ar": "Arabic",
-    "ckb": "Sorani Kurdish", "ug": "Uyghur", "azb": "South Azerbaijani",
+    "ur": "Urdu",
+    "pnb": "Punjabi (Shahmukhi)",
+    "skr": "Saraiki",
+    "sd": "Sindhi",
+    "ps": "Pashto",
+    "ks": "Kashmiri",
+    "fa": "Persian",
+    "ar": "Arabic",
+    "ckb": "Sorani Kurdish",
+    "ug": "Uyghur",
+    "azb": "South Azerbaijani",
 }
 
 
@@ -77,15 +84,19 @@ def coverage_figure(coverages: dict[str, dict]) -> tuple[Path, Path, str]:
         known = set(coverages[tool]["has_a_label_for"])
         for col, code in enumerate(ORDER):
             has = code in known
-            ax.add_patch(plt.Rectangle(
-                (col, row), 1, 1,
-                facecolor=TOOL_COLOUR[tool] if has else "white",
-                edgecolor=GREY, linewidth=0.6,
-                hatch="" if has else "xx",
-            ))
+            ax.add_patch(
+                plt.Rectangle(
+                    (col, row),
+                    1,
+                    1,
+                    facecolor=TOOL_COLOUR[tool] if has else "white",
+                    edgecolor=GREY,
+                    linewidth=0.6,
+                    hatch="" if has else "xx",
+                )
+            )
             if not has:
-                ax.text(col + 0.5, row + 0.5, "—", ha="center", va="center",
-                        color=GREY, fontsize=9)
+                ax.text(col + 0.5, row + 0.5, "—", ha="center", va="center", color=GREY, fontsize=9)
     ax.set_xlim(0, len(ORDER))
     ax.set_ylim(0, len(tools))
     ax.set_xticks([i + 0.5 for i in range(len(ORDER))])
@@ -123,16 +134,28 @@ def length_figure(by_length: dict, restricted: dict | None = None) -> tuple[Path
     fig, ax = plt.subplots(figsize=(6.4, 4.0))
     for tool in ("urdunlp", "fasttext", "langdetect"):
         ys = [by_length[length][tool]["accuracy_all_languages"] for length in labels]
-        ax.plot(x, ys, marker=TOOL_MARKER[tool], color=TOOL_COLOUR[tool],
-                linewidth=2, label=f"{TOOL_NAME[tool]}, all 11")
+        ax.plot(
+            x,
+            ys,
+            marker=TOOL_MARKER[tool],
+            color=TOOL_COLOUR[tool],
+            linewidth=2,
+            label=f"{TOOL_NAME[tool]}, all 11",
+        )
         if tool != "urdunlp":
-            yr = [by_length[length][tool]["accuracy_where_it_has_a_label"]
-                  for length in labels]
-            ax.plot(x, yr, marker=TOOL_MARKER[tool], color=TOOL_COLOUR[tool],
-                    linewidth=1.3, linestyle="--", alpha=0.85,
-                    label=f"{TOOL_NAME[tool]}, where labelled")
+            yr = [by_length[length][tool]["accuracy_where_it_has_a_label"] for length in labels]
+            ax.plot(
+                x,
+                yr,
+                marker=TOOL_MARKER[tool],
+                color=TOOL_COLOUR[tool],
+                linewidth=1.3,
+                linestyle="--",
+                alpha=0.85,
+                label=f"{TOOL_NAME[tool]}, where labelled",
+            )
     ax.set_xticks(list(x))
-    ax.set_xticklabels([l.replace(" chars", " characters") for l in labels], fontsize=9)
+    ax.set_xticklabels([line.replace(" chars", " characters") for line in labels], fontsize=9)
     ax.set_ylim(0, 1.02)
     ax.set_ylabel("accuracy", fontsize=10)
     ax.set_xlabel("text available to the classifier", fontsize=10)
@@ -167,13 +190,29 @@ def per_class_figure(scores: dict[str, dict]) -> tuple[Path, Path, str]:
         for j, code in enumerate(ORDER):
             f1 = per.get(code, {}).get("f1")
             if f1 is None:
-                ax.text(j + (i - 1) * width, 0.02, "no\nlabel", ha="center", va="bottom",
-                        fontsize=6, color=GREY, linespacing=0.9)
+                ax.text(
+                    j + (i - 1) * width,
+                    0.02,
+                    "no\nlabel",
+                    ha="center",
+                    va="bottom",
+                    fontsize=6,
+                    color=GREY,
+                    linespacing=0.9,
+                )
                 continue
             xs.append(j + (i - 1) * width)
             ys.append(f1)
-        ax.bar(xs, ys, width=width, color=TOOL_COLOUR[tool], label=TOOL_NAME[tool],
-               hatch=TOOL_HATCH[tool], edgecolor="white", linewidth=0.4)
+        ax.bar(
+            xs,
+            ys,
+            width=width,
+            color=TOOL_COLOUR[tool],
+            label=TOOL_NAME[tool],
+            hatch=TOOL_HATCH[tool],
+            edgecolor="white",
+            linewidth=0.4,
+        )
     ax.set_xticks(range(len(ORDER)))
     ax.set_xticklabels(ORDER, fontsize=9)
     ax.set_ylim(0, 1.05)
@@ -196,8 +235,9 @@ def per_class_figure(scores: dict[str, dict]) -> tuple[Path, Path, str]:
 # --- 4. where the mass goes ----------------------------------------------------------
 
 
-def misattribution_figure(rows: dict[str, dict[str, int]],
-                          tool: str = "langdetect") -> tuple[Path, Path, str]:
+def misattribution_figure(
+    rows: dict[str, dict[str, int]], tool: str = "langdetect"
+) -> tuple[Path, Path, str]:
     """For each language a system cannot name, what it answers instead.
 
     The paper's central figure. A stacked bar per true language, segments ordered by size,
@@ -215,20 +255,32 @@ def misattribution_figure(rows: dict[str, dict[str, int]],
             colour = palette.get(answer, GREY)
             ax.barh(i, share, left=left, color=colour, edgecolor="white", linewidth=0.6)
             if share > 0.08:
-                ax.text(left + share / 2, i, answer, ha="center", va="center",
-                        fontsize=8, color="white", fontweight="bold")
+                ax.text(
+                    left + share / 2,
+                    i,
+                    answer,
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    color="white",
+                    fontweight="bold",
+                )
             left += share
             if answer not in seen:
                 seen.append(answer)
     ax.set_yticks(range(len(shown)))
-    ax.set_yticklabels([f"{ENGLISH[c]}  (n={sum(rows[c].values())})" for c in shown],
-                       fontsize=9)
+    ax.set_yticklabels([f"{ENGLISH[c]}  (n={sum(rows[c].values())})" for c in shown], fontsize=9)
     ax.invert_yaxis()
     ax.set_xlim(0, 1)
     ax.set_xlabel("share of that language's paragraphs", fontsize=10)
-    ax.legend(handles=[Patch(facecolor=palette.get(a, GREY), label=a) for a in seen],
-              fontsize=8, frameon=False, ncol=len(seen), loc="upper center",
-              bbox_to_anchor=(0.5, 1.12))
+    ax.legend(
+        handles=[Patch(facecolor=palette.get(a, GREY), label=a) for a in seen],
+        fontsize=8,
+        frameon=False,
+        ncol=len(seen),
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.12),
+    )
     _bare(ax)
     worst = max(shown, key=lambda c: rows[c].get("ur", 0) / sum(rows[c].values()))
     share = rows[worst].get("ur", 0) / sum(rows[worst].values())
@@ -243,8 +295,9 @@ def misattribution_figure(rows: dict[str, dict[str, int]],
 # --- 5. confusion matrix -------------------------------------------------------------
 
 
-def confusion_figure(rows: dict[str, dict[str, int]], tool: str,
-                     number: int = 5) -> tuple[Path, Path, str]:
+def confusion_figure(
+    rows: dict[str, dict[str, int]], tool: str, number: int = 5
+) -> tuple[Path, Path, str]:
     """Row-normalised confusion over the eleven, with off-task answers in one column.
 
     Row-normalised, because the question is "what happens to Saraiki", not "how much
@@ -276,17 +329,29 @@ def confusion_figure(rows: dict[str, dict[str, int]], tool: str,
     for i, line in enumerate(grid):
         for j, value in enumerate(line):
             if value >= 0.01:
-                ax.text(j, i, f"{value:.2f}".lstrip("0") if value < 1 else "1",
-                        ha="center", va="center", fontsize=6.5,
-                        color="white" if value > 0.55 else "#222222")
-    fig.colorbar(image, ax=ax, fraction=0.035, pad=0.03,
-                 label="share of the true language's paragraphs")
+                ax.text(
+                    j,
+                    i,
+                    f"{value:.2f}".lstrip("0") if value < 1 else "1",
+                    ha="center",
+                    va="center",
+                    fontsize=6.5,
+                    color="white" if value > 0.55 else "#222222",
+                )
+    fig.colorbar(
+        image, ax=ax, fraction=0.035, pad=0.03, label="share of the true language's paragraphs"
+    )
     total = sum(sum(r.values()) for r in rows.values())
     caption = (
         f"Row-normalised confusion for {TOOL_NAME[tool]} on whole paragraphs, "
         f"{total:,} paragraphs. Each row sums to one. "
-        + ("The `other` column collects answers outside the task's eleven labels: "
-           + ", ".join(off) + "." if off else "Every answer fell inside the task's labels.")
+        + (
+            "The `other` column collects answers outside the task's eleven labels: "
+            + ", ".join(off)
+            + "."
+            if off
+            else "Every answer fell inside the task's labels."
+        )
     )
     return (*_save(fig, f"fig{number}_confusion_{tool}"), caption)
 
@@ -310,18 +375,27 @@ def margin_figure(deciles: list[dict]) -> tuple[Path, Path, str]:
     errors = [d["errors"] for d in deciles]
 
     fig, (top, bottom) = plt.subplots(
-        2, 1, figsize=(6.6, 4.6), sharex=True,
+        2,
+        1,
+        figsize=(6.6, 4.6),
+        sharex=True,
         gridspec_kw={"height_ratios": [2.3, 1.0], "hspace": 0.1},
     )
     top.plot(xs, accuracies, marker="o", color=BLUE, linewidth=2)
     lowest = min(accuracies)
     top.set_ylim(min(0.9, lowest - 0.01), 1.004)
     top.set_ylabel("accuracy", fontsize=10)
-    top.annotate(f"{accuracies[0]:.4f}", (xs[0], accuracies[0]),
-                 textcoords="offset points", xytext=(6, -2), fontsize=8, color=BLUE)
+    top.annotate(
+        f"{accuracies[0]:.4f}",
+        (xs[0], accuracies[0]),
+        textcoords="offset points",
+        xytext=(6, -2),
+        fontsize=8,
+        color=BLUE,
+    )
     _bare(top)
     bottom.bar(xs, errors, color=ORANGE, width=0.65, edgecolor="white", linewidth=0.4)
-    for x, e in zip(xs, errors):
+    for x, e in zip(xs, errors, strict=False):
         if e:
             bottom.text(x, e, str(e), ha="center", va="bottom", fontsize=7.5)
     bottom.set_ylabel("errors", fontsize=9)
@@ -356,10 +430,18 @@ def selective_figure(retention: list[dict]) -> tuple[Path, Path, str]:
     kept_share = [r["errors_kept_share"] for r in retention]
 
     fig, ax = plt.subplots(figsize=(6.4, 4.0))
-    ax.plot(keeps, accuracies, marker="o", color=BLUE, linewidth=2,
-            label="accuracy on the items kept")
-    ax.plot(keeps, kept_share, marker="s", color=ORANGE, linewidth=2, linestyle="--",
-            label="share of all errors still present")
+    ax.plot(
+        keeps, accuracies, marker="o", color=BLUE, linewidth=2, label="accuracy on the items kept"
+    )
+    ax.plot(
+        keeps,
+        kept_share,
+        marker="s",
+        color=ORANGE,
+        linewidth=2,
+        linestyle="--",
+        label="share of all errors still present",
+    )
     ax.set_xlabel("coverage (share of items answered)", fontsize=10)
     ax.set_ylabel("accuracy / error share", fontsize=10)
     ax.set_ylim(0, 1.03)

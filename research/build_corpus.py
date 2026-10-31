@@ -40,8 +40,9 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / ".baselines"
 OUT = ROOT / "data" / "corpus"
 REPORT = ROOT / "research" / "results" / "corpus.json"
-UA = {"User-Agent": "urdunlp-research/0.1 (language-ID corpus study; "
-                    "github.com/hammasbuilds/urdunlp)"}
+UA = {
+    "User-Agent": "urdunlp-research/0.1 (language-ID corpus study; github.com/hammasbuilds/urdunlp)"
+}
 
 LANGUAGES = ["ur", "pnb", "skr", "sd", "ps", "ks", "fa", "ar", "ckb", "ug", "azb"]
 CC100 = {"ur": "ur", "sd": "sd", "ps": "ps", "ug": "ug", "fa": "fa", "ar": "ar"}
@@ -134,8 +135,7 @@ def from_stream(url: str, opener, cap: int, seen: set[str]) -> list[str]:
 def from_wikimedia(code: str, project: str, cap: int, seen: set[str]) -> list[str]:
     name = f"{code}{project}"
     path = RAW / "wikimedia" / f"{name}.xml.bz2"
-    url = (f"https://dumps.wikimedia.org/{name}/latest/"
-           f"{name}-latest-pages-articles.xml.bz2")
+    url = f"https://dumps.wikimedia.org/{name}/latest/{name}-latest-pages-articles.xml.bz2"
     if not path.exists() or path.stat().st_size < 10_000:
         path.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -166,7 +166,7 @@ def from_wikimedia(code: str, project: str, cap: int, seen: set[str]) -> list[st
                             out.append(text)
                             if len(out) >= cap:
                                 return out
-                buffer = buffer[buffer.rfind("</text>") + 7:] if "</text>" in buffer else ""
+                buffer = buffer[buffer.rfind("</text>") + 7 :] if "</text>" in buffer else ""
     except OSError:
         pass
     return out
@@ -200,8 +200,12 @@ def main() -> int:
     args = ap.parse_args()
 
     opus = json.loads((RAW / "opus_sources.json").read_text(encoding="utf-8"))
-    report: dict = {"target": args.target, "per_source_cap": args.per_source,
-                    "min_chars": MIN_CHARS, "languages": {}}
+    report: dict = {
+        "target": args.target,
+        "per_source_cap": args.per_source,
+        "min_chars": MIN_CHARS,
+        "languages": {},
+    }
     OUT.mkdir(parents=True, exist_ok=True)
 
     for code in [c.strip() for c in args.languages.split(",") if c.strip()]:
@@ -218,8 +222,9 @@ def main() -> int:
 
         if code in NO_OPUS_SOURCE:
             print(f"    {'opus':26}skipped - {NO_OPUS_SOURCE[code]}")
-        for key in sorted(opus.get(code, {}) if code not in NO_OPUS_SOURCE else {},
-                          key=lambda k: -opus[code][k]):
+        for key in sorted(
+            opus.get(code, {}) if code not in NO_OPUS_SOURCE else {}, key=lambda k: -opus[code][k]
+        ):
             if sum(len(v) for v in by_source.values()) >= args.target:
                 break
             corpus, lang = key.split(":", 1)
@@ -250,7 +255,8 @@ def main() -> int:
             path.write_text("\n".join(texts) + "\n", encoding="utf-8")
         if segmented:
             (OUT / f"{code}.segmented.txt").write_text(
-                "\n".join(segmented) + "\n", encoding="utf-8")
+                "\n".join(segmented) + "\n", encoding="utf-8"
+            )
 
         report["languages"][code] = {
             "real": real,
@@ -261,18 +267,25 @@ def main() -> int:
             "real_meets_100k": real >= 100_000,
         }
         row = report["languages"][code]
-        print(f"    {'TOTAL':26}{row['total']:>8,}  "
-              f"({row['real']:,} real + {row['segmented']:,} segmented)"
-              f"{'' if row['meets_100k'] else '   UNDER 100k'}")
+        print(
+            f"    {'TOTAL':26}{row['total']:>8,}  "
+            f"({row['real']:,} real + {row['segmented']:,} segmented)"
+            f"{'' if row['meets_100k'] else '   UNDER 100k'}"
+        )
 
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text(json.dumps(report, indent=1), encoding="utf-8")
     print("\nsummary:")
     for code, row in report["languages"].items():
-        mark = "" if row["real_meets_100k"] else (
-            "  (segmentation needed)" if row["meets_100k"] else "  SHORT")
-        print(f"  {code:5} {row['total']:>8,} total, {row['real']:>8,} real, "
-              f"{len(row['real_by_source'])} source(s){mark}")
+        mark = (
+            ""
+            if row["real_meets_100k"]
+            else ("  (segmentation needed)" if row["meets_100k"] else "  SHORT")
+        )
+        print(
+            f"  {code:5} {row['total']:>8,} total, {row['real']:>8,} real, "
+            f"{len(row['real_by_source'])} source(s){mark}"
+        )
     print(f"\nwritten to {OUT} and {REPORT.name}")
     return 0
 

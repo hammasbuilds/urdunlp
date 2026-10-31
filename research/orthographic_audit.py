@@ -81,8 +81,12 @@ def wilson(k: int, n: int, z: float = 1.96) -> dict | None:
     d = 1 + z * z / n
     c = (p + z * z / (2 * n)) / d
     h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return {"rate": round(p, 4), "lo": round(max(0.0, c - h), 4),
-            "hi": round(min(1.0, c + h), 4), "n": n}
+    return {
+        "rate": round(p, 4),
+        "lo": round(max(0.0, c - h), 4),
+        "hi": round(min(1.0, c + h), 4),
+        "n": n,
+    }
 
 
 def languages() -> list[str]:
@@ -119,8 +123,9 @@ def distinctive(shares: dict[str, dict[str, float]]) -> dict[str, list[str]]:
         for char, share in own.items():
             if share < MIN_SHARE:
                 continue
-            other = max((s.get(char, 0.0) for lang, s in shares.items()
-                         if lang != language), default=0.0)
+            other = max(
+                (s.get(char, 0.0) for lang, s in shares.items() if lang != language), default=0.0
+            )
             if other <= MAX_OTHER_SHARE:
                 picked.append(char)
         out[language] = sorted(picked)
@@ -144,8 +149,11 @@ def audit(limit: int | None = None) -> dict:
     train_lines: dict[str, int] = {}
     for language in langs:
         shares[language], train_lines[language] = letter_shares(language)
-        print(f"  {language:5s} {train_lines[language]:>9,} train lines, "
-              f"{len(shares[language]):>4} distinct letters", flush=True)
+        print(
+            f"  {language:5s} {train_lines[language]:>9,} train lines, "
+            f"{len(shares[language]):>4} distinct letters",
+            flush=True,
+        )
 
     marks = distinctive(shares)
     print("\n  distinctive letters (common here, near-absent everywhere else):")
@@ -153,8 +161,10 @@ def audit(limit: int | None = None) -> dict:
         chars = marks[language]
         if chars:
             own = min(shares[language][c] for c in chars)
-            print(f"    {language:5s} {''.join(chars):20s} "
-                  f"(rarest of them in {own:.1%} of its train lines)")
+            print(
+                f"    {language:5s} {''.join(chars):20s} "
+                f"(rarest of them in {own:.1%} of its train lines)"
+            )
         else:
             print(f"    {language:5s} {'-':20s} (no distinctive letter: the unmarked case)")
 
@@ -167,15 +177,12 @@ def audit(limit: int | None = None) -> dict:
     # lines carry two foreign inventories, and nothing in the per-other breakdown says
     # which.
     foreign_lines: collections.Counter = collections.Counter()
-    buckets: dict[tuple[str, str, bool], list[int]] = collections.defaultdict(
-        lambda: [0, 0])
+    buckets: dict[tuple[str, str, bool], list[int]] = collections.defaultdict(lambda: [0, 0])
 
     for language in langs:
         own = set(marks[language])
-        texts = (SPLITS / "test" / f"{language}.txt").read_text(
-            encoding="utf-8").splitlines()
-        tags = (SPLITS / "test" / f"{language}.src").read_text(
-            encoding="utf-8").splitlines()
+        texts = (SPLITS / "test" / f"{language}.txt").read_text(encoding="utf-8").splitlines()
+        tags = (SPLITS / "test" / f"{language}.src").read_text(encoding="utf-8").splitlines()
         if limit is not None:
             texts, tags = texts[:limit], tags[:limit]
         for text, tag in zip(texts, tags, strict=True):
@@ -186,15 +193,14 @@ def audit(limit: int | None = None) -> dict:
             buckets[(language, source, marked)][0] += ok
             buckets[(language, source, marked)][1] += 1
             if not marked:
-                others = [o for o in langs
-                          if o != language and marks[o] and set(marks[o]) & chars]
+                others = [o for o in langs if o != language and marks[o] and set(marks[o]) & chars]
                 for other in others:
                     foreign[language][other] += 1
                 if others:
                     foreign_lines[language] += 1
         print(f"  scored {language}: {len(texts):,} test lines", flush=True)
 
-    for (language, source, marked) in sorted(buckets):
+    for language, source, marked in sorted(buckets):
         right, total = buckets[(language, source, marked)]
         key = f"{language}.{source}|{'with' if marked else 'without'}"
         per_source[key] = wilson(right, total)
@@ -206,14 +212,16 @@ def audit(limit: int | None = None) -> dict:
         summary[language] = {
             "distinctive_letters": "".join(marks[language]),
             "has_criterion": bool(marks[language]),
-            "with_a_distinctive_letter": wilson(sum(v[0] for v in with_m),
-                                                sum(v[1] for v in with_m)),
-            "without_one": wilson(sum(v[0] for v in without),
-                                  sum(v[1] for v in without)),
-            "whole": wilson(sum(v[0] for v in with_m + without),
-                            sum(v[1] for v in with_m + without)),
+            "with_a_distinctive_letter": wilson(
+                sum(v[0] for v in with_m), sum(v[1] for v in with_m)
+            ),
+            "without_one": wilson(sum(v[0] for v in without), sum(v[1] for v in without)),
+            "whole": wilson(
+                sum(v[0] for v in with_m + without), sum(v[1] for v in with_m + without)
+            ),
             "unmarked_lines_carrying_another_languages_letter": dict(
-                foreign[language].most_common()),
+                foreign[language].most_common()
+            ),
             "unmarked_lines_carrying_any_foreign_letter": foreign_lines[language],
         }
 
@@ -246,18 +254,22 @@ def audit(limit: int | None = None) -> dict:
 
 
 def show(data: dict) -> None:
-    print(f"\n  {'lang':6}{'letters':14}{'whole':>9}{'with':>9}{'without':>9}"
-          f"{'gap':>8}   foreign-letter lines")
+    print(
+        f"\n  {'lang':6}{'letters':14}{'whole':>9}{'with':>9}{'without':>9}"
+        f"{'gap':>8}   foreign-letter lines"
+    )
     for language, r in data["per_language"].items():
         w, a, b = r["whole"], r["with_a_distinctive_letter"], r["without_one"]
         gap = (a["rate"] - b["rate"]) if (a and b) else None
         foreign = r["unmarked_lines_carrying_another_languages_letter"]
         tail = ", ".join(f"{k}:{v}" for k, v in list(foreign.items())[:3]) or "-"
-        print(f"  {language:6}{r['distinctive_letters'][:12] or '-':14}"
-              f"{w['rate']:>9.4f}"
-              f"{(a['rate'] if a else float('nan')):>9.4f}"
-              f"{(b['rate'] if b else float('nan')):>9.4f}"
-              f"{(gap if gap is not None else float('nan')):>8.4f}   {tail}")
+        print(
+            f"  {language:6}{r['distinctive_letters'][:12] or '-':14}"
+            f"{w['rate']:>9.4f}"
+            f"{(a['rate'] if a else float('nan')):>9.4f}"
+            f"{(b['rate'] if b else float('nan')):>9.4f}"
+            f"{(gap if gap is not None else float('nan')):>8.4f}   {tail}"
+        )
 
 
 def main() -> int:

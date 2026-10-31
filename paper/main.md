@@ -18,7 +18,11 @@ Saraiki cannot be right about Saraiki, and scoring it wrong says little.
 Against a dedicated competitor — PALI [@pali], a fastText model trained for exactly this
 script — a character n-gram classifier trained on Wikipedia reaches **0.9925** against
 PALI's **0.8088** on 6,136 held-out paragraphs (McNemar, 1,136 vs 9 discordant,
-p < 10⁻³²²).
+p < 10⁻³²²). That test set is balanced, which is a choice and not a neutral one:
+reweighting the **same predictions** to CC-100's language proportions, where Persian and
+Arabic are 95% of the text, takes langdetect from the worst system to **0.9816** and PALI
+from the best competitor to **0.4598** (§4.6). The order of the competitors is a property
+of the test set.
 
 That 0.9925 is the paper's second result, and it is a warning rather than an
 achievement. On out-of-domain text the same model collapses: **0.5302** on Tatoeba Urdu
@@ -269,6 +273,69 @@ shrinking set rises whether or not abstention is choosing the right items to dro
 This is the practical consequence of §3 and §4 together: a model that covers the task can
 also say when it is unsure, and a model that cannot name the language cannot do either.
 These numbers are in-domain, and §5 is about what happens when that assumption fails.
+
+## 4.6 The balanced test set is a choice, and it decides the ranking
+
+Every accuracy above is over a test set with roughly equal numbers of each of the eleven
+languages — about 550 paragraphs each. That is how language-identification benchmarks are
+built and it is not how text arrives. An experience report on OpenLID-v3 makes the point
+plainly: precision and F1 on standard LID datasets can mislead, because models meet a far
+larger language imbalance in real crawls than in any benchmark. Persian and Arabic are not
+two elevenths of Perso-Arabic text on the web, and Kashmiri and Saraiki are not one
+eleventh each.
+
+`research/prior_shift.py` recomputes the comparison under two other populations without
+re-predicting anything. Per-class recall is held fixed and the class prior replaced, so
+`W[t][p] = π(t)·C[t][p]/n_t` and every metric follows from `W`. That is the standard
+prior-shift assumption — the distribution of text *within* a language does not change with
+the prior — and it is assumed, not tested. The priors are **wikipedia** (article counts
+per edition, all eleven have one) and **crawl** (CC-100 bytes, which covers six of the
+eleven; azb, ckb, ks, pnb and skr are absent from CC-100 entirely and are given the
+smallest observed share, an approximation that overstates their presence rather than
+understating it). Under the crawl prior Persian and Arabic are 95% of the population
+between them.
+
+| system | uniform | wikipedia | crawl |
+|---|---|---|---|
+| **urdunlp (this work)** | 0.9925 / 0.9925 | 0.9986 / 0.9899 | 0.9995 / 0.9870 |
+| PALI | 0.8069 / 0.9456 | 0.6954 / 0.7119 | 0.4598 / 0.5691 |
+| fastText `lid.176` | 0.7145 / 0.8055 | 0.9398 / 0.9634 | 0.9937 / 0.9229 |
+| langdetect | 0.2722 / 0.3102 | 0.8520 / 0.8057 | 0.9816 / 0.9296 |
+
+*accuracy / macro precision, over the same 6,136 predictions in every cell.*
+
+The uniform column is **not** the micro-accuracy quoted elsewhere in this paper. A prior
+is a weight per class, so "uniform" is the unweighted mean of eleven per-class recalls,
+while the headline figures are correct predictions over all 6,136 rows — and the test
+set is only roughly balanced, 510 to 592 rows per language, so the two differ a little.
+PALI reads 0.8069 here against 0.8088 in §5, and this toolkit 0.9925 in both. The column
+is here as the baseline the other two are reweighted from, not as a restatement of the
+headline.
+
+**The ranking of the competitors is not a property of the models. It is a property of the
+test set.** On the balanced set langdetect is the worst system by a wide margin
+(0.2722) and PALI the best competitor (0.8069).
+On the crawl population langdetect is 0.9816 and PALI is
+0.4598 — the order reverses. Neither number is wrong and neither is the
+model changing. langdetect supports three of these eleven languages and scores 0.000
+recall on the other eight; when those three are 98% of the text, a three-language model is
+a 0.98 model. PALI's recalls are high on the eight rare languages and 0.886 on Persian and
+0.658 on Urdu, so a population dominated by Persian punishes it.
+
+**What each prior is for.** The balanced set measures the part of the task that is hard —
+telling Saraiki from Western Punjabi, Kashmiri from Urdu — and a system is only useful on
+real text if it does not fall over on the 95%. The crawl prior measures deployment and
+says nothing about whether a system can do the hard part at all: langdetect's
+0.9816 is earned entirely by languages it was already good at. The
+pair is the result. Reporting either alone chooses an answer.
+
+**This toolkit is the only system above 0.98 under all three**, at
+0.9925, 0.9986 and 0.9995,
+because its lowest per-class recall is 0.973 and no reweighting of eleven numbers that are
+all above 0.97 can produce a low one. That is the claim this section supports, and it is
+weaker than the balanced table alone appears to make: the margin over PALI is
+0.1856 on the balanced set
+and the two are not even measuring the same thing on a crawl.
 
 # 5. The result that matters: 0.9925 does not survive leaving Wikipedia
 
@@ -654,6 +721,10 @@ Nothing in `research/` ships in the distributed package.
 - [@cc100] Conneau, A. et al. *Unsupervised Cross-lingual Representation Learning at Scale.* arXiv:1911.02116. CC-100 corpus.
 - [@opus] Tiedemann, J. *Parallel Data, Tools and Interfaces in OPUS.* LREC 2012.
 - [@conlid] *ConLID: Supervised Contrastive Learning for Low-Resource Language Identification.* arXiv:2506.15304.
+- [@openlid3] *OpenLID-v3: Improving the Precision of Closely Related Language
+  Identification — An Experience Report.* arXiv:2602.13139. Reports that precision and F1
+  on standard LID datasets can mislead because models face much larger language imbalance
+  in real web crawls than in benchmark test sets.
 - [@divers] *DIVERS-Bench: Evaluating Language Identification Across Domains.* arXiv:2509.17768.
 - Tatoeba sentence exports, CC-BY 2.0 FR. <https://downloads.tatoeba.org/>
 
@@ -663,6 +734,18 @@ Nothing in `research/` ships in the distributed package.
 > alone) and, more importantly, §4.3 — an earlier draft asserted that PALI trains on
 > Wikipedia, which neither the abstract nor the repository supports. Its paper's full
 > text has not been read, and its reported accuracies are not quoted here.
+>
+> @openlid3 is **quoted from a search summary**: the single claim taken from it is
+> the motivating one in §4.6 — that balanced LID benchmarks mislead because deployment
+> is imbalanced — and §4.6 does not depend on it being true, since the reweighting
+> demonstrates the effect on this paper's own numbers. It is cited as the place the
+> observation is made, not as evidence for it.
+>
+> The Wikipedia article counts and CC-100 sizes behind §4.6's priors were read from
+> meta.wikimedia.org and data.statmt.org on 2026-10-31 and are recorded with that date
+> in `research/prior_shift.py`. They move; the conclusion of §4.6 does not turn on their
+> exact values, and `tests/test_prior_shift.py` asserts the shape of the finding — that
+> the competitor ranking changes with the prior — rather than the ranking itself.
 >
 > The remaining references are quoted from search summaries rather than from full texts
 > and must each be read before submission.

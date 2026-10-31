@@ -29,7 +29,18 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from sweep_langid import WINDOWS, choose, mcnemar, separable  # noqa: E402
+# Imported under a guard, not bare. CI's second job copies `tests/` alone next to an
+# installed distribution, where this directory does not exist; a bare import raises
+# ModuleNotFoundError during collection, which fails the whole job instead of
+# skipping this file.
+
+sweep_langid = pytest.importorskip(
+    "sweep_langid", reason="scripts/ and research/ are not shipped with the tests"
+)
+WINDOWS = sweep_langid.WINDOWS
+choose = sweep_langid.choose
+mcnemar = sweep_langid.mcnemar
+separable = sweep_langid.separable
 
 
 def pair(a_only: int, b_only: int, both: int, neither: int) -> tuple[bytes, bytes]:

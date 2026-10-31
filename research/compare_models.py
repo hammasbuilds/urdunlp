@@ -73,17 +73,18 @@ def table(have: dict, keys: list[str], real_only: bool, title: str) -> None:
         print(f"\n{title}\n  (needs {', '.join(MODELS[k][0] for k in keys)})")
         return
     print(f"\n{title}")
-    print(f"  {'lang':6}{'n':>9}" + "".join(f"{k[:14]:>16}" for k in keys)
-          + f"{'change':>10}")
+    print(f"  {'lang':6}{'n':>9}" + "".join(f"{k[:14]:>16}" for k in keys) + f"{'change':>10}")
     for language in [*ORDER, None]:
         cells = [rate(have[k], language, real_only) for k in keys]
         if any(c is None for c in cells):
             continue
         name = language or "OVERALL"
         change = cells[-1]["rate"] - cells[0]["rate"]
-        print(f"  {name:6}{cells[0]['n']:>9,}"
-              + "".join(f"{c['rate']:>16.4f}" for c in cells)
-              + f"{change:>+10.4f}")
+        print(
+            f"  {name:6}{cells[0]['n']:>9,}"
+            + "".join(f"{c['rate']:>16.4f}" for c in cells)
+            + f"{change:>+10.4f}"
+        )
 
 
 def main() -> int:
@@ -91,8 +92,10 @@ def main() -> int:
     if not have:
         raise SystemExit(f"no evaluation results in {RESULTS}")
     missing = [k for k in MODELS if k not in have]
-    print(f"{len(have)} of {len(MODELS)} model(s) scored"
-          + (f"; still missing: {', '.join(missing)}" if missing else ""))
+    print(
+        f"{len(have)} of {len(MODELS)} model(s) scored"
+        + (f"; still missing: {', '.join(missing)}" if missing else "")
+    )
 
     rows = {k: v.get("test_rows") for k, v in have.items()}
     if len(set(rows.values())) != 1:
@@ -102,37 +105,64 @@ def main() -> int:
         )
     print(f"all scored on the same {next(iter(rows.values())):,} test rows\n")
 
-    table(have, ["wikipedia_12k", "multisource_12k"], False,
-          "Q1. Diversity at matched size (12,000 lines per language, all test rows)")
-    table(have, ["shipped", "no_synthetic"], False,
-          "    For reference: shipped against the full multi-source model")
-    table(have, ["no_synthetic", "with_synthetic"], True,
-          "Q2. Built Kashmiri rows, scored on REAL test rows only")
+    table(
+        have,
+        ["wikipedia_12k", "multisource_12k"],
+        False,
+        "Q1. Diversity at matched size (12,000 lines per language, all test rows)",
+    )
+    table(
+        have,
+        ["shipped", "no_synthetic"],
+        False,
+        "    For reference: shipped against the full multi-source model",
+    )
+    table(
+        have,
+        ["no_synthetic", "with_synthetic"],
+        True,
+        "Q2. Built Kashmiri rows, scored on REAL test rows only",
+    )
 
     if "no_synthetic" in have and "with_synthetic" in have:
         a = rate(have["no_synthetic"], "ks", True)
         b = rate(have["with_synthetic"], "ks", True)
         if a and b:
             z, p = two_proportion_z(a, b)
-            verdict = ("the built rows improved real Kashmiri"
-                       if b["rate"] > a["rate"] else
-                       "the built rows did NOT improve real Kashmiri")
-            print(f"\n  Kashmiri, real test rows only: {a['rate']:.4f} -> {b['rate']:.4f} "
-                  f"over {a['n']:,} rows (z={z:+.2f}, p={p:.3g})")
+            verdict = (
+                "the built rows improved real Kashmiri"
+                if b["rate"] > a["rate"]
+                else "the built rows did NOT improve real Kashmiri"
+            )
+            print(
+                f"\n  Kashmiri, real test rows only: {a['rate']:.4f} -> {b['rate']:.4f} "
+                f"over {a['n']:,} rows (z={z:+.2f}, p={p:.3g})"
+            )
             print(f"  {verdict}.")
             if b["rate"] <= a["rate"]:
-                print("  On the stated criterion the rows have not earned their place "
-                      "and should be dropped.")
+                print(
+                    "  On the stated criterion the rows have not earned their place "
+                    "and should be dropped."
+                )
 
     out = RESULTS / "model_comparison.json"
-    out.write_text(json.dumps(
-        {k: {"label": MODELS[k][1],
-             "overall": v.get("overall"),
-             "overall_real_rows_only": v.get("overall_real_rows_only"),
-             "per_language": v.get("per_language"),
-             "per_language_real_rows_only": v.get("per_language_real_rows_only"),
-             "per_kind": v.get("per_kind")}
-         for k, v in have.items()}, indent=1), encoding="utf-8")
+    out.write_text(
+        json.dumps(
+            {
+                k: {
+                    "label": MODELS[k][1],
+                    "overall": v.get("overall"),
+                    "overall_real_rows_only": v.get("overall_real_rows_only"),
+                    "per_language": v.get("per_language"),
+                    "per_language_real_rows_only": v.get("per_language_real_rows_only"),
+                    "per_kind": v.get("per_kind"),
+                }
+                for k, v in have.items()
+            },
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
     print(f"\nwritten to {out.name}")
     return 0
 

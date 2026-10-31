@@ -63,9 +63,9 @@ def per_class(truth: list[str], predicted: list[str], labels: list[str]) -> dict
     assert len(truth) == len(predicted), (len(truth), len(predicted))
     out: dict[str, dict] = {}
     for label in labels:
-        tp = sum(1 for t, p in zip(truth, predicted) if t == label and p == label)
-        fp = sum(1 for t, p in zip(truth, predicted) if t != label and p == label)
-        fn = sum(1 for t, p in zip(truth, predicted) if t == label and p != label)
+        tp = sum(1 for t, p in zip(truth, predicted, strict=False) if t == label and p == label)
+        fp = sum(1 for t, p in zip(truth, predicted, strict=False) if t != label and p == label)
+        fn = sum(1 for t, p in zip(truth, predicted, strict=False) if t == label and p != label)
         support = tp + fn
         precision = tp / (tp + fp) if (tp + fp) else None
         recall = tp / support if support else None
@@ -85,7 +85,7 @@ def per_class(truth: list[str], predicted: list[str], labels: list[str]) -> dict
 
     scored = [v for v in out.values() if v["f1"] is not None]
     total = len(truth)
-    correct = sum(1 for t, p in zip(truth, predicted) if t == p)
+    correct = sum(1 for t, p in zip(truth, predicted, strict=False) if t == p)
     return {
         "per_class": out,
         # Macro over the classes that have an F1 at all, with the count stated: a macro
@@ -124,7 +124,7 @@ def bootstrap(
         sample = [rng.choice(indices) for _ in range(n)]
         t = [truth[i] for i in sample]
         p = [predicted[i] for i in sample]
-        accuracies.append(sum(1 for a, b in zip(t, p) if a == b) / n)
+        accuracies.append(sum(1 for a, b in zip(t, p, strict=False) if a == b) / n)
         scored = per_class(t, p, labels)
         if scored["macro_f1"] is not None:
             macros.append(scored["macro_f1"])
@@ -157,12 +157,17 @@ def mcnemar(truth: list[str], a: list[str], b: list[str]) -> dict:
     table - which is what a coverage gap produces - the approximation is the wrong tool.
     """
     assert len(truth) == len(a) == len(b)
-    a_only = sum(1 for t, x, y in zip(truth, a, b) if x == t and y != t)
-    b_only = sum(1 for t, x, y in zip(truth, a, b) if x != t and y == t)
+    a_only = sum(1 for t, x, y in zip(truth, a, b, strict=False) if x == t and y != t)
+    b_only = sum(1 for t, x, y in zip(truth, a, b, strict=False) if x != t and y == t)
     discordant = a_only + b_only
     if discordant == 0:
-        return {"a_only": 0, "b_only": 0, "discordant": 0, "p_value": 1.0,
-                "note": "the two systems are right and wrong on exactly the same items"}
+        return {
+            "a_only": 0,
+            "b_only": 0,
+            "discordant": 0,
+            "p_value": 1.0,
+            "note": "the two systems are right and wrong on exactly the same items",
+        }
     # Two-sided exact: P(X <= min) * 2 under Binomial(n, 0.5).
     #
     # In log space. Done directly, `sum(comb(n, k)) / 2**n` underflows to 0.0 for a
@@ -175,9 +180,7 @@ def mcnemar(truth: list[str], a: list[str], b: list[str]) -> dict:
     terms = []
     for k in range(smaller + 1):
         log_comb = (
-            math.lgamma(discordant + 1)
-            - math.lgamma(k + 1)
-            - math.lgamma(discordant - k + 1)
+            math.lgamma(discordant + 1) - math.lgamma(k + 1) - math.lgamma(discordant - k + 1)
         ) / math.log(10.0)
         terms.append(log_comb - discordant * log10_2)
     # log10 of a sum of terms given their log10s, without leaving log space.
@@ -187,7 +190,7 @@ def mcnemar(truth: list[str], a: list[str], b: list[str]) -> dict:
 
     exact: float | None
     try:
-        exact = min(1.0, 10 ** log10_p)
+        exact = min(1.0, 10**log10_p)
         if exact == 0.0:
             exact = None
     except OverflowError:  # pragma: no cover - defensive
@@ -216,7 +219,7 @@ def confusion(truth: list[str], predicted: list[str], labels: list[str]) -> dict
     """
     rows: dict[str, dict[str, int]] = {}
     for label in labels:
-        counts = Counter(p for t, p in zip(truth, predicted) if t == label)
+        counts = Counter(p for t, p in zip(truth, predicted, strict=False) if t == label)
         rows[label] = dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
     predicted_labels = sorted({p for p in predicted})
     return {

@@ -140,6 +140,34 @@ nearly all of it:
 Over Urdu, Punjabi and Saraiki alone the whole-paragraph accuracy is 97.5% (1,664 paragraphs). A guess on fewer than
 20 letters is marked `short=True`, and `margin` is not a confidence score.
 
+### A balanced test set decides which competitor looks best
+
+The 6,136 test paragraphs are roughly 550 per language. Text does not arrive balanced:
+under CC-100's proportions Persian and Arabic are 95% of Perso-Arabic text between them.
+[research/prior_shift.py](research/prior_shift.py) reweights the **same 6,136
+predictions** to two other populations - per-class recall held fixed, the class prior
+replaced - without re-running a model. The first column is the published balanced
+evaluation, as the mean of eleven per-class recalls.
+
+| system | balanced | Wikipedia sizes | CC-100 sizes |
+|---|---:|---:|---:|
+| **urdunlp** | **0.9925** | **0.9986** | **0.9995** |
+| PALI | 0.8069 | 0.6954 | 0.4598 |
+| fastText `lid.176` | 0.7145 | 0.9398 | 0.9937 |
+| langdetect | 0.2722 | 0.8520 | 0.9816 |
+
+**The competitors' order reverses.** langdetect is the worst system on the balanced set
+and the second best on a realistic one, because it supports three of these eleven
+languages, scores 0.000 recall on the other eight, and those three are 98% of the text.
+PALI goes the other way - strong on the eight rare languages, 0.886 recall on Persian and
+0.658 on Urdu - so a Persian-dominated population halves it.
+
+Neither prior is the right one. The balanced set measures the part of the task that is
+hard, Saraiki against Western Punjabi and Kashmiri against Urdu; the crawl prior measures
+deployment. This toolkit is the only system above 0.98 under all three, because its
+lowest per-class recall is 0.973 and no reweighting of eleven numbers above 0.97 produces
+a low one.
+
 **Speed.** `import urdunlp` loads nothing (about 0.1 s); each model loads on first use (about 0.6 s for
 transliteration). Roman → Urdu runs at 440-500 words a second of CPU on words it has not seen before (measured on
 the 5,289 words of `eval/dakshina_test_sample.tsv`) and about 90,000 words a second on repeated text from warm

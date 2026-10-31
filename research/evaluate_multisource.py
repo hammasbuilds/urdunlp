@@ -23,7 +23,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -40,8 +39,13 @@ def wilson(k: int, n: int, z: float = 1.96) -> dict | None:
     d = 1 + z * z / n
     c = (p + z * z / (2 * n)) / d
     h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return {"rate": round(p, 4), "lo": round(max(0.0, c - h), 4),
-            "hi": round(min(1.0, c + h), 4), "n": n, "correct": k}
+    return {
+        "rate": round(p, 4),
+        "lo": round(max(0.0, c - h), 4),
+        "hi": round(min(1.0, c + h), 4),
+        "n": n,
+        "correct": k,
+    }
 
 
 def load_split(split: Path = SPLIT) -> list[tuple[str, str, str]]:
@@ -58,16 +62,22 @@ def load_split(split: Path = SPLIT) -> list[tuple[str, str, str]]:
         if not text_path.exists():
             continue
         texts = text_path.read_text(encoding="utf-8", errors="replace").splitlines()
-        sources = (src_path.read_text(encoding="utf-8").splitlines()
-                   if src_path.exists() else ["unknown"] * len(texts))
+        sources = (
+            src_path.read_text(encoding="utf-8").splitlines()
+            if src_path.exists()
+            else ["unknown"] * len(texts)
+        )
         if len(sources) != len(texts):
             raise SystemExit(
                 f"{language}: {len(texts)} test lines but {len(sources)} source tags - "
                 "the sidecar and the text have gone out of step, and a per-source "
                 "accuracy computed from them would attribute rows to the wrong source"
             )
-        rows += [(language, s.replace("\t", "|"), t)
-                 for s, t in zip(sources, texts) if t.strip()]
+        rows += [
+            (language, s.replace("\t", "|"), t)
+            for s, t in zip(sources, texts, strict=False)
+            if t.strip()
+        ]
     return rows
 
 
@@ -116,11 +126,9 @@ def score(rows: list[tuple[str, str, str]], predict) -> dict:
         "overall": wilson(total_right, total),
         "overall_real_rows_only": wilson(real_right, real_total),
         "per_language": {k: wilson(v[0], v[1]) for k, v in per_language.items()},
-        "per_language_real_rows_only": {k: wilson(v[0], v[1])
-                                        for k, v in real_only.items()},
+        "per_language_real_rows_only": {k: wilson(v[0], v[1]) for k, v in real_only.items()},
         "per_kind": {k: wilson(v[0], v[1]) for k, v in sorted(per_kind.items())},
-        "per_source": {f"{k[0]}|{k[1]}": wilson(v[0], v[1])
-                       for k, v in sorted(per_source.items())},
+        "per_source": {f"{k[0]}|{k[1]}": wilson(v[0], v[1]) for k, v in sorted(per_source.items())},
         "confusions": {k: dict(v.most_common(4)) for k, v in confusions.items()},
     }
 
@@ -162,26 +170,32 @@ def predictor(model_dir: Path | None):
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--model", type=Path, default=None,
-                    help="a model directory; omit for the shipped model")
+    ap.add_argument(
+        "--model", type=Path, default=None, help="a model directory; omit for the shipped model"
+    )
     ap.add_argument("--label", default="shipped")
     ap.add_argument("--out", type=Path, default=OUT)
-    ap.add_argument("--split", type=Path, default=SPLIT,
-                    help="the test split directory (default data/multisource/test)")
+    ap.add_argument(
+        "--split",
+        type=Path,
+        default=SPLIT,
+        help="the test split directory (default data/multisource/test)",
+    )
     args = ap.parse_args()
 
     rows = load_split(args.split)
     sources = {s for _, s, _ in rows}
-    print(f"{len(rows):,} test row(s), {len(sources)} distinct source(s), "
-          f"model: {args.label}\n")
+    print(f"{len(rows):,} test row(s), {len(sources)} distinct source(s), model: {args.label}\n")
 
     result = score(rows, predictor(args.model))
     o = result["overall"]
     print(f"overall {o['rate']:.4f} [{o['lo']:.4f}, {o['hi']:.4f}] over {o['n']:,}")
     r = result["overall_real_rows_only"]
     if r and r["n"] != o["n"]:
-        print(f"real rows only {r['rate']:.4f} [{r['lo']:.4f}, {r['hi']:.4f}] over "
-              f"{r['n']:,}  <- the figure the synthetic question is decided on")
+        print(
+            f"real rows only {r['rate']:.4f} [{r['lo']:.4f}, {r['hi']:.4f}] over "
+            f"{r['n']:,}  <- the figure the synthetic question is decided on"
+        )
     for kind, krow in result["per_kind"].items():
         print(f"  {kind:11}{krow['rate']:>9.4f} over {krow['n']:>7,}")
     print()
@@ -190,22 +204,25 @@ def main() -> int:
         row = result["per_language"].get(language)
         if not row:
             continue
-        mine = {k.split("|")[1]: v for k, v in result["per_source"].items()
-                if k.startswith(language + "|")}
+        mine = {
+            k.split("|")[1]: v
+            for k, v in result["per_source"].items()
+            if k.startswith(language + "|")
+        }
         spread = ""
         if len(mine) > 1:
             lo = min(mine.items(), key=lambda kv: kv[1]["rate"])
             hi = max(mine.items(), key=lambda kv: kv[1]["rate"])
-            spread = (f"{lo[1]['rate']:.3f} ({lo[0]}, n={lo[1]['n']}) .. "
-                      f"{hi[1]['rate']:.3f} ({hi[0]})")
+            spread = (
+                f"{lo[1]['rate']:.3f} ({lo[0]}, n={lo[1]['n']}) .. {hi[1]['rate']:.3f} ({hi[0]})"
+            )
         else:
             spread = f"one source only ({next(iter(mine), '-')})"
         real = result["per_language_real_rows_only"].get(language)
         real_cell = "        —" if not real else f"{real['rate']:>11.4f}"
         print(f"  {language:6}{row['n']:>7}{row['rate']:>11.4f}{real_cell}   {spread}")
 
-    payload = {"model": args.label, "test_rows": len(rows),
-               "sources": sorted(sources), **result}
+    payload = {"model": args.label, "test_rows": len(rows), "sources": sorted(sources), **result}
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(payload, indent=1), encoding="utf-8")
     print(f"\nwritten to {args.out.name}")

@@ -60,10 +60,10 @@ SOURCES = {
 }
 REJECTED = {
     "azb": "OPUS Tanzil `az` is 100% Latin script - Azerbaijani, not South Azerbaijani "
-           "in Perso-Arabic. No Perso-Arabic source found.",
+    "in Perso-Arabic. No Perso-Arabic source found.",
     "ks": "OPUS GNOME `ks` is 98% Devanagari - Kashmiri in Devanagari, not the "
-          "Perso-Arabic orthography used here. Tatoeba's 210 sentences remain the only "
-          "out-of-domain Kashmiri.",
+    "Perso-Arabic orthography used here. Tatoeba's 210 sentences remain the only "
+    "out-of-domain Kashmiri.",
     "pnb": "No source found beyond Tatoeba's 1.3 KB.",
     "skr": "No source found beyond Tatoeba's 2.0 KB.",
 }
@@ -78,8 +78,13 @@ def wilson(k: int, n: int, z: float = 1.96) -> dict | None:
     d = 1 + z * z / n
     c = (p + z * z / (2 * n)) / d
     h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return {"rate": round(p, 4), "lo": round(max(0.0, c - h), 4),
-            "hi": round(min(1.0, c + h), 4), "n": n, "correct": k}
+    return {
+        "rate": round(p, 4),
+        "lo": round(max(0.0, c - h), 4),
+        "hi": round(min(1.0, c + h), 4),
+        "n": n,
+        "correct": k,
+    }
 
 
 def arabic_share(text: str) -> float:
@@ -127,8 +132,10 @@ def main() -> int:
 
     from urdunlp.langid import identify_language  # noqa: PLC0415
 
-    print(f"  {'lang':6}{'source':22}{'n':>6}{'arabic':>8}  {'accuracy':>10}  "
-          f"{'95% interval':>18}   confusions")
+    print(
+        f"  {'lang':6}{'source':22}{'n':>6}{'arabic':>8}  {'accuracy':>10}  "
+        f"{'95% interval':>18}   confusions"
+    )
     results = {}
     for ours, (corpus, code, what) in SOURCES.items():
         path = RAW / f"{corpus}-{code}.txt.gz"
@@ -138,11 +145,14 @@ def main() -> int:
         texts = lines(path)
         share = arabic_share(" ".join(texts[:200]))
         if share < 0.5:
-            results[ours] = {"available": False,
-                             "why": f"{corpus} {code} is not Perso-Arabic "
-                                    f"({share:.0%} Arabic-range characters)"}
-            print(f"  {ours:6}{corpus + ' ' + code:22}{len(texts):>6}{share:>7.0%}   "
-                  f"REJECTED: wrong script")
+            results[ours] = {
+                "available": False,
+                "why": f"{corpus} {code} is not Perso-Arabic ({share:.0%} Arabic-range characters)",
+            }
+            print(
+                f"  {ours:6}{corpus + ' ' + code:22}{len(texts):>6}{share:>7.0%}   "
+                f"REJECTED: wrong script"
+            )
             continue
         got = [identify_language(t).language for t in texts]
         right = sum(1 for g in got if g == ours)
@@ -150,20 +160,32 @@ def main() -> int:
         for g in got:
             if g != ours:
                 wrong[str(g)] = wrong.get(str(g), 0) + 1
-        top = ", ".join(f"{k} {v}" for k, v in
-                        sorted(wrong.items(), key=lambda kv: -kv[1])[:3]) or "—"
-        row = {"available": True, "source": f"OPUS {corpus} {code}", "what": what,
-               "n": len(texts), "correct": right, "arabic_share": round(share, 3),
-               "confusions": dict(sorted(wrong.items(), key=lambda kv: -kv[1]))}
+        top = (
+            ", ".join(f"{k} {v}" for k, v in sorted(wrong.items(), key=lambda kv: -kv[1])[:3])
+            or "—"
+        )
+        row = {
+            "available": True,
+            "source": f"OPUS {corpus} {code}",
+            "what": what,
+            "n": len(texts),
+            "correct": right,
+            "arabic_share": round(share, 3),
+            "confusions": dict(sorted(wrong.items(), key=lambda kv: -kv[1])),
+        }
         row["accuracy"] = wilson(right, len(texts)) if len(texts) >= MIN_FOR_A_RATE else None
         results[ours] = row
         if row["accuracy"]:
             w = row["accuracy"]
-            print(f"  {ours:6}{corpus + ' ' + code:22}{len(texts):>6}{share:>7.0%}  "
-                  f"{w['rate']:>10.4f}  [{w['lo']:.4f}, {w['hi']:.4f}]   {top}")
+            print(
+                f"  {ours:6}{corpus + ' ' + code:22}{len(texts):>6}{share:>7.0%}  "
+                f"{w['rate']:>10.4f}  [{w['lo']:.4f}, {w['hi']:.4f}]   {top}"
+            )
         else:
-            print(f"  {ours:6}{corpus + ' ' + code:22}{len(texts):>6}{share:>7.0%}  "
-                  f"{right:>4} right  {'rate withheld':>18}   {top}")
+            print(
+                f"  {ours:6}{corpus + ' ' + code:22}{len(texts):>6}{share:>7.0%}  "
+                f"{right:>4} right  {'rate withheld':>18}   {top}"
+            )
 
     # --- the adjudication -----------------------------------------------------
     verdict = None
@@ -179,28 +201,38 @@ def main() -> int:
             "reading": (
                 "The model does not transfer: Urdu is low on both independent "
                 "out-of-domain sources."
-                if mine["rate"] < 0.75 else
-                "Tatoeba's Urdu/Punjabi labels are implicated: Urdu holds on a source "
+                if mine["rate"] < 0.75
+                else "Tatoeba's Urdu/Punjabi labels are implicated: Urdu holds on a source "
                 "with professional labels, so the Tatoeba figure is partly a fact about "
                 "Tatoeba rather than only about the model."
             ),
         }
-        print(f"\nadjudication of the Urdu collapse:")
-        print(f"  Tatoeba (crowd-sourced) {theirs['rate']:.4f} "
-              f"[{theirs['lo']:.4f}, {theirs['hi']:.4f}]  n={theirs['n']:,}")
-        print(f"  Tanzil  (professional)  {mine['rate']:.4f} "
-              f"[{mine['lo']:.4f}, {mine['hi']:.4f}]  n={mine['n']:,}")
+        print("\nadjudication of the Urdu collapse:")
+        print(
+            f"  Tatoeba (crowd-sourced) {theirs['rate']:.4f} "
+            f"[{theirs['lo']:.4f}, {theirs['hi']:.4f}]  n={theirs['n']:,}"
+        )
+        print(
+            f"  Tanzil  (professional)  {mine['rate']:.4f} "
+            f"[{mine['lo']:.4f}, {mine['hi']:.4f}]  n={mine['n']:,}"
+        )
         print(f"  -> {verdict['reading']}")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({
-        "sources": {k: f"OPUS {v[0]} {v[1]} ({v[2]})" for k, v in SOURCES.items()},
-        "rejected_on_script_or_absence": REJECTED,
-        "cap_per_language": CAP,
-        "min_n_for_a_rate": MIN_FOR_A_RATE,
-        "per_language": results,
-        "urdu_adjudication": verdict,
-    }, indent=1), encoding="utf-8")
+    OUT.write_text(
+        json.dumps(
+            {
+                "sources": {k: f"OPUS {v[0]} {v[1]} ({v[2]})" for k, v in SOURCES.items()},
+                "rejected_on_script_or_absence": REJECTED,
+                "cap_per_language": CAP,
+                "min_n_for_a_rate": MIN_FOR_A_RATE,
+                "per_language": results,
+                "urdu_adjudication": verdict,
+            },
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
     print(f"\nwritten to {OUT.name}")
     return 0
 

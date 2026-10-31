@@ -44,9 +44,9 @@ def gather(language: str, directories: list[Path]) -> dict[str, tuple[str, list[
         if not directory.is_dir():
             continue
         for path in sorted(directory.glob(f"{language}.*.txt")):
-            source = path.name[len(language) + 1: -len(".txt")]
-            lines = [l for l in path.read_text(encoding="utf-8",
-                                               errors="replace").splitlines() if l.strip()]
+            source = path.name[len(language) + 1 : -len(".txt")]
+            text = path.read_text(encoding="utf-8", errors="replace")
+            lines = [line for line in text.splitlines() if line.strip()]
             if len(lines) >= 20:
                 out[source] = (kind_of(path.name), lines)
     return out
@@ -55,14 +55,21 @@ def gather(language: str, directories: list[Path]) -> dict[str, tuple[str, list[
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", type=Path, default=ROOT / "data" / "splits")
-    ap.add_argument("--no-synthetic", action="store_true",
-                    help="build the splits from real and segmented rows only, so the "
-                         "two training sets differ in exactly one thing")
+    ap.add_argument(
+        "--no-synthetic",
+        action="store_true",
+        help="build the splits from real and segmented rows only, so the "
+        "two training sets differ in exactly one thing",
+    )
     args = ap.parse_args()
 
     directories = [ROOT / "data" / "corpus", ROOT / "data" / "synthetic"]
-    report: dict = {"seed": SEED, "split": list(SPLIT),
-                    "synthetic_included": not args.no_synthetic, "languages": {}}
+    report: dict = {
+        "seed": SEED,
+        "split": list(SPLIT),
+        "synthetic_included": not args.no_synthetic,
+        "languages": {},
+    }
 
     for language in LANGUAGES:
         sources = gather(language, directories)
@@ -70,8 +77,7 @@ def main() -> int:
             sources = {k: v for k, v in sources.items() if v[0] != "synthetic"}
         if not sources:
             continue
-        chunks: dict[str, dict[str, list[tuple[str, str]]]] = {
-            "train": {}, "val": {}, "test": {}}
+        chunks: dict[str, dict[str, list[tuple[str, str]]]] = {"train": {}, "val": {}, "test": {}}
         for source, (kind, lines) in sources.items():
             pool = list(lines)
             # Seeded per (language, source), not from one generator walked across the
@@ -84,15 +90,16 @@ def main() -> int:
             random.Random(f"{SEED}|{language}|{source}").shuffle(pool)
             n = len(pool)
             a, b = int(SPLIT[0] * n), int(SPLIT[0] * n) + int(SPLIT[1] * n)
-            for part, rows in (("train", pool[:a]), ("val", pool[a:b]),
-                               ("test", pool[b:])):
+            for part, rows in (("train", pool[:a]), ("val", pool[a:b]), ("test", pool[b:])):
                 chunks[part][source] = [(kind, text) for text in rows]
 
         for part in ("train", "val", "test"):
             directory = args.out / part
             directory.mkdir(parents=True, exist_ok=True)
-            with (directory / f"{language}.txt").open("w", encoding="utf-8") as text_fh, \
-                 (directory / f"{language}.src").open("w", encoding="utf-8") as src_fh:
+            with (
+                (directory / f"{language}.txt").open("w", encoding="utf-8") as text_fh,
+                (directory / f"{language}.src").open("w", encoding="utf-8") as src_fh,
+            ):
                 for source, rows in sorted(chunks[part].items()):
                     for kind, text in rows:
                         text_fh.write(text + "\n")
@@ -102,24 +109,32 @@ def main() -> int:
             part: {
                 "total": sum(len(v) for v in chunks[part].values()),
                 "real": sum(1 for v in chunks[part].values() for k, _ in v if k == "real"),
-                "segmented": sum(1 for v in chunks[part].values()
-                                 for k, _ in v if k == "segmented"),
-                "synthetic": sum(1 for v in chunks[part].values()
-                                 for k, _ in v if k == "synthetic"),
+                "segmented": sum(
+                    1 for v in chunks[part].values() for k, _ in v if k == "segmented"
+                ),
+                "synthetic": sum(
+                    1 for v in chunks[part].values() for k, _ in v if k == "synthetic"
+                ),
             }
             for part in ("train", "val", "test")
         }
         report["languages"][language] = {"sources": len(sources), "counts": counts}
-        print(f"  {language:5} {len(sources):>2} source(s)  "
-              f"train {counts['train']['total']:>7,}  "
-              f"val {counts['val']['total']:>6,}  "
-              f"test {counts['test']['total']:>6,}  "
-              f"(test: {counts['test']['real']:,} real, "
-              f"{counts['test']['segmented']:,} segmented, "
-              f"{counts['test']['synthetic']:,} synthetic)")
+        print(
+            f"  {language:5} {len(sources):>2} source(s)  "
+            f"train {counts['train']['total']:>7,}  "
+            f"val {counts['val']['total']:>6,}  "
+            f"test {counts['test']['total']:>6,}  "
+            f"(test: {counts['test']['real']:,} real, "
+            f"{counts['test']['segmented']:,} segmented, "
+            f"{counts['test']['synthetic']:,} synthetic)"
+        )
 
-    path = ROOT / "research" / "results" / (
-        "splits_no_synthetic.json" if args.no_synthetic else "splits.json")
+    path = (
+        ROOT
+        / "research"
+        / "results"
+        / ("splits_no_synthetic.json" if args.no_synthetic else "splits.json")
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, indent=1), encoding="utf-8")
     print(f"\nwritten to {args.out} and {path.name}")

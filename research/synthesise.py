@@ -66,6 +66,8 @@ def arabic_word(word: str) -> bool:
     if not letters:
         return False
     return sum(1 for c in letters if ARABIC.match(c)) / len(letters) >= 0.5
+
+
 # Diacritics that are routinely omitted in real writing, so dropping one produces a
 # spelling a reader would accept rather than a corruption.
 DIACRITICS = "ًٌٍَُِّْٰٓٔ"
@@ -116,7 +118,7 @@ def bigrams(lines: list[str]) -> dict[str, list[str]]:
     following: dict[str, list[str]] = {}
     for line in lines:
         words = [w for w in line.split() if len(w) >= 2 and arabic_word(w)]
-        for first, second in zip(words, words[1:]):
+        for first, second in zip(words, words[1:], strict=False):
             following.setdefault(first, []).append(second)
     return following
 
@@ -170,11 +172,11 @@ def make_noise(lines, want, rng, seen) -> list[str]:
             kind = rng.random()
             i = rng.randrange(len(chars))
             if kind < 0.4 and chars[i] in DIACRITICS:
-                chars.pop(i)                       # a dropped diacritic
+                chars.pop(i)  # a dropped diacritic
             elif kind < 0.7 and i + 1 < len(chars):
-                chars[i], chars[i + 1] = chars[i + 1], chars[i]   # a transposition
+                chars[i], chars[i + 1] = chars[i + 1], chars[i]  # a transposition
             else:
-                chars.insert(i, chars[i])          # a repeated character
+                chars.insert(i, chars[i])  # a repeated character
         line = " ".join("".join(chars).split())
         if acceptable(line, seen):
             seen.add(line)
@@ -185,49 +187,57 @@ def make_noise(lines, want, rng, seen) -> list[str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--languages", required=True)
-    ap.add_argument("--target", type=int, default=100_000,
-                    help="total lines wanted per language, real included")
+    ap.add_argument(
+        "--target", type=int, default=100_000, help="total lines wanted per language, real included"
+    )
     args = ap.parse_args()
     rng = random.Random(SEED)
     OUT.mkdir(parents=True, exist_ok=True)
 
-    report: dict = {"seed": SEED, "target": args.target, "languages": {},
-                    "generators": {
-                        "shuffle": "words resampled from this language's own corpus, "
-                                   "frequency-weighted",
-                        "bigram": "word pairs from the real corpus, chained",
-                        "noise": "real lines with dropped diacritics, transpositions and "
-                                 "repeated characters",
-                    },
-                    "nothing_authored": (
-                        "Every token in every synthetic line is a word attested in that "
-                        "language's real corpus. No sentence was written by the author or "
-                        "by a model."
-                    )}
+    report: dict = {
+        "seed": SEED,
+        "target": args.target,
+        "languages": {},
+        "generators": {
+            "shuffle": "words resampled from this language's own corpus, frequency-weighted",
+            "bigram": "word pairs from the real corpus, chained",
+            "noise": "real lines with dropped diacritics, transpositions and repeated characters",
+        },
+        "nothing_authored": (
+            "Every token in every synthetic line is a word attested in that "
+            "language's real corpus. No sentence was written by the author or "
+            "by a model."
+        ),
+    }
 
-    for language in [l.strip() for l in args.languages.split(",") if l.strip()]:
+    for language in [line.strip() for line in args.languages.split(",") if line.strip()]:
         lines = real_lines(language)
-        segmented = (CORPUS / f"{language}.segmented.txt")
-        segmented_n = (len(segmented.read_text(encoding="utf-8").splitlines())
-                       if segmented.exists() else 0)
+        segmented = CORPUS / f"{language}.segmented.txt"
+        segmented_n = (
+            len(segmented.read_text(encoding="utf-8").splitlines()) if segmented.exists() else 0
+        )
         have = len(lines) + segmented_n
         want = max(0, args.target - have)
-        print(f"\n{language}: {len(lines):,} real + {segmented_n:,} segmented = "
-              f"{have:,}; need {want:,}")
+        print(
+            f"\n{language}: {len(lines):,} real + {segmented_n:,} segmented = "
+            f"{have:,}; need {want:,}"
+        )
         if not lines:
             print("    no real text, nothing to resample from")
             continue
         if want == 0:
             print("    already at target")
-            report["languages"][language] = {"real": len(lines),
-                                             "segmented": segmented_n, "synthetic": 0}
+            report["languages"][language] = {
+                "real": len(lines),
+                "segmented": segmented_n,
+                "synthetic": 0,
+            }
             continue
 
         words, weights = vocabulary(lines)
         shape = lengths(lines)
         following = bigrams(lines)
-        print(f"    vocabulary {len(words):,} word(s), "
-              f"{len(following):,} word(s) with a successor")
+        print(f"    vocabulary {len(words):,} word(s), {len(following):,} word(s) with a successor")
 
         seen = set(lines)
         share = want // 3
@@ -239,7 +249,8 @@ def main() -> int:
         for kind, texts in made.items():
             if texts:
                 (OUT / f"{language}.synthetic-{kind}.txt").write_text(
-                    "\n".join(texts) + "\n", encoding="utf-8")
+                    "\n".join(texts) + "\n", encoding="utf-8"
+                )
                 print(f"    {kind:10}{len(texts):>9,}")
         total_synthetic = sum(len(v) for v in made.values())
         report["languages"][language] = {
@@ -252,16 +263,19 @@ def main() -> int:
             "meets_target": have + total_synthetic >= args.target,
         }
         row = report["languages"][language]
-        print(f"    {'TOTAL':10}{row['total']:>9,}"
-              f"{'' if row['meets_target'] else '   still short'}")
+        print(
+            f"    {'TOTAL':10}{row['total']:>9,}{'' if row['meets_target'] else '   still short'}"
+        )
 
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text(json.dumps(report, indent=1), encoding="utf-8")
     print(f"\nwritten to {OUT} and {REPORT.name}")
-    print("\nWhether this helps is measured, not assumed: these rows get their own "
-          "80/10/10 split and\nevaluate_multisource.py reports accuracy on REAL test "
-          "rows separately. If real-text accuracy\ndoes not improve, the data should be "
-          "dropped and that is the result.")
+    print(
+        "\nWhether this helps is measured, not assumed: these rows get their own "
+        "80/10/10 split and\nevaluate_multisource.py reports accuracy on REAL test "
+        "rows separately. If real-text accuracy\ndoes not improve, the data should be "
+        "dropped and that is the result."
+    )
     return 0
 
 

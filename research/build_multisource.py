@@ -47,17 +47,70 @@ SEED = 20261031
 # corpora carry Sorani under `ku`. The sweep probed both codes per language, so the
 # availability it recorded is the availability that exists.
 SOURCES: dict[str, list[tuple[str, str]]] = {
-    "ur": [("NLLB", "ur"), ("CCMatrix", "ur"), ("CCAligned", "ur"), ("MultiCCAligned", "ur"), ("XLEnt", "ur"), ("Tanzil", "ur"), ("TED2020", "ur"), ("Mozilla-I10n", "ur")],
+    "ur": [
+        ("NLLB", "ur"),
+        ("CCMatrix", "ur"),
+        ("CCAligned", "ur"),
+        ("MultiCCAligned", "ur"),
+        ("XLEnt", "ur"),
+        ("Tanzil", "ur"),
+        ("TED2020", "ur"),
+        ("Mozilla-I10n", "ur"),
+    ],
     "pnb": [],
     "skr": [],
     "sd": [("NLLB", "sd"), ("CCMatrix", "sd"), ("XLEnt", "sd"), ("Tanzil", "sd")],
-    "ps": [("NLLB", "ps"), ("CCAligned", "ps"), ("MultiCCAligned", "ps"), ("XLEnt", "ps"), ("TED2020", "ps")],
+    "ps": [
+        ("NLLB", "ps"),
+        ("CCAligned", "ps"),
+        ("MultiCCAligned", "ps"),
+        ("XLEnt", "ps"),
+        ("TED2020", "ps"),
+    ],
     "ks": [("Mozilla-I10n", "ks"), ("GNOME", "ks")],
-    "fa": [("CCMatrix", "fa"), ("NLLB", "fa"), ("CCAligned", "fa"), ("MultiCCAligned", "fa"), ("XLEnt", "fa"), ("TED2020", "fa"), ("Tanzil", "fa"), ("infopankki", "fa"), ("Mozilla-I10n", "fa"), ("GNOME", "fa")],
-    "ar": [("NLLB", "ar"), ("CCMatrix", "ar"), ("CCAligned", "ar"), ("MultiCCAligned", "ar"), ("XLEnt", "ar"), ("TED2020", "ar"), ("bible-uedin", "ar"), ("Tanzil", "ar"), ("infopankki", "ar"), ("Mozilla-I10n", "ar"), ("GNOME", "ar")],
-    "ckb": [("CCAligned", "ku"), ("MultiCCAligned", "ku"), ("TED2020", "ku"), ("Tanzil", "ku"), ("Mozilla-I10n", "ckb")],
+    "fa": [
+        ("CCMatrix", "fa"),
+        ("NLLB", "fa"),
+        ("CCAligned", "fa"),
+        ("MultiCCAligned", "fa"),
+        ("XLEnt", "fa"),
+        ("TED2020", "fa"),
+        ("Tanzil", "fa"),
+        ("infopankki", "fa"),
+        ("Mozilla-I10n", "fa"),
+        ("GNOME", "fa"),
+    ],
+    "ar": [
+        ("NLLB", "ar"),
+        ("CCMatrix", "ar"),
+        ("CCAligned", "ar"),
+        ("MultiCCAligned", "ar"),
+        ("XLEnt", "ar"),
+        ("TED2020", "ar"),
+        ("bible-uedin", "ar"),
+        ("Tanzil", "ar"),
+        ("infopankki", "ar"),
+        ("Mozilla-I10n", "ar"),
+        ("GNOME", "ar"),
+    ],
+    "ckb": [
+        ("CCAligned", "ku"),
+        ("MultiCCAligned", "ku"),
+        ("TED2020", "ku"),
+        ("Tanzil", "ku"),
+        ("Mozilla-I10n", "ckb"),
+    ],
     "ug": [("NLLB", "ug"), ("Tanzil", "ug"), ("XLEnt", "ug"), ("TED2020", "ug"), ("GNOME", "ug")],
-    "azb": [("NLLB", "az"), ("CCMatrix", "az"), ("CCAligned", "az"), ("MultiCCAligned", "az"), ("XLEnt", "az"), ("Tanzil", "az"), ("TED2020", "az"), ("Mozilla-I10n", "az")],
+    "azb": [
+        ("NLLB", "az"),
+        ("CCMatrix", "az"),
+        ("CCAligned", "az"),
+        ("MultiCCAligned", "az"),
+        ("XLEnt", "az"),
+        ("Tanzil", "az"),
+        ("TED2020", "az"),
+        ("Mozilla-I10n", "az"),
+    ],
 }
 # Sources whose script must be checked before use - a Latin-script file for a
 # Perso-Arabic language would be separable by script alone and would flatter every
@@ -86,15 +139,17 @@ def stream(corpus: str, code: str, cap: int, min_chars: int = 40) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
     try:
-        with urllib.request.urlopen(url, timeout=180) as response:
-            with gzip.GzipFile(fileobj=response) as fh:
-                for raw in fh:
-                    text = raw.decode("utf-8", "replace").strip()
-                    if len(text) >= min_chars and text not in seen:
-                        seen.add(text)
-                        out.append(text)
-                        if len(out) >= cap:
-                            break
+        with (
+            urllib.request.urlopen(url, timeout=180) as response,
+            gzip.GzipFile(fileobj=response) as fh,
+        ):
+            for raw in fh:
+                text = raw.decode("utf-8", "replace").strip()
+                if len(text) >= min_chars and text not in seen:
+                    seen.add(text)
+                    out.append(text)
+                    if len(out) >= cap:
+                        break
     except (urllib.error.HTTPError, urllib.error.URLError, EOFError, OSError) as exc:
         print(f"      {corpus}:{code} failed: {type(exc).__name__}")
     return out
@@ -131,16 +186,16 @@ def split(texts: list[str], rng: random.Random) -> dict[str, list[str]]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--cap", type=int, default=60000,
-                    help="lines taken per source per language (60000)")
+    ap.add_argument(
+        "--cap", type=int, default=60000, help="lines taken per source per language (60000)"
+    )
     ap.add_argument("--languages", default=",".join(SOURCES))
     ap.add_argument("--out", type=Path, default=OUT)
     args = ap.parse_args()
-    wanted = [l.strip() for l in args.languages.split(",") if l.strip()]
+    wanted = [line.strip() for line in args.languages.split(",") if line.strip()]
     rng = random.Random(SEED)
 
-    report: dict = {"cap_per_source": args.cap, "split": list(SPLIT), "seed": SEED,
-                    "languages": {}}
+    report: dict = {"cap_per_source": args.cap, "split": list(SPLIT), "seed": SEED, "languages": {}}
     for language in wanted:
         print(f"\n{language}:")
         per_source: dict[str, dict[str, list[str]]] = {}
@@ -161,25 +216,22 @@ def main() -> int:
                     f"{share:.0%} Perso-Arabic characters - wrong script for this "
                     "language, so it would be separable by script alone"
                 )
-                print(f"    {corpus + ':' + code:18}{len(texts):>7,}  REJECTED "
-                      f"({share:.0%} Arabic)")
+                print(
+                    f"    {corpus + ':' + code:18}{len(texts):>7,}  REJECTED ({share:.0%} Arabic)"
+                )
                 continue
             per_source[f"{corpus}:{code}"] = split(texts, rng)
-            print(f"    {corpus + ':' + code:18}{len(texts):>7,}  "
-                  f"{share:.0%} Arabic")
+            print(f"    {corpus + ':' + code:18}{len(texts):>7,}  {share:.0%} Arabic")
 
-        total = sum(len(v["train"]) + len(v["val"]) + len(v["test"])
-                    for v in per_source.values())
+        total = sum(len(v["train"]) + len(v["val"]) + len(v["test"]) for v in per_source.values())
         report["languages"][language] = {
             "sources_used": sorted(per_source),
             "sources_rejected": rejected,
             "lines_total": total,
-            "per_source": {k: {s: len(v) for s, v in d.items()}
-                           for k, d in per_source.items()},
+            "per_source": {k: {s: len(v) for s, v in d.items()} for k, d in per_source.items()},
             "meets_50k": total >= 50_000,
         }
-        print(f"    {'total':18}{total:>7,}"
-              f"{'  (under 50,000)' if total < 50_000 else ''}")
+        print(f"    {'total':18}{total:>7,}{'  (under 50,000)' if total < 50_000 else ''}")
 
         # Written as one file per split per language, with a sidecar naming the source of
         # every line - so a per-source accuracy can be computed afterwards.
@@ -199,12 +251,13 @@ def main() -> int:
     print("\nsummary:")
     for language, row in report["languages"].items():
         mark = "" if row["meets_50k"] else "   SHORT"
-        print(f"  {language:5} {len(row['sources_used'])} source(s)  "
-              f"{row['lines_total']:>7,} line(s){mark}")
-    short = [l for l, r in report["languages"].items() if not r["meets_50k"]]
+        print(
+            f"  {language:5} {len(row['sources_used'])} source(s)  "
+            f"{row['lines_total']:>7,} line(s){mark}"
+        )
+    short = [line for line, r in report["languages"].items() if not r["meets_50k"]]
     if short:
-        print(f"\n  {len(short)} language(s) under 50,000 from real sources: "
-              f"{', '.join(short)}")
+        print(f"\n  {len(short)} language(s) under 50,000 from real sources: {', '.join(short)}")
     print(f"\nwritten to {args.out} and {REPORT.name}")
     return 0
 

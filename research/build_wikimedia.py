@@ -35,24 +35,25 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / ".baselines" / "wikimedia"
 OUT = ROOT / "data" / "wikimedia"
 REPORT = ROOT / "research" / "results" / "wikimedia.json"
-UA = {"User-Agent": "urdunlp-research/0.1 (language-ID corpus study; "
-                    "github.com/hammasbuilds/urdunlp)"}
+UA = {
+    "User-Agent": "urdunlp-research/0.1 (language-ID corpus study; github.com/hammasbuilds/urdunlp)"
+}
 
 PROJECTS = ("wiki", "wiktionary", "wikisource", "wikibooks")
 # Wikitext constructs to remove before paragraphs are taken. Order matters: templates and
 # tables nest, so they go first.
 STRIP = [
-    (re.compile(r"\{\{[^{}]*\}\}"), " "),          # templates, innermost first
-    (re.compile(r"\{\|.*?\|\}", re.S), " "),       # tables
+    (re.compile(r"\{\{[^{}]*\}\}"), " "),  # templates, innermost first
+    (re.compile(r"\{\|.*?\|\}", re.S), " "),  # tables
     (re.compile(r"<ref[^>]*>.*?</ref>", re.S), " "),
     (re.compile(r"<ref[^>]*/>"), " "),
-    (re.compile(r"<[^>]+>"), " "),                 # any remaining html
+    (re.compile(r"<[^>]+>"), " "),  # any remaining html
     (re.compile(r"\[\[(?:[^\]|]*\|)?([^\]]*)\]\]"), r"\1"),  # links, keep the label
     (re.compile(r"\[https?://\S+\s*([^\]]*)\]"), r"\1"),
     (re.compile(r"https?://\S+"), " "),
-    (re.compile(r"^[*:#;]+", re.M), " "),          # list and indent markers
-    (re.compile(r"'{2,}"), ""),                     # bold and italic
-    (re.compile(r"^=+.*?=+$", re.M), " "),         # headings
+    (re.compile(r"^[*:#;]+", re.M), " "),  # list and indent markers
+    (re.compile(r"'{2,}"), ""),  # bold and italic
+    (re.compile(r"^=+.*?=+$", re.M), " "),  # headings
     (re.compile(r"&[a-z]+;|&#\d+;"), " "),
 ]
 TEXT = re.compile(r"<text\b[^>]*>(.*?)</text>", re.S)
@@ -116,26 +117,32 @@ def paragraphs(path: Path, cap: int) -> list[str]:
                     # 20,000 Kashmiri lines still carrying `{{`, `[[`, a tag or a URL -
                     # 2.6% that would teach the model wikitext instead of the language.
                     # Rejecting is safe; a cleverer stripper would keep mangling text.
-                    if any(bad in text for bad in ("{{", "}}", "[[", "]]", "<", ">",
-                                                   "http", "|", "=")):
+                    if any(
+                        bad in text for bad in ("{{", "}}", "[[", "]]", "<", ">", "http", "|", "=")
+                    ):
                         continue
                     seen.add(text)
                     out.append(text)
                     if len(out) >= cap:
                         return out
-            buffer = buffer[buffer.rfind("</text>") + 7:] if "</text>" in buffer else ""
+            buffer = buffer[buffer.rfind("</text>") + 7 :] if "</text>" in buffer else ""
     return out
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--languages", default="pnb,skr,ks,azb")
-    ap.add_argument("--cap", type=int, default=60000,
-                    help="paragraphs per project per language (60000)")
+    ap.add_argument(
+        "--cap", type=int, default=60000, help="paragraphs per project per language (60000)"
+    )
     args = ap.parse_args()
 
-    report: dict = {"cap_per_project": args.cap, "min_chars": MIN_CHARS,
-                    "min_arabic_share": 0.6, "languages": {}}
+    report: dict = {
+        "cap_per_project": args.cap,
+        "min_chars": MIN_CHARS,
+        "min_arabic_share": 0.6,
+        "languages": {},
+    }
     OUT.mkdir(parents=True, exist_ok=True)
     for code in [c.strip() for c in args.languages.split(",") if c.strip()]:
         print(f"\n{code}:")
@@ -164,8 +171,10 @@ def main() -> int:
     REPORT.write_text(json.dumps(report, indent=1), encoding="utf-8")
     print("\nsummary:")
     for code, row in report["languages"].items():
-        print(f"  {code:5} {row['total']:>7,} from {len(row['projects'])} project(s): "
-              f"{', '.join(row['projects'])}")
+        print(
+            f"  {code:5} {row['total']:>7,} from {len(row['projects'])} project(s): "
+            f"{', '.join(row['projects'])}"
+        )
     print(f"\nwritten to {OUT} and {REPORT.name}")
     return 0
 

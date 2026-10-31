@@ -48,8 +48,12 @@ jobs:
           python-version: ${{ matrix.python }}
       # The same gate as ci.yml, with the same pinned versions.
       - run: pip install pytest==9.1.1 ruff==0.16.7 mypy==2.3.1
-      - run: ruff check src tests scripts demo.py
-      - run: ruff format --check src tests scripts demo.py
+      # research/ produces the paper's numbers and figures, so it is linted too.
+      # It was outside these paths and had 43 errors, including nine bare `l` loop
+      # variables and nineteen zips with no strict=, in the scripts that build the
+      # corpus the whole comparison runs on.
+      - run: ruff check src tests scripts research demo.py
+      - run: ruff format --check src tests scripts research demo.py
       - run: mypy --strict src/urdunlp
       - run: pip install -e .
       - run: pytest -q

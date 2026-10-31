@@ -54,9 +54,9 @@ def write(name: str, payload: dict | list) -> Path:
 def main() -> int:
     per_item = metrics.load_predictions()
     comparison = metrics.load_comparison()
-    report = json.loads(
-        (ROOT / "data" / "langid_report_v5.json").read_text(encoding="utf-8")
-    )["identify_language"]
+    report = json.loads((ROOT / "data" / "langid_report_v5.json").read_text(encoding="utf-8"))[
+        "identify_language"
+    ]
 
     truth = per_item["truth"]
     labels = per_item["languages"]
@@ -77,8 +77,10 @@ def main() -> int:
     else:
         tools.remove("pali")
         print(f"  (no {PALI_PREDICTIONS.name}; run research/pali_baseline.py to add it)\n")
-    print(f"{len(truth):,} test items, {len(labels)} languages, "
-          f"{len(per_item['by_length'])} text lengths\n")
+    print(
+        f"{len(truth):,} test items, {len(labels)} languages, "
+        f"{len(per_item['by_length'])} text lengths\n"
+    )
 
     # --- tables ---------------------------------------------------------------
     scores = {}
@@ -89,10 +91,12 @@ def main() -> int:
         scored["bootstrap"] = metrics.bootstrap(truth, predicted, labels)
         scores[tool] = scored
         boot = scored["bootstrap"]["accuracy_95"]
-        print(f"  {tool:11} accuracy {scored['micro_accuracy']:.4f} "
-              f"[{boot['lo']:.4f}, {boot['hi']:.4f}]  "
-              f"macro-F1 {scored['macro_f1']:.4f} over {scored['macro_f1_over']} class(es)"
-              f"  covers {scored['coverage']['covered']}/{scored['coverage']['of']}")
+        print(
+            f"  {tool:11} accuracy {scored['micro_accuracy']:.4f} "
+            f"[{boot['lo']:.4f}, {boot['hi']:.4f}]  "
+            f"macro-F1 {scored['macro_f1']:.4f} over {scored['macro_f1_over']} class(es)"
+            f"  covers {scored['coverage']['covered']}/{scored['coverage']['of']}"
+        )
     write("per_class_whole", scores)
 
     # Paired tests: this tool against each baseline, on identical items.
@@ -100,8 +104,10 @@ def main() -> int:
     for tool in [t for t in tools if t != "urdunlp"]:
         pairs[f"urdunlp_vs_{tool}"] = metrics.mcnemar(truth, whole["urdunlp"], whole[tool])
         row = pairs[f"urdunlp_vs_{tool}"]
-        print(f"\n  McNemar urdunlp vs {tool}: urdunlp-only right {row['a_only']:,}, "
-              f"{tool}-only right {row['b_only']:,}, p = {show_p(row)}")
+        print(
+            f"\n  McNemar urdunlp vs {tool}: urdunlp-only right {row['a_only']:,}, "
+            f"{tool}-only right {row['b_only']:,}, p = {show_p(row)}"
+        )
     write("mcnemar_whole", pairs)
 
     # The same, restricted to the classes the baseline can name - the fair comparison.
@@ -115,15 +121,21 @@ def main() -> int:
         restricted[tool] = {
             "n": len(keep),
             "classes": sorted(known),
-            "urdunlp_accuracy": round(sum(1 for x, y in zip(t, a) if x == y) / len(keep), 4),
-            f"{tool}_accuracy": round(sum(1 for x, y in zip(t, b) if x == y) / len(keep), 4),
+            "urdunlp_accuracy": round(
+                sum(1 for x, y in zip(t, a, strict=False) if x == y) / len(keep), 4
+            ),
+            f"{tool}_accuracy": round(
+                sum(1 for x, y in zip(t, b, strict=False) if x == y) / len(keep), 4
+            ),
             "mcnemar": metrics.mcnemar(t, a, b),
         }
         row = restricted[tool]
-        print(f"  restricted to its {len(known)} label(s), n={row['n']:,}: "
-              f"urdunlp {row['urdunlp_accuracy']:.4f} vs "
-              f"{tool} {row[f'{tool}_accuracy']:.4f}, "
-              f"p = {show_p(row['mcnemar'])}")
+        print(
+            f"  restricted to its {len(known)} label(s), n={row['n']:,}: "
+            f"urdunlp {row['urdunlp_accuracy']:.4f} vs "
+            f"{tool} {row[f'{tool}_accuracy']:.4f}, "
+            f"p = {show_p(row['mcnemar'])}"
+        )
     write("restricted_whole", restricted)
 
     confusions = {tool: metrics.confusion(truth, whole[tool], labels) for tool in tools}
@@ -135,8 +147,7 @@ def main() -> int:
     order = ["ur", "pnb", "skr", "sd", "ps", "ks", "fa", "ar", "ckb", "ug", "azb"]
     assert set(order) == set(labels), (sorted(order), sorted(labels))
     per_language = {}
-    print("\nper-language F1 on whole paragraphs "
-          "(— = the system has no label for that language):")
+    print("\nper-language F1 on whole paragraphs (— = the system has no label for that language):")
     header = "  lang  support  " + "  ".join(f"{t:>11}" for t in tools)
     print(header)
     for code in order:
@@ -167,8 +178,9 @@ def main() -> int:
     print("\nfigures:")
     captions: dict[str, str] = {}
     made = [
-        figures.coverage_figure({t: scores[t]["coverage"] for t in tools
-                                 if t in ("urdunlp", "fasttext", "langdetect")}),
+        figures.coverage_figure(
+            {t: scores[t]["coverage"] for t in tools if t in ("urdunlp", "fasttext", "langdetect")}
+        ),
         figures.length_figure(comparison["by_length"]),
         figures.per_class_figure(scores),
         figures.misattribution_figure(
@@ -179,7 +191,7 @@ def main() -> int:
         figures.margin_figure(report["test_whole"]["accuracy_by_margin_decile"]),
         figures.selective_figure(report["test_whole"]["error_retention_by_margin"]),
     ]
-    for pdf, png, caption in made:
+    for pdf, _png, caption in made:
         captions[pdf.stem] = caption
         print(f"  {pdf.name:36} {caption[:88]}...")
     write("captions", captions)

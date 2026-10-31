@@ -22,9 +22,16 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-SPEC = importlib.util.spec_from_file_location(
-    "orthographic_audit", ROOT / "research" / "orthographic_audit.py"
-)
+# The file, before the spec. `spec_from_file_location` happily returns a spec for a path
+# that does not exist - it is `exec_module` that raises FileNotFoundError, during
+# collection, which fails the whole job rather than skipping this file. The guard below
+# used to test `SPEC is None`, a condition that cannot occur here, so it never fired:
+# CI's second job copies `tests/` alone next to an installed distribution, where
+# `research/` does not exist, and this module took the job down.
+SOURCE = ROOT / "research" / "orthographic_audit.py"
+if not SOURCE.is_file():
+    pytest.skip("research/ is not shipped with the tests", allow_module_level=True)
+SPEC = importlib.util.spec_from_file_location("orthographic_audit", SOURCE)
 if SPEC is None or SPEC.loader is None:  # pragma: no cover - layout changed
     pytest.skip("research/orthographic_audit.py is not present", allow_module_level=True)
 ortho = importlib.util.module_from_spec(SPEC)

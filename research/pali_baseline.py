@@ -71,7 +71,7 @@ def principled_mapping(model, splits: dict, languages: list[str]) -> dict:
     way scored its errors as correct. Identity first, and a derivation only where the
     identity label is genuinely absent.
     """
-    available = {l.replace("__label__", "") for l in model.get_labels()}
+    available = {line.replace("__label__", "") for line in model.get_labels()}
     mapping, how = {}, {}
     derived = derive_mapping(model, splits, languages)
     for code in languages:
@@ -113,21 +113,21 @@ def derive_mapping(model, splits: dict, languages: list[str]) -> dict:
             "runner_up": counts.most_common(2)[1] if len(counts) > 1 else None,
         }
     collisions = {
-        label: sorted(c for c, l in mapping.items() if l == label)
+        label: sorted(c for c, line in mapping.items() if line == label)
         for label in set(mapping.values())
-        if sum(1 for l in mapping.values() if l == label) > 1
+        if sum(1 for line in mapping.values() if line == label) > 1
     }
     return {"mapping": mapping, "evidence": evidence, "collisions": collisions}
 
 
 def main() -> int:
-    from measure_langid import LANGUAGES, wiki_splits  # noqa: PLC0415
+    from measure_langid import wiki_splits  # noqa: PLC0415
 
     splits = wiki_splits(ROOT / "data" / "wiki_large")
     languages = sorted(splits)
     model_name = "merged"  # the only one whose labels span all eleven
     model = load(model_name)
-    labels_in_model = sorted(l.replace("__label__", "") for l in model.get_labels())
+    labels_in_model = sorted(line.replace("__label__", "") for line in model.get_labels())
     print(f"PALI LID_model_{model_name}: {len(labels_in_model)} labels\n")
 
     derived = principled_mapping(model, splits, languages)
@@ -165,15 +165,13 @@ def main() -> int:
         raw = predict(model, cut)
         # PALI's label back to our code, or the raw label when it is outside the mapping.
         got = [inverse.get(p, p) for p in raw]
-        right = sum(1 for g, t in zip(got, truth) if g == t)
+        right = sum(1 for g, t in zip(got, truth, strict=False) if g == t)
         per_language = {}
         for code in languages:
             idx = [i for i, t in enumerate(truth) if t == code]
-            per_language[code] = round(
-                sum(1 for i in idx if got[i] == code) / len(idx), 4
-            )
+            per_language[code] = round(sum(1 for i in idx if got[i] == code) / len(idx), 4)
         generous = [generous_inverse.get(p, p) for p in raw]
-        generous_right = sum(1 for g, t in zip(generous, truth) if g == t)
+        generous_right = sum(1 for g, t in zip(generous, truth, strict=False) if g == t)
         by_length[label] = {
             "accuracy": round(right / len(truth), 4),
             "accuracy_generous_mapping": round(generous_right / len(truth), 4),
@@ -182,10 +180,12 @@ def main() -> int:
             "predictions": got,
         }
         row = by_length[label]
-        print(f"  {label:10} accuracy {row['accuracy']:.4f}  "
-              f"(generous mapping {row['accuracy_generous_mapping']:.4f}, "
-              f"+{row['accuracy_generous_mapping'] - row['accuracy']:.4f} from crediting "
-              f"its own confusions)")
+        print(
+            f"  {label:10} accuracy {row['accuracy']:.4f}  "
+            f"(generous mapping {row['accuracy_generous_mapping']:.4f}, "
+            f"+{row['accuracy_generous_mapping'] - row['accuracy']:.4f} from crediting "
+            f"its own confusions)"
+        )
 
     payload = {
         "model": f"LID_model_{model_name}.ftz",
@@ -200,8 +200,9 @@ def main() -> int:
             "training data. The bias is in PALI's favour; a lead for this tool is "
             "therefore conservative and a lead for PALI cannot be read as clean."
         ),
-        "by_length": {k: {kk: vv for kk, vv in v.items() if kk != "predictions"}
-                      for k, v in by_length.items()},
+        "by_length": {
+            k: {kk: vv for kk, vv in v.items() if kk != "predictions"} for k, v in by_length.items()
+        },
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, indent=1), encoding="utf-8")
@@ -211,10 +212,14 @@ def main() -> int:
 
     path = ROOT / "research" / "results" / "pali_predictions.json.gz"
     with gzip.GzipFile(path, "wb", mtime=0) as fh:
-        fh.write(json.dumps({
-            "truth": truth,
-            "by_length": {k: v["predictions"] for k, v in by_length.items()},
-        }).encode("utf-8"))
+        fh.write(
+            json.dumps(
+                {
+                    "truth": truth,
+                    "by_length": {k: v["predictions"] for k, v in by_length.items()},
+                }
+            ).encode("utf-8")
+        )
     print(f"\nwritten to {OUT.name} and {path.name}")
     return 0
 

@@ -70,8 +70,12 @@ def wilson(k: int, n: int, z: float = 1.96) -> dict | None:
     d = 1 + z * z / n
     c = (p + z * z / (2 * n)) / d
     h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return {"rate": round(p, 4), "lo": round(max(0.0, c - h), 4),
-            "hi": round(min(1.0, c + h), 4), "n": n}
+    return {
+        "rate": round(p, 4),
+        "lo": round(max(0.0, c - h), 4),
+        "hi": round(min(1.0, c + h), 4),
+        "n": n,
+    }
 
 
 def main() -> int:
@@ -81,13 +85,10 @@ def main() -> int:
     langid._load = lambda name, _p=payload: _p  # noqa: SLF001
     langid._script_model.cache_clear()  # noqa: SLF001
 
-    texts = (ROOT / "data" / "splits" / "test" / "skr.txt").read_text(
-        encoding="utf-8").splitlines()
-    tags = (ROOT / "data" / "splits" / "test" / "skr.src").read_text(
-        encoding="utf-8").splitlines()
+    texts = (ROOT / "data" / "splits" / "test" / "skr.txt").read_text(encoding="utf-8").splitlines()
+    tags = (ROOT / "data" / "splits" / "test" / "skr.src").read_text(encoding="utf-8").splitlines()
 
-    buckets: dict[tuple[str, bool], list[int]] = collections.defaultdict(
-        lambda: [0, 0])
+    buckets: dict[tuple[str, bool], list[int]] = collections.defaultdict(lambda: [0, 0])
     narrow: dict[bool, list[int]] = collections.defaultdict(lambda: [0, 0])
     for text, tag in zip(texts, tags, strict=True):
         source = tag.split("\t")[-1]
@@ -100,8 +101,7 @@ def main() -> int:
         narrow[bool(EXCLUSIVE & chars)][1] += 1
 
     report: dict = {
-        "criterion": "line contains one of the Saraiki implosives " + "".join(
-            sorted(IMPLOSIVES)),
+        "criterion": "line contains one of the Saraiki implosives " + "".join(sorted(IMPLOSIVES)),
         "why_not_the_model": (
             "Filtering with the classifier would remove exactly the rows it gets wrong "
             "and inflate the result by construction. This criterion is orthographic and "
@@ -119,15 +119,13 @@ def main() -> int:
     for (source, marked), (right, total) in sorted(buckets.items()):
         row = wilson(right, total)
         report["per_source"][f"{source}|{'with' if marked else 'without'}"] = row
-        print(f"  {source:26}{'yes' if marked else 'no':>11}"
-              f"{row['rate']:>11.4f}{total:>9,}")
+        print(f"  {source:26}{'yes' if marked else 'no':>11}{row['rate']:>11.4f}{total:>9,}")
 
     with_imp = [v for (s, m), v in buckets.items() if m]
     without = [v for (s, m), v in buckets.items() if not m]
     a = wilson(sum(v[0] for v in with_imp), sum(v[1] for v in with_imp))
     b = wilson(sum(v[0] for v in without), sum(v[1] for v in without))
-    whole = wilson(sum(v[0] for v in buckets.values()),
-                   sum(v[1] for v in buckets.values()))
+    whole = wilson(sum(v[0] for v in buckets.values()), sum(v[1] for v in buckets.values()))
     report["with_implosive"] = a
     report["without_implosive"] = b
     report["whole"] = whole
@@ -141,18 +139,28 @@ def main() -> int:
         "by Sindhi text."
     )
 
-    print(f"\n  whole skr test split         {whole['rate']:.4f} "
-          f"[{whole['lo']:.4f}, {whole['hi']:.4f}]  n={whole['n']:,}")
-    print(f"  lines with an implosive      {a['rate']:.4f} "
-          f"[{a['lo']:.4f}, {a['hi']:.4f}]  n={a['n']:,}   <- upper bound")
-    print(f"  lines without one            {b['rate']:.4f} "
-          f"[{b['lo']:.4f}, {b['hi']:.4f}]  n={b['n']:,}")
+    print(
+        f"\n  whole skr test split         {whole['rate']:.4f} "
+        f"[{whole['lo']:.4f}, {whole['hi']:.4f}]  n={whole['n']:,}"
+    )
+    print(
+        f"  lines with an implosive      {a['rate']:.4f} "
+        f"[{a['lo']:.4f}, {a['hi']:.4f}]  n={a['n']:,}   <- upper bound"
+    )
+    print(
+        f"  lines without one            {b['rate']:.4f} "
+        f"[{b['lo']:.4f}, {b['hi']:.4f}]  n={b['n']:,}"
+    )
     e, f = report["with_exclusive_letter"], report["without_exclusive_letter"]
     print("\n  the narrower criterion - U+0759 alone, which no other language here writes:")
-    print(f"  lines with U+0759            {e['rate']:.4f} "
-          f"[{e['lo']:.4f}, {e['hi']:.4f}]  n={e['n']:,}")
-    print(f"  lines without it             {f['rate']:.4f} "
-          f"[{f['lo']:.4f}, {f['hi']:.4f}]  n={f['n']:,}")
+    print(
+        f"  lines with U+0759            {e['rate']:.4f} "
+        f"[{e['lo']:.4f}, {e['hi']:.4f}]  n={e['n']:,}"
+    )
+    print(
+        f"  lines without it             {f['rate']:.4f} "
+        f"[{f['lo']:.4f}, {f['hi']:.4f}]  n={f['n']:,}"
+    )
 
     out = ROOT / "research" / "results" / "skr_sensitivity.json"
     out.write_text(json.dumps(report, indent=1), encoding="utf-8")

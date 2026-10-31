@@ -46,8 +46,15 @@ OUT = ROOT / "research" / "results" / "out_of_domain.json"
 # under any code tried (pbu, pus, pbt / azb), and are recorded as absent rather than
 # silently dropped.
 TATOEBA = {
-    "ur": "urd", "pnb": "pnb", "skr": "skr", "sd": "snd", "ks": "kas",
-    "fa": "pes", "ar": "ara", "ckb": "ckb", "ug": "uig",
+    "ur": "urd",
+    "pnb": "pnb",
+    "skr": "skr",
+    "sd": "snd",
+    "ks": "kas",
+    "fa": "pes",
+    "ar": "ara",
+    "ckb": "ckb",
+    "ug": "uig",
 }
 ABSENT = {"ps": ("pbu", "pus", "pbt"), "azb": ("azb",)}
 # Below this, a per-language accuracy is reported as a count and not as a rate: a
@@ -62,8 +69,13 @@ def wilson(k: int, n: int, z: float = 1.96) -> dict | None:
     d = 1 + z * z / n
     centre = (p + z * z / (2 * n)) / d
     half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return {"rate": round(p, 4), "lo": round(max(0.0, centre - half), 4),
-            "hi": round(min(1.0, centre + half), 4), "n": n, "correct": k}
+    return {
+        "rate": round(p, 4),
+        "lo": round(max(0.0, centre - half), 4),
+        "hi": round(min(1.0, centre + half), 4),
+        "n": n,
+        "correct": k,
+    }
 
 
 def fetch() -> dict:
@@ -72,8 +84,10 @@ def fetch() -> dict:
     for ours, theirs in TATOEBA.items():
         path = RAW / f"{theirs}.tsv.bz2"
         if not path.exists() or path.stat().st_size == 0:
-            url = (f"https://downloads.tatoeba.org/exports/per_language/"
-                   f"{theirs}/{theirs}_sentences.tsv.bz2")
+            url = (
+                f"https://downloads.tatoeba.org/exports/per_language/"
+                f"{theirs}/{theirs}_sentences.tsv.bz2"
+            )
             try:
                 urllib.request.urlretrieve(url, path)
             except urllib.error.HTTPError as exc:
@@ -117,15 +131,21 @@ def main() -> int:
         if path.exists():
             corpus[ours] = sentences(path)
 
-    print(f"{sum(len(v) for v in corpus.values()):,} out-of-domain sentence(s) "
-          f"over {len(corpus)} of 11 language(s)\n")
-    print(f"  {'lang':6}{'n':>7}  {'accuracy':>10}  {'95% interval':>18}   what it answered instead")
+    print(
+        f"{sum(len(v) for v in corpus.values()):,} out-of-domain sentence(s) "
+        f"over {len(corpus)} of 11 language(s)\n"
+    )
+    print(
+        f"  {'lang':6}{'n':>7}  {'accuracy':>10}  {'95% interval':>18}   what it answered instead"
+    )
     results = {}
     for ours in ["ur", "pnb", "skr", "sd", "ps", "ks", "fa", "ar", "ckb", "ug", "azb"]:
         if ours not in corpus:
             print(f"  {ours:6}{'—':>7}  {'—':>10}  {'absent from Tatoeba':>18}")
-            results[ours] = {"available": False,
-                             "why": f"absent from Tatoeba (tried {ABSENT.get(ours, ())})"}
+            results[ours] = {
+                "available": False,
+                "why": f"absent from Tatoeba (tried {ABSENT.get(ours, ())})",
+            }
             continue
         texts = corpus[ours]
         got = [identify_language(t).language for t in texts]
@@ -134,15 +154,23 @@ def main() -> int:
         for g in got:
             if g != ours:
                 wrong[g] = wrong.get(g, 0) + 1
-        top = ", ".join(f"{k} {v}" for k, v in
-                        sorted(wrong.items(), key=lambda kv: -kv[1])[:3]) or "—"
-        row = {"available": True, "n": len(texts), "correct": right,
-               "confusions": dict(sorted(wrong.items(), key=lambda kv: -kv[1]))}
+        top = (
+            ", ".join(f"{k} {v}" for k, v in sorted(wrong.items(), key=lambda kv: -kv[1])[:3])
+            or "—"
+        )
+        row = {
+            "available": True,
+            "n": len(texts),
+            "correct": right,
+            "confusions": dict(sorted(wrong.items(), key=lambda kv: -kv[1])),
+        }
         if len(texts) >= MIN_FOR_A_RATE:
             row["accuracy"] = wilson(right, len(texts))
             w = row["accuracy"]
-            print(f"  {ours:6}{len(texts):>7}  {w['rate']:>10.4f}  "
-                  f"[{w['lo']:.4f}, {w['hi']:.4f}]   {top}")
+            print(
+                f"  {ours:6}{len(texts):>7}  {w['rate']:>10.4f}  "
+                f"[{w['lo']:.4f}, {w['hi']:.4f}]   {top}"
+            )
         else:
             row["accuracy"] = None
             row["withheld"] = (
@@ -150,8 +178,7 @@ def main() -> int:
                 "many has an interval wider than the range it lives in, so the count is "
                 "reported and the rate is not"
             )
-            print(f"  {ours:6}{len(texts):>7}  {right:>4} right  "
-                  f"{'rate withheld':>18}   {top}")
+            print(f"  {ours:6}{len(texts):>7}  {right:>4} right  {'rate withheld':>18}   {top}")
         results[ours] = row
 
     scored = [r for r in results.values() if r.get("accuracy")]
@@ -177,9 +204,11 @@ def main() -> int:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, indent=1), encoding="utf-8")
     print(f"\n  {len(scored)} of 11 language(s) have enough sentences for a rate")
-    print(f"  overall over the {overall_n:,} available: "
-          f"{payload['overall']['rate']:.4f} "
-          f"[{payload['overall']['lo']:.4f}, {payload['overall']['hi']:.4f}]")
+    print(
+        f"  overall over the {overall_n:,} available: "
+        f"{payload['overall']['rate']:.4f} "
+        f"[{payload['overall']['lo']:.4f}, {payload['overall']['hi']:.4f}]"
+    )
     print(f"\nwritten to {OUT.name}")
     return 0
 

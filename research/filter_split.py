@@ -32,11 +32,15 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--split", type=Path, default=ROOT / "data" / "splits")
     ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--match", required=True,
-                    help="keep only rows whose source tag contains this substring")
-    ap.add_argument("--part", default="train",
-                    help="which split to filter (default train; val and test are left "
-                         "alone on purpose, so every model is scored on identical rows)")
+    ap.add_argument(
+        "--match", required=True, help="keep only rows whose source tag contains this substring"
+    )
+    ap.add_argument(
+        "--part",
+        default="train",
+        help="which split to filter (default train; val and test are left "
+        "alone on purpose, so every model is scored on identical rows)",
+    )
     args = ap.parse_args()
 
     out = args.out / args.part
@@ -56,20 +60,24 @@ def main() -> int:
                 f"{language}: {len(texts)} lines but {len(tags)} tags - the sidecar and "
                 f"the text have gone out of step and the filter would keep wrong rows"
             )
-        pairs = [(t, g) for t, g in zip(texts, tags) if args.match in g]
+        pairs = [(t, g) for t, g in zip(texts, tags, strict=False) if args.match in g]
         sources = sorted({g.split("\t", 1)[-1] for _, g in pairs})
 
         # A language with no matching source gets an empty file rather than a missing
         # one, and says so. Silently skipping it would train the control on ten
         # languages and score it on eleven, which reads as a collapse on the eleventh.
         (out / f"{language}.txt").write_text(
-            "\n".join(t for t, _ in pairs) + ("\n" if pairs else ""), encoding="utf-8")
+            "\n".join(t for t, _ in pairs) + ("\n" if pairs else ""), encoding="utf-8"
+        )
         (out / f"{language}.src").write_text(
-            "\n".join(g for _, g in pairs) + ("\n" if pairs else ""), encoding="utf-8")
+            "\n".join(g for _, g in pairs) + ("\n" if pairs else ""), encoding="utf-8"
+        )
         kept_any = kept_any or bool(pairs)
         note = "" if pairs else "   <- NO MATCHING SOURCE"
-        print(f"  {language:5}{len(pairs):>9,} of {len(texts):>9,}  "
-              f"{', '.join(sources) if sources else '-'}{note}")
+        print(
+            f"  {language:5}{len(pairs):>9,} of {len(texts):>9,}  "
+            f"{', '.join(sources) if sources else '-'}{note}"
+        )
 
     if not kept_any:
         raise SystemExit(f"no row in any language matched {args.match!r}")
