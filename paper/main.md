@@ -344,6 +344,25 @@ exactly the same text:
 of two small out-of-domain samples: it reproduces at scale on a test set drawn from every
 domain the training set saw, and rebuilding the corpus repairs it.
 
+**It is the diversity, not the volume — and that needed a control, because the two columns
+above differ in both.** The Wikipedia-only model sees 12,000 lines per language and the
+multi-source model 120,000, so "more data" is as good an explanation of the table as "more
+sources". We therefore trained a third model on the multi-source corpus at the Wikipedia
+corpus's own size, 12,000 lines per language, with identical hyperparameters, and scored
+it on the same rows:
+
+| | lines/language | sources | overall | ur |
+|---|---:|---|---:|---:|
+| Wikipedia only | 12,000 | 1 family | 0.9231 | 0.5400 |
+| **multi-source** | **12,000** | **11 families** | **0.9776** | **0.9900** |
+| multi-source | 120,000 | 11 families | 0.9780 | 0.9900 |
+
+Holding size fixed and changing only the sources accounts for **+0.0545 of the +0.0549**,
+and for the whole of Urdu's 45-point recovery. Multiplying the data tenfold on top of that
+is worth **+0.0004**. For this task the corpus's breadth is doing essentially all of the
+work and its size almost none, which is an encouraging result for low-resource languages:
+what these eleven need is another domain, not another gigabyte.
+
 **A result from an earlier, smaller version of this corpus has reversed, and we report the
 reversal rather than the convenient half.** On a 74,592-row split built from a smaller
 corpus, Shahmukhi Punjabi fell 4.1 points and Saraiki 0.6, and we wrote that up as a
