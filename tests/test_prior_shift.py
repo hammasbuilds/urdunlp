@@ -182,3 +182,34 @@ def test_the_abstract_quotes_the_two_reweighted_numbers(shifted):
     for system in ("langdetect", "pali"):
         value = shifted["systems"][system]["crawl"]["accuracy"]
         assert f"{value:.4f}" in abstract, (system, value)
+
+
+def test_the_claims_about_pali_s_per_class_recalls_are_the_measured_ones(shifted):
+    """Section 4.6 quotes a range over the eight rare languages and two exceptions.
+
+    An earlier draft said PALI's recalls are "high on the eight rare languages", which
+    is true of seven of them and not of Shahmukhi Punjabi at 0.865. A range quoted in
+    prose is the kind of claim that stays after the numbers behind it move.
+    """
+    per_class = shifted["systems"]["pali"]["uniform"]["per_class"]
+    rare = {k: v["recall"] for k, v in per_class.items() if k not in {"ar", "fa", "ur"}}
+    assert len(rare) == 8, sorted(rare)
+    worst = min(rare, key=rare.get)
+    others = [v for k, v in rare.items() if k != worst]
+
+    paper = (ROOT / "paper" / "main.md").read_text(encoding="utf-8")
+    section = paper[paper.index("## 4.6") :].split("\n# ")[0]
+    assert f"{min(others):.3f} to {max(others):.3f}" in section, (min(others), max(others))
+    assert f"{rare[worst]:.3f}" in section, rare[worst]
+    for label in ("fa", "ur"):
+        assert f"{per_class[label]['recall']:.3f}" in section, (label, per_class[label])
+
+
+def test_the_three_languages_langdetect_supports_really_are_most_of_the_crawl(shifted):
+    """Section 4.6 says they are 98% of the text under the CC-100 prior."""
+    weights = shifted["prior_weights"]["crawl"]
+    share = sum(weights[k] for k in ("ar", "fa", "ur"))
+    assert 0.975 < share < 0.99, share
+    paper = (ROOT / "paper" / "main.md").read_text(encoding="utf-8")
+    section = paper[paper.index("## 4.6") :].split("\n# ")[0]
+    assert f"{share * 100:.0f}% of the text" in section, f"{share * 100:.0f}"

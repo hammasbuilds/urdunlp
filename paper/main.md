@@ -319,8 +319,9 @@ On the crawl population langdetect is 0.9816 and PALI is
 0.4598 — the order reverses. Neither number is wrong and neither is the
 model changing. langdetect supports three of these eleven languages and scores 0.000
 recall on the other eight; when those three are 98% of the text, a three-language model is
-a 0.98 model. PALI's recalls are high on the eight rare languages and 0.886 on Persian and
-0.658 on Urdu, so a population dominated by Persian punishes it.
+a 0.98 model. PALI's recalls are 0.954 to 1.000 on seven of the eight rare languages — 0.865 on
+Shahmukhi Punjabi — against 0.886 on Persian and 0.658 on Urdu, so a population
+dominated by Persian and Arabic punishes it.
 
 **What each prior is for.** The balanced set measures the part of the task that is hard —
 telling Saraiki from Western Punjabi, Kashmiri from Urdu — and a system is only useful on
