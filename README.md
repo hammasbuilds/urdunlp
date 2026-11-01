@@ -168,6 +168,46 @@ deployment. This toolkit is the only system above 0.98 under all three, because 
 lowest per-class recall is 0.973 and no reweighting of eleven numbers above 0.97 produces
 a low one.
 
+### The confidence is anti-correlated with competence off Wikipedia
+
+`identify_language` documents `margin` as "a ranking score, not a probability", and that caution turns out to be
+load-bearing. Its `ranking` carries a per-language log-likelihood, so a posterior is one softmax away, and
+`research/calibration.py` measures whether that posterior is honest - temperature scaling (Guo et al., ICML 2017)
+fitted on the **val** split, expected calibration error over fifteen bins.
+
+In domain it behaves ordinarily: 6,600 held-out windows, accuracy 0.9229 against confidence 0.9543, so overconfident
+by 0.0314, and a temperature of **1.8944** halves the error to **0.0132** without changing a single prediction.
+
+Off Wikipedia, the pooled figure over all 120,934 Tatoeba sentences is an ECE of **0.0044** - apparently near-perfect
+calibration. It is not a figure about this task. **97.6% of those sentences are Arabic, Persian, Sorani and Uyghur**,
+the four languages the classifier separates almost perfectly and the four this toolkit is least about. Weighting each
+language equally instead:
+
+| language | n | accuracy | ECE | over/under |
+|---|---:|---:|---:|---:|
+| ur | 2,812 | 0.5302 | 0.0938 | **+0.0918** |
+| pnb | 70 | 0.6857 | **0.1108** | **+0.0082** |
+| skr | 133 | 0.9474 | 0.0817 | -0.0714 |
+| ar | 64,042 | 0.9861 | 0.0272 | -0.0272 |
+| fa | 31,437 | 0.9895 | 0.0456 | -0.0456 |
+| ckb | 12,491 | 0.9982 | 0.0022 | -0.0017 |
+| ug | 9,915 | 0.9998 | 0.0004 | -0.0002 |
+| ks | 34 | 1.0000 | 0.0069 | -0.0069 |
+| **balanced** | | **0.8921** | **0.0461** | **-0.0066** |
+
+The balanced ECE is **0.0461** while the balanced *signed* gap is **-0.0066**, seven times smaller - the signature of
+cancellation. Urdu's +0.0918 and Persian's -0.0456 point opposite ways and subtract from each other, so both the
+pooled 0.0044 and the signed -0.0066 look fine while every row says otherwise.
+
+And the sign lands badly. **The model is overconfident on exactly the two languages it gets wrong** (Urdu 53.0%
+correct, Punjabi 68.6%) and underconfident on all six it gets right. So a confidence threshold keeps the Urdu answers
+at 62% confidence and 53% accuracy and discards the Persian ones at 94% confidence and 99% accuracy: off-domain,
+confidence is anti-correlated with competence.
+
+That is why there is **no `probability` field**. The in-domain temperature also fails to transfer - applied off-domain
+it makes the pooled ECE five and a half times worse, 0.0044 to **0.0244** - because one global parameter is being
+asked to correct two groups that need corrections of opposite sign. Rebuild with `python research/calibration.py`.
+
 **Speed.** `import urdunlp` loads nothing (about 0.1 s); each model loads on first use (about 0.6 s for
 transliteration). Roman → Urdu runs at 440-500 words a second of CPU on words it has not seen before (measured on
 the 5,289 words of `eval/dakshina_test_sample.tsv`) and about 90,000 words a second on repeated text from warm

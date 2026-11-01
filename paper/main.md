@@ -372,6 +372,91 @@ Azerbaijani in Perso-Arabic; OPUS GNOME `ks` is 98% Devanagari, so it is Kashmir
 wrong orthography. A script-share check below 0.5 rejects a source outright. Without it,
 both would have entered the corpus labelled as the languages they are not.
 
+## 5.1 The confidence does not notice, and it is wrong in the direction that matters
+
+A model that loses accuracy off its training domain is one problem. A model that loses
+accuracy *without its confidence falling* is a worse one, because §4.5's recommendation —
+answer only the items whose margin is in the top fraction — is driven by that confidence.
+If the score stays high where the answer has gone wrong, abstention keeps exactly the
+answers it should drop.
+
+`identify_language` is careful not to claim otherwise: `margin` is documented as "a ranking
+score, not a probability", and §4.5 uses it only to order a batch, which is all a ranking
+score supports. But the `ranking` it returns carries a per-language log-likelihood, so a
+posterior is one softmax away, and whether that posterior is honest is a question the paper
+has not asked. `research/calibration.py` asks it, with temperature scaling (Guo, Pleiss, Sun
+& Weinberger, ICML 2017) fitted on the **val** split — which appears nowhere else in this
+paper — and expected calibration error over fifteen equal-width bins.
+
+**In domain the raw score is overconfident, and one parameter fixes it.** On 6,600 held-out
+windows, 600 per language, accuracy is 0.9229 against a mean confidence of 0.9543: an
+overconfidence of +0.0314, and an ECE of the same. A temperature of **1.8944** fitted on
+val halves it to **0.0132** and leaves the model marginally *under*confident at −0.0050.
+Temperature scaling cannot change a single prediction — dividing every logit by one positive
+number preserves their order — so the accuracy is identical either way. So far the result is
+the ordinary one, and it says the library could ship a probability.
+
+**Out of domain the pooled figure says the model is almost perfectly calibrated, and that
+figure is worthless.** Over all 120,934 Tatoeba sentences the raw score has an ECE of
+**0.0044**. It would be a remarkable number if it were about this task. It is not: 97.6% of
+those sentences are Arabic, Persian, Sorani and Uyghur, which this classifier separates
+almost perfectly and which are the four languages the toolkit is least about. §4.6 already
+argues that a balanced test set is a choice; here the imbalance is 900:1 rather than 1:1,
+and the pooled ECE is a statement about Arabic.
+
+Weighting each of the eight languages that can carry a rate equally:
+
+| language | n | accuracy | ECE | over/under |
+|---|---:|---:|---:|---:|
+| ur | 2,812 | 0.5302 | 0.0938 | **+0.0918** |
+| pnb | 70 | 0.6857 | **0.1108** | **+0.0082** |
+| skr | 133 | 0.9474 | 0.0817 | −0.0714 |
+| ar | 64,042 | 0.9861 | 0.0272 | −0.0272 |
+| fa | 31,437 | 0.9895 | 0.0456 | −0.0456 |
+| ckb | 12,491 | 0.9982 | 0.0022 | −0.0017 |
+| ug | 9,915 | 0.9998 | 0.0004 | −0.0002 |
+| ks | 34 | 1.0000 | 0.0069 | −0.0069 |
+| **balanced** | | **0.8921** | **0.0461** | **−0.0066** |
+
+Two things in that table, and the second is the finding.
+
+**The balanced ECE is 0.0461 while the balanced signed gap is −0.0066, seven times smaller.**
+That ratio is the signature of cancellation. ECE averages *absolute* gaps within a
+population, but a pooled ECE is computed over one merged population, so a group that is
+overconfident and a group that is underconfident subtract from each other instead of adding
+up. Both the pooled 0.0044 and the balanced signed −0.0066 are small because Urdu's +0.0918
+and Persian's −0.0456 point opposite ways. A reader seeing either number alone would
+conclude the model's confidence was trustworthy, and every subgroup in the table says it is
+not.
+
+**The overconfidence lands on the two languages the model gets wrong.** Urdu is 53.0%
+correct and overconfident by 9.2 points; Shahmukhi Punjabi is 68.6% correct and carries the
+worst ECE in the table at 0.1108. Every language the model is right about — Arabic, Persian,
+Sorani, Uyghur, Kashmiri, and Saraiki at 94.7% — it is *under*confident about. Out of domain
+the confidence is not merely uninformative about competence, it is anti-correlated with it:
+an abstention threshold set anywhere will preferentially keep the Urdu answers at 62%
+confidence and 53% accuracy and discard the Persian ones at 94% confidence and 99% accuracy.
+**§4.5's mitigation fails precisely on the language this toolkit exists for, and fails in the
+dangerous direction.**
+
+**And the calibration does not transfer.** The temperature fitted on Wikipedia is a
+correction for overconfidence, so applying it off-domain — where the pooled score is already
+slightly overconfident by only +0.0043 — overcorrects: the pooled ECE goes from 0.0044 to
+**0.0244**, five and a half times worse, and the model becomes underconfident by −0.0244.
+This is the shift result of Ovadia et al. (NeurIPS 2019) reproduced on a character n-gram
+model with eleven classes: a single parameter fitted in domain improves calibration there
+and degrades it elsewhere.
+
+**What this licenses, and what it does not.** It does not license shipping a probability.
+A calibrated number is only as good as the domain it was calibrated on, and §5 has already
+established that this model's domain is narrow; a `probability` field on `LanguageGuess`
+would carry an in-domain ECE of 0.0132 and an out-of-domain behaviour that depends entirely
+on which language the text is in. What it does license is the opposite: the docstring's
+refusal to call `margin` a probability is correct, and this section is the measurement that
+says so rather than the caution that assumed it. It also says what a future version would
+have to do — calibrate per language, not globally, since the single global temperature is
+being asked to correct two groups that need corrections of opposite sign.
+
 # 6. Rebuilding the corpus, and what it costs
 
 The corpus was rebuilt from every real source that exists for these languages. CC-100's
@@ -762,3 +847,5 @@ Nothing in `research/` ships in the distributed package.
 > This is the second absence-based novelty claim in this body of work to fail on a second
 > search. Neither affected a measured result — both were claims about the literature, not
 > about the data — but the pattern is recorded here rather than quietly fixed.
+- [@guo2017] Guo, C., Pleiss, G., Sun, Y. and Weinberger, K. Q. *On Calibration of Modern Neural Networks.* ICML 2017. Temperature scaling: one parameter fitted on held-out data, which cannot change any prediction. <https://arxiv.org/abs/1706.04599>
+- [@ovadia2019] Ovadia, Y., Fertig, E., Ren, J., Nado, Z., Sculley, D., Nowozin, S., Dillon, J. V., Lakshminarayanan, B. and Snoek, J. *Can You Trust Your Model's Uncertainty? Evaluating Predictive Uncertainty Under Dataset Shift.* NeurIPS 2019. Calibration fitted in domain degrades under shift. <https://arxiv.org/abs/1906.02530>
