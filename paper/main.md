@@ -641,9 +641,9 @@ Every source is split **80/10/10 within itself**, so the test split spans every 
 the training split saw. This is the design the single-domain setup lacked and the reason
 it could not warn of §5.
 
-Per-language counts, and the three kinds of row, are in `docs/CORPUS.md` §14; the
-rejections — Latin-script `az`, Devanagari `ks` — are in §14.2, and Kashmiri's built rows
-in §14.3.
+Per-language counts, and the three kinds of row, are in `docs/CORPUS.md` §15; the
+rejections — Latin-script `az`, Devanagari `ks` — are in §15.2, and Kashmiri's built rows
+in §15.3.
 
 Scored on identical rows — **358,720 test rows over 32 sources**, every model seeing
 exactly the same text:
@@ -699,7 +699,7 @@ gained domains and neither of which lost enough to matter.
 
 ## 6.1 Did the built Kashmiri rows earn their place? No.
 
-254,732 of Kashmiri's 300,000 lines are built (§14.3 of `docs/CORPUS.md`). The experiment
+254,732 of Kashmiri's 300,000 lines are built (§15.3 of `docs/CORPUS.md`). The experiment
 was fixed before it was run: two corpora differing in exactly one thing, two models with
 identical hyperparameters, scored on **identical real held-out rows**, with the decision
 criterion stated in advance — does real-text accuracy improve?
