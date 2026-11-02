@@ -272,7 +272,9 @@ shrinking set rises whether or not abstention is choosing the right items to dro
 
 This is the practical consequence of §3 and §4 together: a model that covers the task can
 also say when it is unsure, and a model that cannot name the language cannot do either.
-These numbers are in-domain, and §5 is about what happens when that assumption fails.
+These numbers are in-domain, and §5 is about what happens when that assumption fails —
+§5.3 draws this same curve off domain, where keeping the top-margin half leaves 43.15% of
+the Urdu errors in the answer set.
 
 ## 4.6 The balanced test set is a choice, and it decides the ranking
 
@@ -453,9 +455,140 @@ established that this model's domain is narrow; a `probability` field on `Langua
 would carry an in-domain ECE of 0.0132 and an out-of-domain behaviour that depends entirely
 on which language the text is in. What it does license is the opposite: the docstring's
 refusal to call `margin` a probability is correct, and this section is the measurement that
-says so rather than the caution that assumed it. It also says what a future version would
-have to do — calibrate per language, not globally, since the single global temperature is
-being asked to correct two groups that need corrections of opposite sign.
+says so rather than the caution that assumed it. It also points at what a future version
+would have to do — calibrate per language, not globally, since the single global
+temperature is being asked to correct two groups that need corrections of opposite sign.
+§5.2 measures that remedy and finds it does not work.
+
+## 5.2 Per-language calibration is not the remedy
+
+The sentence above ended, until this section was measured, by naming the fix: calibrate per
+language rather than globally, since one parameter cannot correct two groups that need
+corrections of opposite sign. The reasoning is sound and the conclusion is wrong.
+
+`research/calibration.py` fits a temperature for each language with at least 30 rows on
+half the out-of-domain sentences — stratified by language, because a plain split of a 900:1
+population leaves one half with almost no Shahmukhi Punjabi — and measures on the other
+half. Three arms, on the same 60,473 held-out sentences:
+
+* **global**, the single temperature of §5.1, as the shipped model would use it;
+* **oracle**, each item scaled by its *true* language's temperature. Not deployable —
+  knowing the language is the task — and here only to answer whether a single parameter is
+  the binding constraint at all;
+* **predicted**, each item scaled by the temperature of the language the model *guessed*.
+  This one is deployable, and it inherits the model's errors on exactly the languages the
+  model is worst at.
+
+| arm | pooled ECE | pooled signed gap | balanced ECE | balanced signed gap |
+|---|---:|---:|---:|---:|
+| global | 0.0248 | −0.0248 | 0.0528 | −0.0156 |
+| oracle (not deployable) | **0.0015** | +0.0008 | 0.0468 | −0.0041 |
+| predicted (deployable) | **0.0031** | −0.0002 | **0.0547** | −0.0019 |
+
+**Read the pooled column alone and the problem is solved**: 0.0248 falls to 0.0015, and
+the deployable arm reaches 0.0031. That is **94.0%** of the pooled calibration error removed
+by the oracle and 87.5% by the deployable arm. Read the balanced column and the same two
+arms remove **11.4%** and **−3.6%** — the deployable one is worse than the global temperature
+it replaces. This is the cancellation of §5.1 occurring one level up. Per-language temperatures fix the pooled figure because the pooled figure is a figure
+about Arabic, Persian, Sorani and Uyghur, and those four get temperatures near 1.0 that
+undo the global over-correction. The languages the toolkit exists for are unchanged.
+
+Per language, where the question is the right one:
+
+| language | n (eval half) | global | oracle | predicted | fitted T |
+|---|---:|---:|---:|---:|---:|
+| ar | 32,021 | 0.0281 | 0.0016 | 0.0041 | 1.0356 |
+| fa | 15,719 | 0.0449 | 0.0015 | 0.0043 | 0.8577 |
+| ckb | 6,246 | 0.0024 | 0.0011 | 0.0010 | 1.5859 |
+| ug | 4,958 | 0.0004 | 0.0002 | 0.0002 | 1.1809 |
+| **ur** | **1,406** | **0.0934** | **0.0620** | **0.0737** | 2.2426 |
+| skr | 67 | 0.0753 | 0.0730 | 0.0391 | 0.9675 |
+| **pnb** | **35** | **0.1254** | **0.1885** | **0.2607** | 2.1426 |
+
+Urdu improves by a third under the oracle and keeps most of its miscalibration. Shahmukhi
+Punjabi gets **worse under both arms**, and worst under the deployable one — 0.1254 to
+0.2607. That is not a surprise once the n column is read: its temperature was fitted on 35
+sentences. A per-language parameter needs per-language data, and the languages that need
+the parameter most are the ones with none. §6's resource picture is the same finding
+arriving from the other direction.
+
+So the honest conclusion is narrower than the one §5.1 reached for. A single global
+temperature is *not* the binding constraint — the oracle shows a per-group correction
+exists that drives pooled ECE to 0.0015 — but the constraint is the data, and no rescaling
+reachable from 35 sentences fixes Punjabi. Temperature scaling is also order-preserving, so
+no arm here changes a single prediction: every accuracy in the table above is the accuracy
+of §5.1's model. Calibration was never going to be the thing that made the model right.
+
+## 5.3 Abstention off domain discards the languages, not the errors
+
+§4.5 answers "when should the caller doubt the answer?" by ranking on the margin and
+keeping the top fraction: at 50% coverage on the in-domain test split, accuracy is 1.0000
+and none of the errors remain. §5.1 argued that this mechanism fails off domain, but argued
+it from the per-language confidences — the curve itself had never been drawn there. Drawn
+with the same function on both populations, it does not merely fail. It fails while looking
+like it succeeded.
+
+| coverage | in-domain acc | errors left | off-domain acc | errors left |
+|---|---:|---:|---:|---:|
+| 1.00 | 0.9229 | 100% | 0.9785 | 100% |
+| 0.90 | 0.9677 | 37.7% | 0.9991 | **3.9%** |
+| 0.75 | 0.9984 | 1.6% | 0.9998 | 0.8% |
+| 0.50 | 0.9994 | 0.4% | 0.9999 | 0.3% |
+
+*In-domain here is the rebuilt corpus's test split (§6), 600 sentences per language, which
+is the population §5.1's calibration is measured on — not §4.5's Wikipedia-only 6,136
+paragraphs, where accuracy is higher.*
+
+Off domain the curve is **better** than in domain at every coverage level. Dropping the
+least confident tenth removes 96% of the errors. On this evidence selective prediction
+transfers, and transfers well.
+
+It does not. What the threshold dropped was the languages:
+
+| coverage | share of kept items that are Urdu | that are Punjabi |
+|---|---:|---:|
+| 1.00 | 2.33% | 0.06% |
+| 0.90 | 0.12% | 0.01% |
+| 0.75 | 0.01% | **0.00%** |
+| 0.50 | 0.01% | 0.00% |
+
+Urdu is 2.33% of the pool and 0.12% of what survives the first tenth being dropped:
+abstention discarded **95% of the Urdu sentences** in the 10% it dropped, and Shahmukhi
+Punjabi is gone entirely by 75% coverage. The error count falls because the errors and the
+languages are the same items. A pooled retention curve over a 900:1 population is a curve
+about the largest group, exactly as the pooled ECE was.
+
+Inside each language, which is where the caller actually stands:
+
+| language | n | full coverage | half coverage | gain | errors left at half |
+|---|---:|---:|---:|---:|---:|
+| ar | 64,042 | 0.9861 | 1.0000 | +0.0139 | 0% |
+| fa | 31,437 | 0.9895 | 0.9997 | +0.0102 | 1.2% |
+| ckb | 12,491 | 0.9982 | 1.0000 | +0.0018 | 0% |
+| ug | 9,915 | 0.9998 | 1.0000 | +0.0002 | 0% |
+| **ur** | **2,812** | **0.5302** | **0.5946** | **+0.0644** | **43.15%** |
+| skr | 133 | 0.9474 | 1.0000 | +0.0526 | 0% |
+| ks | 34 | 1.0000 | 1.0000 | +0.0000 | — |
+| **pnb** | **70** | **0.6857** | **0.8000** | **+0.1143** | **31.82%** |
+
+Kashmiri's last column is empty rather than zero: it made no errors at full coverage, so
+there were none left to remove, and the column says nothing either way. Sindhi has four
+sentences and gets no row at all.
+
+Half the Urdu items thrown away leaves **43.15% of the Urdu errors still in the answer
+set** and accuracy at 0.5946 — a coin flip, after abstaining on half. In domain the same
+operation removed 99.6% of all errors. So §4.5's recommendation is sound in domain and
+collapses off it, and the pooled off-domain curve conceals the collapse by reporting a
+population the recommendation was never about.
+
+**What this changes in the tool.** Nothing in the code, and that is the point: `margin` is
+already documented as a ranking score rather than a probability, and no `probability` field
+is shipped. What it changes is the advice. Ranking on the margin is safe for ordering a
+batch by how much review it deserves — §4.5's claim — and is **not** safe as an abstention
+threshold on text whose domain is unknown, because the items it abstains on are selected by
+language rather than by correctness. A caller who needs a threshold needs it per language,
+and §6 is about why that is not yet available for the three languages that would need it
+most.
 
 # 6. Rebuilding the corpus, and what it costs
 

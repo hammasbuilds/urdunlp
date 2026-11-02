@@ -89,6 +89,12 @@ MIN_FOR_A_RATE = 30
 # beside every error: an ECE whose mass sits in one bin is a number about one bin.
 BINS = 15
 
+# Coverage levels for the selective-prediction curve. 0.5 is the level section 4.5
+# publishes, so it has to be here for the in-domain and off-domain curves to be the same
+# measurement; 1.0 is here because a curve without its own starting point cannot show
+# whether abstention gained anything.
+RETENTION = (1.0, 0.9, 0.75, 0.5, 0.25, 0.1)
+
 
 def _read_split(name: str, per_language: int, seed: int) -> list[tuple[str, str]]:
     """(text, language) for one split directory, subsampled to `per_language` each.
@@ -254,10 +260,25 @@ def fit_temperature(records: list[dict]) -> dict:
 
 def calibration(records: list[dict], temperature: float) -> dict:
     """ECE, MCE and the reliability bins at one temperature."""
-    rows = []
+    pairs = []
     for record in records:
         predicted, confidence = _posterior(record["logits"], temperature)
-        rows.append((confidence, predicted == record["truth"]))
+        pairs.append((confidence, predicted == record["truth"]))
+    out = _bin(pairs)
+    if out["n"]:
+        out["temperature"] = temperature
+    return out
+
+
+def _bin(pairs: list[tuple[float, bool]]) -> dict:
+    """The ECE arithmetic over (confidence, was it right) pairs.
+
+    Factored out of `calibration` so that a per-item temperature can reuse it rather than
+    carry a second copy. One quantity with two implementations and nothing comparing them
+    is how the pooled and balanced figures would come to disagree for a reason that is not
+    about the model.
+    """
+    rows = pairs
     if not rows:
         return {"n": 0}
     bins = []
@@ -289,7 +310,6 @@ def calibration(records: list[dict], temperature: float) -> dict:
     accuracy = sum(1 for _, ok in rows if ok) / len(rows)
     return {
         "n": len(rows),
-        "temperature": temperature,
         "accuracy": round(accuracy, 4),
         "mean_confidence": round(mean_confidence, 4),
         # Positive means overconfident, which is the direction that matters: it is the one
@@ -302,6 +322,163 @@ def calibration(records: list[dict], temperature: float) -> dict:
         # nothing about the rest of the range, and the bins alone do not say it loudly.
         "share_in_the_top_bin": round(max((b["n"] for b in bins), default=0) / len(rows), 4),
     }
+
+
+def per_language_temperature(records: list[dict], minimum: int = MIN_FOR_A_RATE) -> dict:
+    """A temperature fitted separately for each language with enough rows.
+
+    Section 5.1's finding is that one global parameter is asked to correct two groups
+    needing opposite corrections. This asks whether per-group correction is the answer,
+    and the answer has to be read in two parts, because the two arms below are not the
+    same claim:
+
+      * **oracle** scales each item by its *true* language's temperature. It is an upper
+        bound and it is **not deployable** - knowing the language is the task. It answers
+        one question only: is a single parameter the binding constraint, or is this
+        confidence beyond any per-group monotone rescaling?
+      * **predicted** scales each item by the temperature of the language the model
+        *guessed*. That one is deployable, and it inherits the model's mistakes on exactly
+        the languages the model is worst at, which is where section 5.1 locates the danger.
+
+    Reporting only the oracle would be the mistake. It looks like a fix.
+    """
+    grouped = _by_language(records)
+    out = {}
+    for code, rows in sorted(grouped.items()):
+        if len(rows) < minimum:
+            continue
+        fit = fit_temperature(rows)
+        out[code] = {
+            "n": len(rows),
+            "temperature": fit["temperature"],
+            "nll": fit["nll"],
+            "at_the_bracket_edge": fit["at_the_bracket_edge"],
+        }
+    return out
+
+
+def _by_language(records: list[dict]) -> dict[str, list[dict]]:
+    grouped: dict[str, list[dict]] = {}
+    for record in records:
+        grouped.setdefault(record["truth"], []).append(record)
+    return grouped
+
+
+def halves(records: list[dict], seed: int) -> tuple[list[dict], list[dict]]:
+    """Split each language's rows in two, deterministically and stratified by language.
+
+    Stratified because a plain shuffle of a 900:1 population leaves one half with almost
+    no Shahmukhi Punjabi, and a temperature fitted on three items is a fact about three
+    items. A per-language temperature fitted and evaluated on the same rows would also
+    report its own fit: eleven free parameters on this many items can absorb a good deal,
+    and the oracle arm is already the optimistic one.
+    """
+    fit_half: list[dict] = []
+    eval_half: list[dict] = []
+    for code, rows in sorted(_by_language(records).items()):
+        shuffled = list(rows)
+        random.Random(f"{seed}:{code}").shuffle(shuffled)
+        middle = len(shuffled) // 2
+        fit_half.extend(shuffled[:middle])
+        eval_half.extend(shuffled[middle:])
+    return fit_half, eval_half
+
+
+def scaled_per_item(records: list[dict], temperature_of, fallback: float) -> dict:
+    """Calibration when each item carries its own temperature.
+
+    `temperature_of` returns the temperature for one record, or `None` where it has none -
+    a language with too few rows to fit, or a predicted language the fit never covered.
+    Those items fall back to the global temperature rather than being dropped: dropping
+    them would quietly restrict the measurement to the languages the method happened to
+    cover, which is the same composition trap the pooled figure fell into. The count that
+    fell back is returned beside the result.
+    """
+    pairs = []
+    fell_back = 0
+    for record in records:
+        temperature = temperature_of(record)
+        if temperature is None:
+            temperature = fallback
+            fell_back += 1
+        predicted, confidence = _posterior(record["logits"], temperature)
+        pairs.append((confidence, predicted == record["truth"]))
+    out = _bin(pairs)
+    out["items_on_the_global_temperature"] = fell_back
+    return out
+
+
+def retention(records: list[dict], temperature: float, fractions=RETENTION) -> list[dict]:
+    """Section 4.5's selective-prediction curve, drawn wherever it is asked for.
+
+    Section 4.5 draws it in domain and finds that keeping the top-margin half removes
+    every error. Section 5.1 then argues the mechanism fails off domain - from the
+    per-language confidences, because the curve itself had never been drawn there. So the
+    paper's own §4.5 recommendation and its §5.1 warning rested on different kinds of
+    evidence. This draws the curve.
+
+    A softmax is order-preserving in the score, so ranking by the posterior at any single
+    temperature is ranking by the model's own margin; the temperature moves the x-axis
+    labels and not the order. That is no longer true once the temperature varies per item,
+    which is why the per-language arms are measured as calibration and not as retention.
+    """
+    ranked = []
+    for record in records:
+        predicted, confidence = _posterior(record["logits"], temperature)
+        ranked.append((confidence, predicted == record["truth"], record["truth"]))
+    ranked.sort(key=lambda row: row[0], reverse=True)
+    total_errors = sum(1 for _, ok, _ in ranked if not ok)
+    out = []
+    for fraction in fractions:
+        keep = max(1, round(len(ranked) * fraction))
+        kept = ranked[:keep]
+        errors = sum(1 for _, ok, _ in kept if not ok)
+        # Which languages abstention keeps. Off domain the number that matters is not the
+        # accuracy of the kept set - that rises on any shrinking set, which is why §4.5
+        # plots the error share beside it - but whether what gets dropped is the wrong
+        # answers or simply the languages this toolkit exists for.
+        counts: dict[str, int] = {}
+        for _, _, truth in kept:
+            counts[truth] = counts.get(truth, 0) + 1
+        out.append(
+            {
+                "coverage": fraction,
+                "kept": keep,
+                "accuracy": round(sum(1 for _, ok, _ in kept if ok) / keep, 4),
+                "errors_kept": errors,
+                "error_share_remaining": (
+                    round(errors / total_errors, 4) if total_errors else None
+                ),
+                "share_of_kept_by_language": {
+                    code: round(n / keep, 4) for code, n in sorted(counts.items())
+                },
+            }
+        )
+    return out
+
+
+def retention_by_language(
+    records: list[dict], temperature: float, minimum: int = MIN_FOR_A_RATE
+) -> dict:
+    """The same curve inside each language, which is where a pooled one hides the harm.
+
+    A pooled retention curve over a 900:1 population is a curve about the largest group,
+    exactly as the pooled ECE was. Per language the question becomes the right one: does
+    dropping the least confident items *of this language* drop that language's errors?
+    """
+    out = {}
+    for code, rows in sorted(_by_language(records).items()):
+        if len(rows) < minimum:
+            continue
+        full, half = retention(rows, temperature, fractions=(1.0, 0.5))
+        out[code] = {
+            "n": len(rows),
+            "accuracy_at_full_coverage": full["accuracy"],
+            "accuracy_at_half_coverage": half["accuracy"],
+            "gain": round(half["accuracy"] - full["accuracy"], 4),
+            "error_share_remaining_at_half": half["error_share_remaining"],
+        }
+    return out
 
 
 def balanced(per_language: dict, minimum: int = MIN_FOR_A_RATE) -> dict:
@@ -430,6 +607,88 @@ def main() -> int:
             "per_language": per_language,
         },
     }
+
+    # Section 4.5's curve, drawn in domain and off it, from one function. The in-domain
+    # numbers in the manuscript came from a different script; these are recomputed here so
+    # the two curves are the same measurement and the comparison means something.
+    payload["selective_prediction"] = {
+        "what": (
+            "Section 4.5's retention curve, drawn on the in-domain test split and on the "
+            "out-of-domain sentences with one implementation. 4.5 publishes the in-domain "
+            "curve and 5.1 argues the mechanism fails off domain; until now the second was "
+            "an inference from per-language confidences rather than the curve itself."
+        ),
+        "in_domain": retention(test, temperature),
+        "out_of_domain": retention(out_scored, temperature),
+        "out_of_domain_per_language": retention_by_language(out_scored, temperature),
+    }
+
+    # Is a single global temperature the binding constraint? Fitted on half the
+    # out-of-domain rows and measured on the other half, stratified by language, so no
+    # arm is reporting its own fit.
+    fit_half, eval_half = halves(out_scored, args.seed)
+    fitted = per_language_temperature(fit_half)
+    payload["per_language_temperature"] = {
+        "what": (
+            "Section 5.1 shows one temperature being asked to correct groups that need "
+            "opposite corrections. The oracle arm scales by the true language and is an "
+            "upper bound that cannot be deployed, because knowing the language is the "
+            "task. The predicted arm scales by the guessed language and can be, and it "
+            "inherits the model's errors where the model is weakest."
+        ),
+        "fitted_on": len(fit_half),
+        "measured_on": len(eval_half),
+        "stratified_by_language": True,
+        "seed": args.seed,
+        "global_temperature": temperature,
+        "per_language": fitted,
+        "global": scaled_per_item(eval_half, lambda _r: temperature, temperature),
+        "oracle": scaled_per_item(
+            eval_half,
+            lambda r: (fitted.get(r["truth"]) or {}).get("temperature"),
+            temperature,
+        ),
+        "predicted": scaled_per_item(
+            eval_half,
+            lambda r: (fitted.get(_posterior(r["logits"], temperature)[0]) or {}).get(
+                "temperature"
+            ),
+            temperature,
+        ),
+    }
+    arms = payload["per_language_temperature"]
+    # The evaluation half's sizes, emitted rather than left to be derived from the fit
+    # half's. The two halves differ by one row wherever a language has an odd count, and
+    # a manuscript table quoting the fit half under an "eval half" heading would be wrong
+    # by that one row in three of seven rows.
+    arms["eval_per_language_n"] = {
+        code: len(rows) for code, rows in sorted(_by_language(eval_half).items())
+    }
+    # Balanced, because the pooled ECE over this population cancels and the whole reason
+    # these arms exist is a per-group disagreement. Each arm is re-measured inside every
+    # language and the languages averaged with one vote each.
+    for name in ("global", "oracle", "predicted"):
+        chooser = {
+            "global": lambda _r: temperature,
+            "oracle": lambda r: (fitted.get(r["truth"]) or {}).get("temperature"),
+            "predicted": lambda r: (fitted.get(_posterior(r["logits"], temperature)[0]) or {}).get(
+                "temperature"
+            ),
+        }[name]
+        inside = {
+            code: scaled_per_item(rows, chooser, temperature)
+            for code, rows in sorted(_by_language(eval_half).items())
+            if len(rows) >= MIN_FOR_A_RATE
+        }
+        if inside:
+            arms[name]["balanced_ece"] = round(
+                sum(v["ece"] for v in inside.values()) / len(inside), 4
+            )
+            arms[name]["balanced_signed_gap"] = round(
+                sum(v["overconfidence"] for v in inside.values()) / len(inside), 4
+            )
+            arms[name]["per_language_ece"] = {code: v["ece"] for code, v in inside.items()}
+            arms[name]["languages"] = len(inside)
 
     payload["out_of_domain"]["balanced"] = balanced(per_language)
     payload["out_of_domain"]["why_the_pooled_figure_misleads"] = (
