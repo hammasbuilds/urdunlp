@@ -488,8 +488,9 @@ half. Three arms, on the same 60,473 held-out sentences:
 **Read the pooled column alone and the problem is solved**: 0.0248 falls to 0.0015, and
 the deployable arm reaches 0.0031. That is **94.0%** of the pooled calibration error removed
 by the oracle and 87.5% by the deployable arm. Read the balanced column and the same two
-arms remove **11.4%** and **−3.6%** — the deployable one is worse than the global temperature
-it replaces. This is the cancellation of §5.1 occurring one level up. Per-language temperatures fix the pooled figure because the pooled figure is a figure
+arms remove **11.4%** and **−3.6%**. This is the cancellation of §5.1 occurring one level
+up — and the balanced figures turn out to be fragile in their own way, which the end of this
+section takes up. Per-language temperatures fix the pooled figure because the pooled figure is a figure
 about Arabic, Persian, Sorani and Uyghur, and those four get temperatures near 1.0 that
 undo the global over-correction. The languages the toolkit exists for are unchanged.
 
@@ -512,12 +513,48 @@ sentences. A per-language parameter needs per-language data, and the languages t
 the parameter most are the ones with none. §6's resource picture is the same finding
 arriving from the other direction.
 
-So the honest conclusion is narrower than the one §5.1 reached for. A single global
-temperature is *not* the binding constraint — the oracle shows a per-group correction
-exists that drives pooled ECE to 0.0015 — but the constraint is the data, and no rescaling
-reachable from 35 sentences fixes Punjabi. Temperature scaling is also order-preserving, so
-no arm here changes a single prediction: every accuracy in the table above is the accuracy
-of §5.1's model. Calibration was never going to be the thing that made the model right.
+**The balanced column cannot carry the comparison either, and that is the sharper
+finding.** A balanced mean gives each language one vote, which is the right weighting for
+this task and also makes the mean a figure about its *worst* group. Two of these seven
+groups have fewer than 70 evaluation rows. Dropping each language in turn and re-averaging:
+
+| dropped | global | oracle | predicted | |
+|---|---:|---:|---:|---|
+| none | 0.0528 | 0.0468 | 0.0547 | |
+| ar | 0.0570 | 0.0544 | 0.0632 | |
+| ckb | 0.0612 | 0.0545 | 0.0637 | |
+| **fa** | 0.0542 | **0.0544** | 0.0631 | reverses the oracle's advantage |
+| **pnb** | 0.0408 | 0.0232 | **0.0204** | reverses the deployable arm's deficit |
+| skr | 0.0491 | 0.0425 | 0.0573 | |
+| ug | 0.0616 | 0.0546 | 0.0638 | |
+| ur | 0.0461 | 0.0443 | 0.0516 | |
+
+**Neither direction in the balanced column survives dropping one language.** The oracle's
+improvement over the global temperature is 0.0528 against 0.0468 with all seven and 0.0542
+against 0.0544 without Persian — gone. The deployable arm's deficit is 0.0547 against
+0.0528 with all seven and **0.0204 against 0.0408 without Punjabi** — not merely gone but
+reversed into a halving. A seven-group balanced mean in which two groups hold 35 and 67 rows
+is too fragile to decide between two arms, and quoting the first row alone would have been
+the third version of this paper's own mistake.
+
+What *is* robust is the per-language column, which needs no averaging:
+
+* every language with more than a thousand evaluation rows improves by close to an order of
+  magnitude under both arms — Arabic 0.0281 to 0.0041, Persian 0.0449 to 0.0043;
+* **Urdu**, the language the toolkit exists for, improves from 0.0934 to 0.0737 deployable
+  and 0.0620 oracle: real, and far from fixed;
+* **Saraiki** improves to 0.0391 on 67 rows;
+* **Shahmukhi Punjabi** goes from 0.1254 to 0.2607 on a temperature fitted from 35
+  sentences.
+
+So the honest conclusion is narrower than the one §5.1 reached for, and narrower than the
+pooled column suggests in either direction. A single global temperature is *not* the binding
+constraint — a per-group correction exists, and for every language with data it works. The
+constraint is the data: no rescaling reachable from 35 sentences fixes Punjabi, and no
+balanced average over a population like this one can tell you whether it did. Temperature
+scaling is also order-preserving, so no arm here changes a single prediction: every accuracy
+in the table above is the accuracy of §5.1's model. Calibration was never going to be the
+thing that made the model right.
 
 ## 5.3 Abstention off domain discards the languages, not the errors
 

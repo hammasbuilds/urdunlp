@@ -408,6 +408,52 @@ def scaled_per_item(records: list[dict], temperature_of, fallback: float) -> dic
     return out
 
 
+def leave_one_out(per_language_ece: dict[str, dict[str, float]]) -> dict:
+    """Which language is each balanced mean resting on? Drop each in turn and re-average.
+
+    A balanced mean gives every language one vote, which is the right weighting for this
+    task and also means the mean is dominated by its *worst* group. With eleven classes and
+    one language holding 35 evaluation rows, a balanced figure can be a figure about those
+    35 rows - and the direction of a comparison between two arms can rest entirely on them.
+
+    It does here, which is why this function exists rather than being left for a reader to
+    suspect. Reported as a table of which drops change the ordering, not as a single
+    number: "the conclusion survives six of seven drops" is the claim, and the one it does
+    not survive has to be named.
+    """
+    arms = sorted(per_language_ece)
+    languages = sorted(next(iter(per_language_ece.values())))
+    full = {arm: sum(per_language_ece[arm].values()) / len(languages) for arm in arms}
+    rows = {}
+    for dropped in languages:
+        kept = [code for code in languages if code != dropped]
+        means = {
+            arm: round(sum(per_language_ece[arm][code] for code in kept) / len(kept), 4)
+            for arm in arms
+        }
+        rows[dropped] = means
+    return {
+        "what": (
+            "each language dropped in turn, and the balanced mean recomputed over the "
+            "rest. A balanced mean is dominated by its worst group, so a comparison "
+            "between arms can rest on one small language."
+        ),
+        "all_languages": {arm: round(value, 4) for arm, value in full.items()},
+        "dropping_one": rows,
+        # The question the table exists to answer, computed rather than left to the reader.
+        "drops_that_reverse_predicted_against_global": sorted(
+            dropped
+            for dropped, means in rows.items()
+            if (means["predicted"] < means["global"]) != (full["predicted"] < full["global"])
+        ),
+        "drops_that_reverse_oracle_against_global": sorted(
+            dropped
+            for dropped, means in rows.items()
+            if (means["oracle"] < means["global"]) != (full["oracle"] < full["global"])
+        ),
+    }
+
+
 def retention(records: list[dict], temperature: float, fractions=RETENTION) -> list[dict]:
     """Section 4.5's selective-prediction curve, drawn wherever it is asked for.
 
@@ -689,6 +735,10 @@ def main() -> int:
             )
             arms[name]["per_language_ece"] = {code: v["ece"] for code, v in inside.items()}
             arms[name]["languages"] = len(inside)
+
+    arms["leave_one_out"] = leave_one_out(
+        {name: arms[name]["per_language_ece"] for name in ("global", "oracle", "predicted")}
+    )
 
     payload["out_of_domain"]["balanced"] = balanced(per_language)
     payload["out_of_domain"]["why_the_pooled_figure_misleads"] = (

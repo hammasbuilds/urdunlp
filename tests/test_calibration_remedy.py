@@ -159,14 +159,73 @@ def test_the_balanced_figure_says_it_did_not():
     assert pooled > 5 * balanced, (pooled, balanced)
 
 
-def test_the_deployable_arm_is_worse_than_the_global_temperature_it_replaces():
-    """The direction matters: this is the arm a release could actually ship."""
+def test_the_deployable_arm_is_worse_on_the_balanced_figure_as_published():
+    """As published over all seven languages - a figure the next test shows is fragile.
+
+    Kept because the published number has to be the artefact's, and named so that a reader
+    of this file does not take it for a robust finding. The leave-one-out test below is the
+    one that says what it is worth.
+    """
     arms = _arms()
     assert arms["predicted"]["balanced_ece"] > arms["global"]["balanced_ece"]
     assert arms["predicted"]["ece"] < arms["global"]["ece"], (
         "if the deployable arm were worse on the pooled figure too, the section's point "
         "about which column a reader quotes would not arise"
     )
+
+
+def test_neither_direction_in_the_balanced_column_survives_dropping_one_language():
+    """The finding the section rests on, and the reason the previous test is hedged.
+
+    A balanced mean gives each language one vote, so it is dominated by its worst group -
+    and two of these seven hold 35 and 67 evaluation rows. Both arms' advantages over the
+    global temperature are decided by one language each, which is a fact about the
+    population and not about temperature scaling.
+    """
+    arms = _arms()
+    if "leave_one_out" not in arms:
+        pytest.skip("calibration.json predates the leave-one-out sensitivity")
+    loo = arms["leave_one_out"]
+    assert loo["drops_that_reverse_predicted_against_global"] == ["pnb"]
+    assert loo["drops_that_reverse_oracle_against_global"] == ["fa"]
+    # Without Punjabi the deployable arm halves the balanced error rather than raising it.
+    without_pnb = loo["dropping_one"]["pnb"]
+    assert without_pnb["predicted"] < without_pnb["global"] / 1.5, without_pnb
+    # And the published row is the one with every language in it.
+    assert loo["all_languages"]["predicted"] == pytest.approx(
+        arms["predicted"]["balanced_ece"], abs=5e-5
+    )
+
+
+def test_the_language_that_decides_it_is_the_one_with_almost_no_rows():
+    """Named, so that "fragile" is attributable rather than a hedge."""
+    arms = _arms()
+    if "leave_one_out" not in arms:
+        pytest.skip("calibration.json predates the leave-one-out sensitivity")
+    loo = arms["leave_one_out"]
+    sizes = arms["eval_per_language_n"]
+    for code in loo["drops_that_reverse_predicted_against_global"]:
+        assert sizes[code] < 100, (code, sizes[code])
+    # Every language is dropped in turn, not a chosen few.
+    assert set(loo["dropping_one"]) == set(arms["global"]["per_language_ece"])
+
+
+def test_the_sensitivity_table_in_the_section_is_the_artefact_s():
+    arms = _arms()
+    if "leave_one_out" not in arms:
+        pytest.skip("calibration.json predates the leave-one-out sensitivity")
+    section = _section("## 5.2 Per-language calibration is not the remedy", "\n## 5.3 ")
+    for dropped, means in arms["leave_one_out"]["dropping_one"].items():
+        for arm, value in means.items():
+            assert f"{value:.4f}" in section, (dropped, arm, value)
+
+
+def test_the_section_says_the_balanced_comparison_is_not_robust():
+    section = _section("## 5.2 Per-language calibration is not the remedy", "\n## 5.3 ")
+    assert "survives dropping one language" in section
+    assert "too fragile" in section
+    # And it names what is robust instead, rather than leaving a hole.
+    assert "is* robust" in section or "is robust" in section
 
 
 def test_no_arm_changes_a_single_prediction():

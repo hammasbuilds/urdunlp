@@ -208,14 +208,18 @@ That is why there is **no `probability` field**. The in-domain temperature also 
 it makes the pooled ECE five and a half times worse, 0.0044 to **0.0244** - because one global parameter is being
 asked to correct two groups that need corrections of opposite sign.
 
-**Calibrating per language does not fix it, and the pooled figure says it does.** A temperature fitted separately
-for each language, on half the out-of-domain sentences and measured on the other half, takes the pooled ECE from
-0.0248 to **0.0015** - sixteen times better, and the deployable version (pick the temperature by the *predicted*
-language) reaches 0.0031. Weight the languages equally and almost nothing happened: 0.0528 to 0.0468, and the
-deployable arm is **0.0547, worse than the global temperature it replaces**. Shahmukhi Punjabi gets worse under both
-arms, 0.1254 to 0.1885 to 0.2607, because its own temperature was fitted on 35 sentences. A per-language parameter
-needs per-language data and the languages that need it have none. No arm changes a single prediction - temperature
-scaling is order-preserving - so accuracy is identical in all three.
+**Calibrating per language fixes the pooled figure and settles nothing.** A temperature fitted separately for each
+language, on half the out-of-domain sentences and measured on the other half, takes the pooled ECE from 0.0248 to
+**0.0015** - 94% of it gone - and the deployable version (pick the temperature by the *predicted* language) reaches
+0.0031. Weight the languages equally and the same two arms remove 11.4% and -3.6%: 0.0528 to 0.0468 and 0.0547.
+
+But **neither direction in that balanced column survives dropping one language**, and two of the seven hold 35 and 67
+rows. Without Persian the oracle's advantage vanishes (0.0542 against 0.0544); without Shahmukhi Punjabi the
+deployable arm's deficit reverses into a halving (0.0204 against 0.0408). What is robust is the per-language column:
+Arabic 0.0281 to 0.0041, Persian 0.0449 to 0.0043, **Urdu 0.0934 to 0.0737**, Saraiki to 0.0391 - and Punjabi
+0.1254 to **0.2607**, on a temperature fitted from 35 sentences. A per-language parameter needs per-language data,
+it works for every language that has some, and the languages that need it most have none. No arm changes a single
+prediction - temperature scaling is order-preserving - so accuracy is identical in all three.
 
 **Abstention off-domain discards the languages, not the errors.** Keeping the top-margin half removes every error
 in domain. Off domain the same curve looks *better* - 0.9785 accuracy at full coverage, 0.9991 after dropping the

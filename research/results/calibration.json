@@ -2318,6 +2318,57 @@
    "skr": 67,
    "ug": 4958,
    "ur": 1406
+  },
+  "leave_one_out": {
+   "what": "each language dropped in turn, and the balanced mean recomputed over the rest. A balanced mean is dominated by its worst group, so a comparison between arms can rest on one small language.",
+   "all_languages": {
+    "global": 0.0528,
+    "oracle": 0.0468,
+    "predicted": 0.0547
+   },
+   "dropping_one": {
+    "ar": {
+     "global": 0.057,
+     "oracle": 0.0544,
+     "predicted": 0.0632
+    },
+    "ckb": {
+     "global": 0.0612,
+     "oracle": 0.0545,
+     "predicted": 0.0637
+    },
+    "fa": {
+     "global": 0.0542,
+     "oracle": 0.0544,
+     "predicted": 0.0631
+    },
+    "pnb": {
+     "global": 0.0408,
+     "oracle": 0.0232,
+     "predicted": 0.0204
+    },
+    "skr": {
+     "global": 0.0491,
+     "oracle": 0.0425,
+     "predicted": 0.0573
+    },
+    "ug": {
+     "global": 0.0616,
+     "oracle": 0.0546,
+     "predicted": 0.0638
+    },
+    "ur": {
+     "global": 0.0461,
+     "oracle": 0.0443,
+     "predicted": 0.0516
+    }
+   },
+   "drops_that_reverse_predicted_against_global": [
+    "pnb"
+   ],
+   "drops_that_reverse_oracle_against_global": [
+    "fa"
+   ]
   }
  },
  "does_the_calibration_transfer": {
