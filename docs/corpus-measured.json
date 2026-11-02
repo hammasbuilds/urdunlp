@@ -1,0 +1,440 @@
+{
+ "_what": "scripts/measure_corpus.py over XL-Sum Urdu: 84,581 BBC Urdu articles, train+val+test, the 'text' field, one document per line. docs/CORPUS.md is written from this file and tests/test_corpus_doc.py checks that it still is. The corpus is not in the repository (it is 200 MB of text); this is the reduction of it, which is.",
+ "documents": 84581,
+ "characters": 206887475,
+ "raw_whitespace_tokens": 44682626,
+ "tokens": 44690041,
+ "distinct_normalised_types": 353289,
+ "types_with_more_than_one_raw_spelling": 14653,
+ "tokens_changed_by_normalize": 264137,
+ "normalize_change_rate": 0.005911,
+ "tokens_moved_onto_a_majority_spelling": 211159,
+ "documents_with_substituted_arabic_letters": 7495,
+ "arabic_document_rate": 0.088613,
+ "arabic_char_counts": {
+  "U+064A ARABIC YEH -> FARSI YEH": 20555,
+  "U+0643 ARABIC KAF -> KEHEH": 4132,
+  "U+0647 ARABIC HEH -> DOACHASHMEE HE or HEH GOAL, by context": 981,
+  "U+0649 ALEF MAKSURA -> FARSI YEH": 40,
+  "U+0629 TEH MARBUTA -> HEH GOAL": 20
+ },
+ "tokens_fixed_by_character_unification": 24046,
+ "stopword_list_size": 159,
+ "stopword_entries_seen": 158,
+ "stopword_token_hits": 20802233,
+ "stopword_coverage": 0.465478,
+ "top_30_types": [
+  [
+   "کے",
+   2047014
+  ],
+  [
+   "میں",
+   1472480
+  ],
+  [
+   "کی",
+   1327140
+  ],
+  [
+   "ہے",
+   1093615
+  ],
+  [
+   "سے",
+   893081
+  ],
+  [
+   "اور",
+   830808
+  ],
+  [
+   "کہ",
+   770042
+  ],
+  [
+   "نے",
+   758611
+  ],
+  [
+   "کا",
+   713233
+  ],
+  [
+   "کو",
+   670247
+  ],
+  [
+   "اس",
+   606353
+  ],
+  [
+   "ہیں",
+   563003
+  ],
+  [
+   "پر",
+   536255
+  ],
+  [
+   "ان",
+   379840
+  ],
+  [
+   "ایک",
+   351810
+  ],
+  [
+   "بھی",
+   346472
+  ],
+  [
+   "یہ",
+   317926
+  ],
+  [
+   "نہیں",
+   302430
+  ],
+  [
+   "کیا",
+   294009
+  ],
+  [
+   "کر",
+   283727
+  ],
+  [
+   "تھا",
+   282830
+  ],
+  [
+   "وہ",
+   241351
+  ],
+  [
+   "لیے",
+   215985
+  ],
+  [
+   "کہا",
+   205396
+  ],
+  [
+   "گیا",
+   173381
+  ],
+  [
+   "ہو",
+   170897
+  ],
+  [
+   "تو",
+   167041
+  ],
+  [
+   "کرنے",
+   159660
+  ],
+  [
+   "پاکستان",
+   141287
+  ],
+  [
+   "بعد",
+   139602
+  ]
+ ],
+ "translit_lexicon_size": 310,
+ "translit_rule_count": 55,
+ "roundtrip_sampled_every": 97,
+ "roundtrip_tried": 457438,
+ "roundtrip_distinct_types": 21699,
+ "roundtrip_rate_with_short_vowels": 0.446369,
+ "roundtrip_rate_without_short_vowels": 0.608214,
+ "roundtrip_rate_with_short_vowels_vocabulary": 0.916743,
+ "roundtrip_rate_without_short_vowels_vocabulary": 0.931368,
+ "roundtrip_rate_learned_roman": 0.927992,
+ "roundtrip_failure_examples": [
+  {
+   "urdu": "بیماریاں",
+   "roman": "bimarian",
+   "back": "بیماریان",
+   "roman_bare": "bimarian",
+   "back_bare": "بیماریان"
+  },
+  {
+   "urdu": "بھگت",
+   "roman": "bhagat",
+   "back": "بھاگات",
+   "roman_bare": "bhgt",
+   "back_bare": "بھگت"
+  },
+  {
+   "urdu": "فیصد",
+   "roman": "fisad",
+   "back": "فیساد",
+   "roman_bare": "fisd",
+   "back_bare": "فیسد"
+  },
+  {
+   "urdu": "فائدہ",
+   "roman": "fayadah",
+   "back": "فےاداہ",
+   "roman_bare": "faydh",
+   "back_bare": "فےدھ"
+  },
+  {
+   "urdu": "فیصد",
+   "roman": "fisad",
+   "back": "فیساد",
+   "roman_bare": "fisd",
+   "back_bare": "فیسد"
+  },
+  {
+   "urdu": "لکھا",
+   "roman": "lakha",
+   "back": "لاکھا",
+   "roman_bare": "lkha",
+   "back_bare": "لکھا"
+  },
+  {
+   "urdu": "جانب",
+   "roman": "janab",
+   "back": "جاناب",
+   "roman_bare": "janb",
+   "back_bare": "جانب"
+  },
+  {
+   "urdu": "عبدالحکیم",
+   "roman": "abadalahakim",
+   "back": "ابادالاہاکیم",
+   "roman_bare": "abdalhkim",
+   "back_bare": "ابدالھکیم"
+  },
+  {
+   "urdu": "تریبت",
+   "roman": "taribat",
+   "back": "تاریبات",
+   "roman_bare": "tribt",
+   "back_bare": "تریبت"
+  },
+  {
+   "urdu": "بغیر",
+   "roman": "baghir",
+   "back": "باگھیر",
+   "roman_bare": "bghir",
+   "back_bare": "بگھیر"
+  },
+  {
+   "urdu": "بدتر",
+   "roman": "badatar",
+   "back": "باداتار",
+   "roman_bare": "bdtr",
+   "back_bare": "بدتر"
+  },
+  {
+   "urdu": "متاثرہ",
+   "roman": "matasarah",
+   "back": "ماتاساراہ",
+   "roman_bare": "mtasrh",
+   "back_bare": "متاسرھ"
+  },
+  {
+   "urdu": "مہدی",
+   "roman": "mahadi",
+   "back": "ماہادی",
+   "roman_bare": "mhdi",
+   "back_bare": "مھدی"
+  },
+  {
+   "urdu": "مارکیٹ",
+   "roman": "marakit",
+   "back": "ماراکیت",
+   "roman_bare": "markit",
+   "back_bare": "مارکیت"
+  },
+  {
+   "urdu": "شملہ",
+   "roman": "shamalah",
+   "back": "شامالاہ",
+   "roman_bare": "shmlh",
+   "back_bare": "شملھ"
+  },
+  {
+   "urdu": "چکا",
+   "roman": "chaka",
+   "back": "چاکا",
+   "roman_bare": "chka",
+   "back_bare": "چکا"
+  },
+  {
+   "urdu": "آسکر",
+   "roman": "aasakar",
+   "back": "اساکار",
+   "roman_bare": "aaskr",
+   "back_bare": "اسکر"
+  },
+  {
+   "urdu": "سلطان",
+   "roman": "salatan",
+   "back": "سالاتان",
+   "roman_bare": "sltan",
+   "back_bare": "سلتان"
+  },
+  {
+   "urdu": "ڈائرکشن",
+   "roman": "dayarakashan",
+   "back": "دےاراکاشان",
+   "roman_bare": "dayrkshn",
+   "back_bare": "دےرکشن"
+  },
+  {
+   "urdu": "شوٹنگ",
+   "roman": "shotanag",
+   "back": "شوتاناگ",
+   "roman_bare": "shotng",
+   "back_bare": "شوتنگ"
+  },
+  {
+   "urdu": "ڈونلڈ",
+   "roman": "donalad",
+   "back": "donalad",
+   "roman_bare": "donld",
+   "back_bare": "دونلد"
+  },
+  {
+   "urdu": "بڑھیں",
+   "roman": "barhin",
+   "back": "بارھین",
+   "roman_bare": "brhin",
+   "back_bare": "برھین"
+  },
+  {
+   "urdu": "رہن",
+   "roman": "rahan",
+   "back": "راہان",
+   "roman_bare": "rhn",
+   "back_bare": "رھن"
+  },
+  {
+   "urdu": "دعوی",
+   "roman": "daoi",
+   "back": "داوی",
+   "roman_bare": "daoi",
+   "back_bare": "داوی"
+  },
+  {
+   "urdu": "رائے",
+   "roman": "raye",
+   "back": "رےے",
+   "roman_bare": "raye",
+   "back_bare": "رےے"
+  },
+  {
+   "urdu": "قسم",
+   "roman": "qasam",
+   "back": "قاسام",
+   "roman_bare": "qsm",
+   "back_bare": "قسم"
+  },
+  {
+   "urdu": "خواتین",
+   "roman": "khoatin",
+   "back": "کھواتین",
+   "roman_bare": "khoatin",
+   "back_bare": "کھواتین"
+  },
+  {
+   "urdu": "اکھٹے",
+   "roman": "akhate",
+   "back": "اکھاتے",
+   "roman_bare": "akhte",
+   "back_bare": "اکھتے"
+  },
+  {
+   "urdu": "بنانے",
+   "roman": "banane",
+   "back": "بانانے",
+   "roman_bare": "bnane",
+   "back_bare": "بنانے"
+  },
+  {
+   "urdu": "کہ",
+   "roman": "kah",
+   "back": "کاہ",
+   "roman_bare": "kh",
+   "back_bare": "کھ"
+  },
+  {
+   "urdu": "کہ",
+   "roman": "kah",
+   "back": "کاہ",
+   "roman_bare": "kh",
+   "back_bare": "کھ"
+  },
+  {
+   "urdu": "تربیتی",
+   "roman": "tarabiti",
+   "back": "تارابیتی",
+   "roman_bare": "trbiti",
+   "back_bare": "تربیتی"
+  },
+  {
+   "urdu": "کہ",
+   "roman": "kah",
+   "back": "کاہ",
+   "roman_bare": "kh",
+   "back_bare": "کھ"
+  },
+  {
+   "urdu": "مسیحی",
+   "roman": "masihi",
+   "back": "ماسیہی",
+   "roman_bare": "msihi",
+   "back_bare": "مسیہی"
+  },
+  {
+   "urdu": "زیادہ",
+   "roman": "ziadah",
+   "back": "زیاداہ",
+   "roman_bare": "ziadh",
+   "back_bare": "زیادھ"
+  },
+  {
+   "urdu": "عمل",
+   "roman": "amal",
+   "back": "امال",
+   "roman_bare": "aml",
+   "back_bare": "امل"
+  },
+  {
+   "urdu": "کروڑ",
+   "roman": "karor",
+   "back": "کارور",
+   "roman_bare": "kror",
+   "back_bare": "کرور"
+  },
+  {
+   "urdu": "تنظیمیں",
+   "roman": "tanazimin",
+   "back": "تانازیمین",
+   "roman_bare": "tnzimin",
+   "back_bare": "تنزیمین"
+  },
+  {
+   "urdu": "انٹرپرائز",
+   "roman": "anataraparayaz",
+   "back": "اناتاراپارےاز",
+   "roman_bare": "antrprayz",
+   "back_bare": "انترپرےز"
+  },
+  {
+   "urdu": "ہیں",
+   "roman": "hin",
+   "back": "ہین",
+   "roman_bare": "hin",
+   "back_bare": "ہین"
+  }
+ ]
+}

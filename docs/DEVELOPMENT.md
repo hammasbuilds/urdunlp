@@ -133,7 +133,7 @@ roman_key("naheen") == "نہیں"` — and `tag_roman_tokens` finds the English 
 Urdu (`kal meeting cancel ho gayi`), which `keep_english=True` leaves in Latin script.
 
 **"Where most tokens actually are" is measurable, so it was measured**: the 115-word
-stopword list covers **41.4% of 44.7M tokens**, and 114 of the 115 entries appear in the
+stopword list covers **46.5% of 44.7M tokens**, and 158 of the 159 entries appear in the
 corpus at all.
 
 ### Urdu → Roman, spelled the way people spell it

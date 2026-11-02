@@ -4,7 +4,7 @@
 
 Every claim this toolkit makes was qualitative. Sections 1-6 measure the 0.1 claims
 against [XL-Sum Urdu](https://huggingface.co/datasets/csebuetnlp/xlsum): **84,581 BBC
-Urdu news articles, 206,887,475 characters, 44,698,779 tokens**.
+Urdu news articles, 206,887,475 characters, 44,690,041 tokens**.
 
 Sections 7-13 measure what 0.2 added, against data held out from everything each part
 was built from: human romanisations from Google's
@@ -17,14 +17,36 @@ Reproduce it on any corpus:
 python scripts/measure_corpus.py <directory-of-txt-or-a-parquet> --json out.json
 ```
 
+Every number in sections 1-6 is read from [`corpus-measured.json`](corpus-measured.json),
+which is the reduction of that corpus and is in the repository; the corpus itself is 200 MB
+of text and is not. `tests/test_corpus_doc.py` checks that the document still says what the
+artefact says.
+
+**These numbers were re-measured on 2026-11-02, and some of them moved.** The corpus is
+byte-identical - articles, characters, and every count of a substituted Arabic letter came
+back exactly as first published, which is what rules the input out. What moved is
+everything that depends on the package.
+
+`normalize()` gained a letter and control-character stripping, so it now changes 264,137
+tokens rather than 263,833 and merges 14,653 types rather than 14,611. That difference is
+accounted for rather than assumed: **318 tokens in this corpus contain a control or format
+character**, and the count rose by 304 - the 14 are tokens `normalize()` already changed
+for some other reason, which cannot be counted twice. The NFC half of the same change
+explains none of it; no token here was not already NFC.
+
+The stopword list grew from 115 entries to 159, taking its coverage of running text from
+41.4% to 46.5%. The README had been updated to 159 and this document
+had not. A measurement written into prose has no way of noticing that the thing it measured
+has changed underneath it, which is the reason for the artefact and the test.
+
 ## The corpus
 
 | | |
 |---|---:|
 | Articles | 84,581 |
 | Characters | 206,887,475 |
-| Tokens | 44,698,779 |
-| Distinct normalised types | 353,358 |
+| Tokens | 44,690,041 |
+| Distinct normalised types | 353,289 |
 
 ### Which corpus, exactly
 
@@ -121,40 +143,40 @@ differ only in this letter, and nothing context-free separates them. `resolve_ar
 is exported so the heuristic can be applied, inspected or switched off, rather than
 presented as a rule.
 
-## 2. Normalisation moves 0.59% of tokens, and merges 14,611 types
+## 2. Normalisation moves 0.59% of tokens, and merges 14,653 types
 
 | | |
 |---|---:|
 | Raw whitespace tokens | 44,682,626 |
-| Changed by `normalize()` | **263,833** (0.59%) |
-| Types written more than one way | **14,611** |
-| Tokens moved onto the majority spelling | 210,906 |
+| Changed by `normalize()` | **264,137** (0.59%) |
+| Types written more than one way | **14,653** |
+| Tokens moved onto the majority spelling | 211,159 |
 
-0.59% sounds small until you notice it is concentrated: 14,611 distinct words appear in two
-or more spellings, and 210,906 token instances are the minority form. Those are exactly the
+0.59% sounds small until you notice it is concentrated: 14,653 distinct words appear in two
+or more spellings, and 211,159 token instances are the minority form. Those are exactly the
 words a vocabulary fragments on.
 
-## 3. 115 stopwords cover 41.4% of running text
+## 3. 159 stopwords cover 46.5% of running text
 
 The README calls the list "closed-class vocabulary — pronouns, postpositions, auxiliaries —
 which is where most tokens in real text actually are". Measured:
 
 | | |
 |---|---:|
-| Stopword list size | 115 |
-| Entries that appear in the corpus | **114 of 115** |
-| Token hits | 18,492,484 |
-| **Share of all tokens** | **41.4%** |
+| Stopword list size | 159 |
+| Entries that appear in the corpus | **158 of 159** |
+| Token hits | 20,802,233 |
+| **Share of all tokens** | **46.5%** |
 
-114 of 115 entries earn their place. The ten most frequent types in 44.7M tokens:
+158 of 159 entries earn their place. The ten most frequent types in 44.7M tokens:
 
 | | Count | | Count |
 |---|---:|---|---:|
 | کے | 2,047,014 | اور | 830,808 |
-| میں | 1,472,477 | کہ | 770,042 |
-| کی | 1,327,136 | نے | 758,610 |
+| میں | 1,472,480 | کہ | 770,042 |
+| کی | 1,327,140 | نے | 758,611 |
 | ہے | 1,093,615 | کا | 713,233 |
-| سے | 893,078 | کو | 670,246 |
+| سے | 893,081 | کو | 670,247 |
 
 Every one is a function word. That is the claim, measured.
 
